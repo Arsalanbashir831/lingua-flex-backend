@@ -1,0 +1,376 @@
+LingualFlex (improve language by voice interaction with AI agent and can also by teacher )
+
+The platform is designed to help students improve their language skills through AI-assisted voice interactions and interaction with teachers. 
+
+i have already implemented the authentication module(registration, login etc.) using su
+
+On registration, user will provide Role (student or teacher), Full name, Email and password, which will be required, but Student will also have bios, city, country, postal code, status, his language and new language want to learn fields but not required on registation, teacher will have the same fields as student but also have qualification, experience field
+
+After registration and login into the system, students access an AI-powered conversational voice agent(hume ai), which offers interactive language learning experiences different languages, different accents voice avatars.Student will select the his language, new language to learn, the context in which he want to practice.
+
+Also the teach have to register and onboarding like student. The platform supports one-to-one student-teacher interactions, through chat messages.  Students can book live sessions with teachers Zoom apis, where teachers define their availability and students book accordingly. These sessions are conducted via Zoom. After meeting, the meeting time will be saved and bill is calculated by time and student will be billed.
+
+Teacher can have multiple gigs of only two categories language tutor and chirologist, where he wil define his service, rate, charges, time, about, experience, education certificates.
+
+
+
+
+
+
+-----------------------------------
+LinguaFlex Project Model Structure
+------------------------------------
+
+
+
+Student 
+
+register
+login
+reset pass
+new pass\
+refresh token 
+get user details
+pro pic upload
+pro pic url
+list teachers
+
+
+
+Teacher
+
+
+
+
+
+-----------------------------------
+LinguaFlex Project Model Structure
+------------------------------------
+
+
+
+
+Here's a detailed explanation of the project's model structure and relationships:
+
+Core User Models
+1.
+User Model (Base Model)
+
+Inherits from AbstractBaseUser and PermissionsMixin
+Primary fields: id, email, first_name, last_name, role (STUDENT/TEACHER/ADMIN)
+Additional fields: phone_number, gender, date_of_birth, profile_picture
+2.
+UserProfile Model
+
+One-to-One relationship with User
+Contains additional user information: bio, city, country, postal_code
+Language preferences: native_language, learning_language
+Role-Specific Models
+1.
+Student Model
+
+One-to-One relationship with User
+Fields: learning_goals, proficiency_level, target_languages
+Related to: AISession, Session, LearningProgress
+2.
+Teacher Model
+
+One-to-One relationship with User
+Fields: bio, teaching_experience, teaching_languages, hourly_rate, is_verified
+Related to: TeacherCertificate, TimeSlot, TeacherGig
+3.
+TeacherProfile Model
+
+One-to-One relationship with UserProfile
+Fields: qualification, experience_years, certificates, about
+Learning and Session Models
+1.
+LearningContext Model
+
+Fields: name, description, category, difficulty_level
+Contains: vocabulary, suggested_responses
+Related to: AISession, LearningProgress
+2.
+AISession Model
+
+Foreign keys to: Student, VoiceAvatar, LearningContext
+Performance metrics: pronunciation_score, fluency_score, vocabulary_score, grammar_score
+Related to: Conversation
+3.
+Session Model (Human Teacher Sessions)
+
+Foreign keys to: Student, Teacher
+Fields: start_time, end_time, zoom_link, status
+Related to: AIConversation
+Supporting Models
+1.
+TeacherAvailability Model
+
+Foreign key to Teacher
+Fields: day_of_week, start_time, end_time, is_recurring
+2.
+Language Model
+
+Fields: name, code, is_active
+Used across various models for language preferences
+3.
+File Model
+
+Foreign key to User
+Fields: file, filename, storage_key, chroma_collection
+Conversation and Progress Models
+1.
+Conversation Model
+
+Foreign key to AISession
+Fields: user_input, ai_response, user_audio_url, ai_audio_url
+Includes: emotion_metrics, pronunciation_feedback
+2.
+LearningProgress Model
+
+Foreign keys to Student and LearningContext
+Tracks: sessions_completed, total_duration, average_score
+Stores: mastered_vocabulary, areas_for_improvement
+ER Diagram (in text format)
+PlainText
+
+
+
+[User] 1--1 [UserProfile]	[User] 1--1 [Student]	[User] 1--1 [Teacher]	[UserProfile] 1--1 [TeacherProfile]	[Student] 1--* [AISession]	[Student] 1--* [Session]	[Student] 1--* [LearningProgress]	[Teacher] 1--* [TeacherCertificate]	[Teacher] 1--* [TimeSlot]	[Teacher] 1--* [TeacherGig]	[Teacher] 1--* [Session][LearningContext] 1--* [AISession][LearningContext] 1--* [LearningProgress][AISession] 1--* [Conversation][Session] 1--* [AIConversation][User] 1--* [File]
+
+
+
+
+This model structure supports a comprehensive language learning platform with both AI-powered and human teacher-led sessions, tracking student progress, managing teacher availability, and handling various types of learning content and interactions.
+
+
+
+------------------
+sequence diagram 
+-------------------
+
+@startuml
+actor Student
+actor Teacher
+participant "Auth Service" as Auth
+participant "Backend Server" as Profile
+participant "AI Voice Agent" as Voice
+participant "Scheduling Service" as Schedule
+participant "Chat Service" as Chat
+
+
+== Student Registration & Onboarding ==
+Student -> Auth : Register with email/OTP
+Auth -> Student : OTP sent & Verified
+Student -> Auth : Submit registration form
+Auth -> Profile : Create student profile\n(with address, city, etc.)
+Profile -> Student : Profile created
+
+
+== Teacher Registration ==
+Teacher -> Auth : Register with email/OTP
+Auth -> Teacher : OTP sent & Verified
+Teacher -> Auth : Submit registration + qualification
+Auth -> Profile : Create teacher profile
+Profile -> Teacher : Profile created
+
+== Teacher Availability Setup ==
+Teacher -> Schedule : Set availability slots using Calendly
+Schedule -> Profile : Update teacher profile with availability info
+Schedule -> Teacher : Availability saved and reflected in profile
+
+
+
+== AI Voice Agent Interaction ==
+
+Student -> Voice : Select language, accent, gender for voice avatar
+Voice -> Student : Confirm language, accent, gender selected
+
+Student -> Voice : Start interaction request
+Voice --> Student : Conversation started for language improvement
+
+
+== Chat Interaction ==
+Student -> Chat : Send message to Teacher
+Chat -> Teacher : Deliver message
+Teacher -> Chat : Reply
+Chat -> Student : Deliver reply
+
+Student -> Chat : Request available slots from Teacher
+Chat -> Schedule : Check Teacher's availability
+Schedule -> Chat : Return available slots
+Chat -> Student : Show available slots
+
+Student -> Chat : Confirm slot for meeting
+Chat -> Teacher : Notify booked session 
+
+
+@enduml
+
+------------------
+ER diagram 
+-------------------
+@startuml LinguaFlexERD
+' Use database style
+!define table(x) class x << (T,#FFAAAA) >>
+
+title LinguaFlex - Entity Relationship Diagram
+
+' ========== Tables ==========
+
+table(User) {
+  +id : UUID [PK]
+  email : string
+  password : string
+  first_name : string
+  last_name : string
+  address : string
+  city : string
+  country : string
+  postal_code : string
+  role : enum (student, teacher)
+  is_verified : boolean
+}
+
+table(StudentProfile) {
+  +id : UUID [PK]
+  user_id : UUID [FK]
+  language_goal : string
+  proficiency_level : string
+  preferred_accent : string
+}
+
+table(TeacherProfile) {
+  +id : UUID [PK]
+  user_id : UUID [FK]
+  qualifications : text
+  languages_taught : string
+  calendly_link : string
+}
+
+table(VoiceSession) {
+  +id : UUID [PK]
+  student_id : UUID [FK]
+  language : string
+  voice_avatar : string
+  accent : string
+  voice_type : string
+  created_at : datetime
+}
+
+table(VoiceSessionHistory) {
+  +id : UUID [PK]
+  session_id : UUID [FK]
+  student_id : UUID [FK]
+  language : string
+  voice_avatar : string
+  accent : string
+  recording: audio
+  feedback : text
+  created_at : datetime
+  modified_at : datetime
+  status : enum (completed, skipped, error)
+}
+
+table(VoiceSessionReport) {
+  +id : UUID [PK]
+  session_history_id : UUID [FK]
+  pronunciation_score : float
+  fluency_score : float
+  grammar_score : float
+  vocabulary_score : float
+  listening_score : float
+  overall_comment : text
+  generated_at : datetime
+}
+
+table(Booking) {
+  +id : UUID [PK]
+  student_id : UUID [FK]
+  teacher_id : UUID [FK]
+  scheduled_time : datetime
+  duration : int (minutes)
+  meet_link : string
+  status : enum (scheduled, completed, cancelled)
+}
+
+table(BookingHistory) {
+  +id : UUID [PK]
+  booking_id : UUID [FK]
+  student_id : UUID [FK]
+  teacher_id : UUID [FK]
+  scheduled_time : datetime
+  duration : int
+  meet_link : string
+  updated_at : datetime
+  action : enum (created, rescheduled, cancelled, completed)
+  notes : text
+}
+
+table(Chat) {
+  +id : UUID [PK]
+  sender_id : UUID [FK]
+  receiver_id : UUID [FK]
+  content : text
+  timestamp : datetime
+}
+
+' ========== Relationships ==========
+
+User <-- StudentProfile : is a 
+User <-- TeacherProfile : is a
+StudentProfile ||--o{ VoiceSession : "initiate"
+VoiceSession ||--o{ VoiceSessionHistory : "session history"
+VoiceSession ||--|| VoiceSessionReport : "generates"
+StudentProfile ||--o{ Booking : books 
+TeacherProfile ||--o{ Booking : "1 to many"
+Booking ||--o{ BookingHistory : "history"
+StudentProfile ||--o{ Chat : messages
+TeacherProfile ||--o{ Chat : messages
+
+@enduml
+
+
+
+
+
+
+
+
+
+You are LinguaFlex, a friendly, supportive, and multilingual AI language tutor helping users (primarily students) improve their language fluency, pronunciation, and conversational skills through interactive voice conversations.
+
+The user may be a beginner, intermediate, or advanced learner. You must adjust your language, speed, and complexity accordingly.
+
+You have to ask user for his details (Native Language, Target Language to learn, Accent Preference, Practice Context)
+
+
+
+Goals:
+Simulate real-life conversations in the selected context.
+
+Offer corrections gently when user makes grammatical or pronunciation mistakes.
+
+Encourage the user to speak more by asking relevant follow-up questions.
+
+Gradually increase complexity based on learner confidence and responses.
+
+Provide cultural tips or idiomatic expressions when relevant.
+
+At the end, summarize the session and optionally give feedback on vocabulary, grammar, and pronunciation.
+
+Voice Style Guidelines:
+Warm, engaging, patient tone.
+
+Speak clearly and slowly for beginners; natural speed for advanced learners.
+
+Avoid overly complex or academic vocabulary unless appropriate.
+
+Response Format:
+Always respond in the target language, unless explicitly asked otherwise by the user.
+Provide gentle corrections in parentheses if needed:
+
+Example: "I goed to the store (I went to the store). That’s great! What did you buy?"
+
+Start of Conversation:
+Greet the user by name, confirm their language goals, and ask an opening question based on their practice context.
