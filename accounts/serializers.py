@@ -361,39 +361,21 @@ class VoiceConversationCreateSerializer(serializers.ModelSerializer):
     
     def validate_transcription(self, value):
         """Validate transcription JSON object"""
-        if not value:
-            raise serializers.ValidationError("Transcription cannot be empty.")
+        if value is None:
+            raise serializers.ValidationError("Transcription cannot be null.")
         
         if isinstance(value, dict):
-            # Validate JSON structure
-            if not value.get('full_text') and not value.get('segments'):
-                raise serializers.ValidationError(
-                    "Transcription must contain either 'full_text' or 'segments'."
-                )
-            
-            # Validate segments if present
-            if 'segments' in value and isinstance(value['segments'], list):
-                for i, segment in enumerate(value['segments']):
-                    if not isinstance(segment, dict):
-                        raise serializers.ValidationError(
-                            f"Segment {i} must be a dictionary."
-                        )
-                    if 'speaker' not in segment or 'text' not in segment:
-                        raise serializers.ValidationError(
-                            f"Segment {i} must contain 'speaker' and 'text' fields."
-                        )
-            
+            # Accept any dictionary structure - no specific requirements
             return value
         
         elif isinstance(value, str):
-            # If still receiving string, convert to JSON format
+            # If receiving string, convert to JSON format
             if not value.strip():
                 raise serializers.ValidationError("Transcription cannot be empty.")
             
             return {
                 "full_text": value.strip(),
                 "format": "text",
-                "segments": [],
                 "metadata": {
                     "converted_from_string": True
                 }
