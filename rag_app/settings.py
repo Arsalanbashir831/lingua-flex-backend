@@ -37,6 +37,7 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BASE_URL_RESET_PASSWORD=os.getenv("BASE_URL_RESET_PASSWORD", "")
 BASE_URL_SIGNIN=os.getenv("BASE_URL_SIGNIN", "")
+BASE_URL = os.getenv("BASE_URL", "")
 AUTH_USER_MODEL = "core.User"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -55,7 +56,7 @@ if not url:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.6","localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["192.168.1.10","localhost", "127.0.0.1"]
 #CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 

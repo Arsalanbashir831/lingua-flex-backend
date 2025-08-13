@@ -714,7 +714,23 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Create Zoom meeting
+        # Check if Zoom meeting already exists
+        if booking.zoom_meeting_id and booking.zoom_join_url:
+            # Meeting already exists, just confirm the booking
+            booking.status = 'CONFIRMED'
+            booking.save()
+            
+            return Response({
+                "message": "Booking confirmed (Zoom meeting already exists)",
+                "booking": SessionBookingSerializer(booking).data,
+                "zoom_info": {
+                    "join_url": booking.zoom_join_url,
+                    "meeting_id": booking.zoom_meeting_id,
+                    "password": booking.zoom_password or ''
+                }
+            })
+        
+        # Create new Zoom meeting only if one doesn't exist
         zoom_service = ZoomService()
         try:
             zoom_result = zoom_service.create_meeting(booking)
@@ -722,6 +738,8 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
             if zoom_result['success']:
                 booking.zoom_meeting_id = str(zoom_result['meeting_id'])
                 booking.zoom_join_url = zoom_result['join_url']
+                booking.zoom_start_url = zoom_result.get('start_url', '')
+                booking.zoom_password = zoom_result.get('password', '')
                 booking.status = 'CONFIRMED'
                 booking.save()
                 

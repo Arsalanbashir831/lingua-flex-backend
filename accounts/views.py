@@ -164,6 +164,51 @@ class RegisterWithProfileView(generics.CreateAPIView):
         data = serializer.validated_data
 
         try:
+            # Check if user already exists in Django
+            email = data['email']
+            
+            try:
+                existing_user = User.objects.get(email=email)
+                
+                # Check if user is verified in Supabase
+                try:
+                    supabase_user = supabase.auth.admin.get_user_by_id(str(existing_user.id))
+                    
+                    # If user exists and is verified
+                    if supabase_user.user and supabase_user.user.email_confirmed_at:
+                        return Response(
+                            {
+                                'error': 'User already exists and is verified. Please login instead.',
+                                'action': 'login'
+                            },
+                            status=status.HTTP_409_CONFLICT
+                        )
+                    
+                    # If user exists but not verified, resend verification
+                    else:
+                        # Resend verification email
+                        supabase.auth.resend({
+                            'type': 'signup',
+                            'email': email,
+                            'options': {'email_redirect_to': settings.BASE_URL_SIGNIN}
+                        })
+                        
+                        return Response(
+                            {
+                                'message': 'User exists but not verified. Verification email resent.',
+                                'action': 'verify_email'
+                            },
+                            status=status.HTTP_200_OK
+                        )
+                        
+                except Exception as supabase_error:
+                    # If Supabase user doesn't exist but Django user does, create in Supabase
+                    pass
+                    
+            except User.DoesNotExist:
+                # User doesn't exist in Django, continue with registration
+                pass
+
             # Create Supabase user
             response = supabase.auth.sign_up({
                 "email": data['email'],
