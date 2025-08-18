@@ -64,7 +64,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.10.9:3000",   # client laptop origin (React/Vite/etc)
     "http://localhost:3000",
     "https://linguaflex-eight.vercel.app",
-    "shaktiwheel.in"
+    "https://shaktiwheel.in"
 ]
 
 
