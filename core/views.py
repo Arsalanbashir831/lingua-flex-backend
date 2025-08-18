@@ -306,8 +306,6 @@ class UserProfilePictureUploadView(APIView):
         if not file_obj:
             return Response({"error": "No profile_picture file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-#// ... existing code ...
-
         folder = f"user_{user.id}"
         filename = file_obj.name
         storage_key = f"{folder}/{filename}"
@@ -315,6 +313,17 @@ class UserProfilePictureUploadView(APIView):
         supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
         try:
+            # Delete previous profile picture if exists
+            if user.profile_picture and user.profile_picture.name:
+                try:
+                    # Get the file path string from ImageFieldFile
+                    previous_file_path = user.profile_picture.name
+                    delete_res = supabase.storage.from_("user-uploads").remove([previous_file_path])
+                    #print(f"Previous profile picture deletion result: {delete_res}")
+                except Exception as delete_error:
+                    print(f"Warning: Could not delete previous profile picture: {delete_error}")
+                    # Continue with upload even if deletion fails
+
             file_bytes = file_obj.read()
 
             # Upload to Supabase Storage
