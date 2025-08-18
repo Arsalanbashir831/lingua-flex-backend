@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView, LoginView, PasswordResetView, PasswordResetConfirmView, TokenRefreshView
+from .views import RegisterView, LoginView, PasswordResetView, PasswordResetConfirmView, TokenRefreshView, ResendVerificationView
 from .views import FileUploadView, UserFilesView, UserFileDeleteView
 from .views import UserProfileView, UserProfilePictureUploadView, UserProfilePictureGetView
 
@@ -9,6 +9,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('password-reset/', PasswordResetView.as_view(), name='password_reset'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('resend-verification/', ResendVerificationView.as_view(), name='resend_verification'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/profile/', UserProfileView.as_view(), name='user_profile'),
     path('user/profile-picture/', UserProfilePictureUploadView.as_view(), name='user_profile_picture_upload'),
