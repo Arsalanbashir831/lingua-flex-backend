@@ -238,6 +238,83 @@ class PasswordResetConfirmView(APIView):
         return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
 
 
+class ResendVerificationView(APIView):
+    """
+    Resend email verification link for unverified users
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {'error': 'Email is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Check if user exists in Django database
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'User with this email does not exist'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Try to resend verification email directly
+            # Supabase will handle checking if user exists and is unverified
+            try:
+                resend_response = supabase.auth.resend(
+                    {
+                        "type": "signup",
+                        "email": email,
+                        "options": {
+                            "email_redirect_to": settings.BASE_URL_SIGNIN,
+                        },
+                    }
+                )
+                
+                return Response(
+                    {
+                        'message': 'Verification email has been resent successfully, if user is not verified.',
+                        'email': email,
+                        #'instructions': 'Please check your email and click the verification link to activate your account.'
+                    }, 
+                    status=status.HTTP_200_OK
+                )
+                
+            except Exception as supabase_error:
+                error_message = str(supabase_error)
+                
+                # Handle specific Supabase errors
+                if 'user not found' in error_message.lower():
+                    return Response(
+                        {'error': 'User with this email does not exist in the authentication system'}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                elif 'already confirmed' in error_message.lower() or 'already verified' in error_message.lower():
+                    return Response(
+                        {
+                            'error': 'User is already verified', 
+                            'message': 'Your email is already verified. You can log in directly.'
+                        }, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    return Response(
+                        {'error': f'Failed to resend verification email: {error_message}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Unexpected error: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
