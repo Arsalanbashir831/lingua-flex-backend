@@ -48,6 +48,15 @@ if not url:
 DEBUG = True
 
 ALLOWED_HOSTS = ["192.168.1.3","localhost", "127.0.0.1"]
+
+ALLOWED_HOSTS = ["api.shaktiwheel.in", "127.0.0.1", "localhost"]
+
+# For Django 4+ use full scheme for CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.shaktiwheel.in",
+    "http://api.shaktiwheel.in",   # keep during initial HTTP testing; remove later if you force HTTPS
+]
+
 #CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 
@@ -56,6 +65,13 @@ CORS_ALLOWED_ORIGINS = [
     
     "http://localhost:3000",
 ]
+
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
 
 # Application definition
