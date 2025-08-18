@@ -145,6 +145,20 @@ async def get_current_user(token: str) -> dict:
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+@app.get("/")
+async def root():
+    return {
+        "message": "LinguaFlex Chat API",
+        "version": "1.0.0",
+        "endpoints": {
+            "docs": "/docs",
+            "chats": "/chats/{user_id}",
+            "start_chat": "/chats/start/",
+            "messages": "/messages/{chat_id}",
+            "websocket": "/ws/chat/{chat_id}"
+        }
+    }
+
 @app.websocket("/ws/chat/{chat_id}")
 async def websocket_endpoint(websocket: WebSocket, chat_id: str, token: str):
     user = await get_current_user(token)
