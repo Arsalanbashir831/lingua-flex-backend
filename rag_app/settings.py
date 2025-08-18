@@ -56,7 +56,7 @@ if not url:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.10","localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["192.168.1.10","localhost", "127.0.0.1","api.shaktiwheel.in","shaktiwheel.in"]
 #CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 
