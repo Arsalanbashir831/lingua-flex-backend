@@ -56,7 +56,7 @@ if not url:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.3","localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["192.168.1.2","localhost", "127.0.0.1"]
 #CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 
@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'accounts',
     'payments',
     'lessons',
+    'blogs',  
     "corsheaders",
 ]
 

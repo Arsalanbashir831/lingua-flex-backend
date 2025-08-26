@@ -1,0 +1,1142 @@
+{
+	"info": {
+		"_postman_id": "blog-system-api-tests",
+		"name": "LinguaFlex Blog System API Tests",
+		"description": "Comprehensive Postman collection for testing the LinguaFlex blog system including CRUD operations, file uploads, analytics, and public endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Teacher Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('teacher_token', response.token);",
+									"    pm.test('Login successful', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    pm.test('Token received', function () {",
+									"        pm.expect(response.token).to.not.be.undefined;",
+									"    });",
+									"} else {",
+									"    pm.test('Login failed', function () {",
+									"        pm.response.to.not.have.status(200);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"teacher@example.com\",\n    \"password\": \"testpass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/accounts/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"accounts",
+								"login",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Blog Categories",
+			"item": [
+				{
+					"name": "List Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/categories/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"categories",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Category",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('category_id', response.id);",
+									"    pm.test('Category created successfully', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Education\",\n    \"description\": \"Educational content and language learning tips\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/categories/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"categories",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Blog Management (Teacher)",
+			"item": [
+				{
+					"name": "List Teacher Blogs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/?page=1&page_size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Blog (JSON - No File)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('blog_id', response.id);",
+									"    pm.environment.set('blog_slug', response.slug);",
+									"    pm.test('Blog created successfully', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"10 Tips for Effective Language Learning\",\n    \"content\": \"Language learning can be challenging, but with the right strategies, you can make significant progress. Here are 10 proven tips:\\n\\n1. **Practice daily**: Consistency is key to language learning success.\\n2. **Immerse yourself**: Surround yourself with the language through media, music, and conversations.\\n3. **Start with basics**: Master fundamental grammar and vocabulary before moving to complex topics.\\n4. **Use technology**: Leverage apps, online courses, and digital tools.\\n5. **Find a language partner**: Practice with native speakers or fellow learners.\\n6. **Set realistic goals**: Break your learning journey into achievable milestones.\\n7. **Learn through context**: Study words and phrases in real-life situations.\\n8. **Don't fear mistakes**: Errors are part of the learning process.\\n9. **Stay motivated**: Remember your reasons for learning the language.\\n10. **Be patient**: Language acquisition takes time and dedication.\\n\\nRemember, everyone learns differently, so find the methods that work best for you!\",\n    \"thumbnail\": \"https://example.com/language-learning-tips.jpg\",\n    \"category\": {{category_id}},\n    \"tags\": [\"education\", \"language-learning\", \"tips\", \"study\"],\n    \"status\": \"published\",\n    \"meta_description\": \"Discover 10 proven strategies for effective language learning that will accelerate your progress and boost your confidence.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Blog with Thumbnail Upload",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('blog_with_file_id', response.id);",
+									"    pm.test('Blog created with file upload', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    pm.test('Thumbnail URL present', function () {",
+									"        pm.expect(response.thumbnail).to.not.be.null;",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "The Future of Online Education",
+									"type": "text"
+								},
+								{
+									"key": "content",
+									"value": "Online education has revolutionized the way we learn and teach. In this comprehensive guide, we'll explore the latest trends, technologies, and methodologies that are shaping the future of digital learning.\n\n## Key Trends in Online Education\n\n### 1. Personalized Learning\nAI-powered platforms are creating customized learning experiences tailored to individual student needs and learning styles.\n\n### 2. Interactive Content\nFrom virtual reality to gamification, educators are finding new ways to engage students in the digital classroom.\n\n### 3. Microlearning\nBite-sized lessons that can be consumed quickly are becoming increasingly popular for busy professionals.\n\n### 4. Collaborative Learning\nOnline platforms are facilitating better collaboration between students across geographical boundaries.\n\n## The Role of Technology\n\nTechnology continues to play a crucial role in enhancing the online learning experience:\n\n- **Learning Management Systems (LMS)**: Streamlined course delivery and progress tracking\n- **Video Conferencing**: Real-time interaction between instructors and students\n- **Mobile Learning**: Learning on-the-go through smartphones and tablets\n- **Analytics**: Data-driven insights to improve learning outcomes\n\n## Challenges and Solutions\n\nWhile online education offers many benefits, it also presents unique challenges:\n\n### Challenge: Student Engagement\n**Solution**: Interactive content, regular feedback, and community building\n\n### Challenge: Technical Barriers\n**Solution**: User-friendly platforms and comprehensive technical support\n\n### Challenge: Assessment Integrity\n**Solution**: Proctoring technologies and alternative assessment methods\n\n## Looking Ahead\n\nThe future of online education is bright, with emerging technologies like AI, VR, and blockchain promising to further transform the learning landscape. As educators and institutions continue to innovate, we can expect even more effective and engaging online learning experiences.\n\nWhether you're a student, educator, or institution, embracing these changes will be key to success in the digital age of education.",
+									"type": "text"
+								},
+								{
+									"key": "thumbnail",
+									"type": "file",
+									"src": [],
+									"description": "Upload an image file here (JPEG, PNG, WebP, GIF - max 5MB)"
+								},
+								{
+									"key": "category",
+									"value": "{{category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "tags",
+									"value": "[\"education\", \"online-learning\", \"technology\", \"future\", \"digital\"]",
+									"type": "text"
+								},
+								{
+									"key": "status",
+									"value": "published",
+									"type": "text"
+								},
+								{
+									"key": "meta_description",
+									"value": "Explore the latest trends and technologies shaping the future of online education, from AI-powered personalization to virtual reality classrooms.",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Blog Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/{{blog_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"{{blog_id}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Blog (JSON)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"10 Updated Tips for Effective Language Learning\",\n    \"content\": \"Updated content with even more valuable insights...\",\n    \"status\": \"published\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/{{blog_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"{{blog_id}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Blog with New Thumbnail",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated: The Future of Online Education",
+									"type": "text"
+								},
+								{
+									"key": "thumbnail",
+									"type": "file",
+									"src": [],
+									"description": "Upload a new image file to replace the existing thumbnail"
+								},
+								{
+									"key": "status",
+									"value": "published",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/{{blog_with_file_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"{{blog_with_file_id}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Teacher Blogs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/?search=language&status=published",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "language"
+								},
+								{
+									"key": "status",
+									"value": "published"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Blogs by Category",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/?category={{category_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "category",
+									"value": "{{category_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Blogs by Date Range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/?date_from=2025-01-01&date_to=2025-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "date_from",
+									"value": "2025-01-01"
+								},
+								{
+									"key": "date_to",
+									"value": "2025-12-31"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Blog Analytics & Stats",
+			"item": [
+				{
+					"name": "Get Blog Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/stats/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"stats",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Duplicate Blog",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('duplicated_blog_id', response.id);",
+									"    pm.test('Blog duplicated successfully', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/{{blog_id}}/duplicate/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"{{blog_id}}",
+								"duplicate",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Update Blog Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"blog_ids\": [{{blog_id}}, {{duplicated_blog_id}}],\n    \"status\": \"published\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/bulk-update/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"bulk-update",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "File Upload (Legacy)",
+			"item": [
+				{
+					"name": "Upload Thumbnail (Separate Endpoint)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('uploaded_thumbnail_url', response.thumbnail_url);",
+									"    pm.test('Thumbnail uploaded successfully', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "thumbnail",
+									"type": "file",
+									"src": [],
+									"description": "Upload thumbnail image file (JPEG, PNG, WebP, GIF - max 5MB)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/upload-thumbnail/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"upload-thumbnail",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Blog with Uploaded URL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Blog Created with Separate Upload\",\n    \"content\": \"This blog was created using the legacy two-step process: first upload thumbnail, then create blog.\",\n    \"thumbnail\": \"{{uploaded_thumbnail_url}}\",\n    \"category\": {{category_id}},\n    \"tags\": [\"legacy\", \"upload\", \"test\"],\n    \"status\": \"published\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Public Blog Access",
+			"item": [
+				{
+					"name": "List Public Blogs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/blogs/?page=1&page_size=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Public Blogs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/blogs/?search=language",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "language"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Public Blogs by Category",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/blogs/?category={{category_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "category",
+									"value": "{{category_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Public Blogs by Tags",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/blogs/?tags=education,language-learning",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"blogs",
+								""
+							],
+							"query": [
+								{
+									"key": "tags",
+									"value": "education,language-learning"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "View Blog by Slug (Tracks Views)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/blogs/{{blog_slug}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"blogs",
+								"{{blog_slug}}",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Testing",
+			"item": [
+				{
+					"name": "Test Unauthorized Access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Invalid Blog ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/99999/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"99999",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Invalid File Upload",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Blog with Invalid File",
+									"type": "text"
+								},
+								{
+									"key": "content",
+									"value": "This should fail due to invalid file type.",
+									"type": "text"
+								},
+								{
+									"key": "thumbnail",
+									"type": "file",
+									"src": [],
+									"description": "Upload a non-image file (e.g., .txt, .pdf) to test validation"
+								},
+								{
+									"key": "category",
+									"value": "{{category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "status",
+									"value": "draft",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Blog content without title\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "Delete Test Blog",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/{{blog_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"{{blog_id}}",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Duplicated Blog",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Token {{teacher_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/blogs/teacher/blogs/{{duplicated_blog_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"blogs",
+								"teacher",
+								"blogs",
+								"{{duplicated_blog_id}}",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "teacher_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "category_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blog_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blog_slug",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blog_with_file_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "duplicated_blog_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "uploaded_thumbnail_url",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
