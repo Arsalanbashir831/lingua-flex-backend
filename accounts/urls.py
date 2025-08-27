@@ -26,4 +26,6 @@ urlpatterns = [
     path('register/', RegisterWithProfileView.as_view(), name='register-with-profile'),
     path('supabase/chats/', supabase_chats, name='supabase-chats'),
     path('supabase/messages/<uuid:chat_id>/', supabase_messages, name='supabase-messages'),
+    # Include student management endpoints for teachers
+    path('', include('accounts.urls_students')),
 ]

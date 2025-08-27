@@ -92,6 +92,17 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email} ({self.id})"
+    
+    def get_full_name(self):
+        """Return the full name of the user"""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}".strip()
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        else:
+            return self.username or self.email.split('@')[0]
 
 class TimeSlot(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='time_slots')

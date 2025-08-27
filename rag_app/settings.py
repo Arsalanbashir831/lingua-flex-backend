@@ -46,6 +46,8 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+
 
 url = os.getenv("SUPABASE_DB_URL", "").strip()
 
@@ -83,6 +85,7 @@ INSTALLED_APPS = [
     'payments',
     'lessons',
     'blogs',  
+    'campaigns',
     "corsheaders",
 ]
 
@@ -197,7 +200,8 @@ REST_FRAMEWORK = {
 }
 
 AUTHENTICATION_BACKENDS = [
-    "core.authentication.SupabaseBackend",
+    'django.contrib.auth.backends.ModelBackend',  # For Django admin login
+    "core.authentication.SupabaseBackend",        # For API token authentication
 ]
 
 SIMPLE_JWT = {

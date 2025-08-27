@@ -7,10 +7,10 @@ import jwt
 import resend
 from pydantic import BaseModel
 #from rag_app.settings import settings
-from rag_app.settings import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BASE_URL
+from rag_app.settings import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BASE_URL, RESEND_API_KEY
 
 # Configure Resend for email notifications
-resend.api_key = "re_SnbT8oXw_E49CfdTG9hpXcUbrc3i8NJjQ"
+resend.api_key = RESEND_API_KEY
 
 # SUPABASE_URL = SUPABASE_URL
 # SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY

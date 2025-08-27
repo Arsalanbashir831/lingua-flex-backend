@@ -1,0 +1,541 @@
+{
+  "info": {
+    "name": "LinguaFlex Campaigns API",
+    "description": "Complete collection for testing the Campaign Management API endpoints. Teachers can create, manage, and send email campaigns to students.",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "teacher_token",
+      "value": "your_teacher_token_here",
+      "type": "string"
+    },
+    {
+      "key": "campaign_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{teacher_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Set timestamp for unique titles",
+          "pm.globals.set(\"timestamp\", Date.now());",
+          "",
+          "// Check if teacher token is set",
+          "if (!pm.environment.get(\"teacher_token\") || pm.environment.get(\"teacher_token\") === \"your_teacher_token_here\") {",
+          "    console.log(\"⚠️ Warning: Please set your teacher_token in the environment variables\");",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "// Log response time",
+          "console.log(`Response time: ${pm.response.responseTime}ms`);",
+          "",
+          "// Log any errors",
+          "if (pm.response.code >= 400) {",
+          "    console.log(`❌ Error ${pm.response.code}: ${pm.response.text()}`);",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Campaign Management",
+      "item": [
+        {
+          "name": "Create Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save campaign ID for other requests",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set(\"campaign_id\", response.id);",
+                  "    pm.test(\"Campaign created successfully\", function () {",
+                  "        pm.expect(response.status).to.eql(\"draft\");",
+                  "        pm.expect(response.id).to.be.a('number');",
+                  "    });",
+                  "}",
+                  "",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Language Learning Special {{$timestamp}}\",\n  \"subject\": \"🌟 Unlock Your Language Potential This Summer!\",\n  \"content\": \"Hello {{student_name}},\\n\\nI hope this message finds you well! As we approach the summer season, I wanted to reach out with an exciting opportunity to accelerate your language learning journey.\\n\\n🎯 **What I'm Offering:**\\n- Personalized one-on-one language sessions\\n- Flexible scheduling to fit your summer plans\\n- Interactive conversation practice\\n- Cultural immersion experiences\\n- Customized learning materials\\n\\n📚 **Special Summer Package:**\\n- 10 sessions for the price of 8\\n- Free initial assessment and learning plan\\n- Access to exclusive learning resources\\n- Progress tracking and regular feedback\\n\\nWhether you're preparing for travel, academic requirements, or personal enrichment, I'm here to help you achieve your language goals efficiently and enjoyably.\\n\\n🗓️ **Limited Time Offer:**\\nBook your sessions before the end of August and receive a 20% discount on my regular rates!\\n\\nFeel free to reply to this email or book a consultation through the LinguaFlex platform. I'd love to discuss how we can tailor the perfect learning experience for you.\\n\\nLooking forward to our language learning adventure together!\\n\\nBest regards,\\nYour Language Teacher\",\n  \"from_name\": \"Sarah Johnson\",\n  \"from_email\": \"sarah.teacher@linguaflex.com\",\n  \"notes\": \"Summer 2025 promotional campaign targeting all students for language learning services\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", ""]
+            }
+          }
+        },
+        {
+          "name": "List Campaigns",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has pagination structure\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('count');",
+                  "    pm.expect(response).to.have.property('results');",
+                  "    pm.expect(response.results).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", ""]
+            }
+          }
+        },
+        {
+          "name": "List Campaigns with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/?status=draft&search=summer&page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", ""],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "draft"
+                },
+                {
+                  "key": "search",
+                  "value": "summer"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campaign details are complete\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.expect(response).to.have.property('title');",
+                  "    pm.expect(response).to.have.property('content');",
+                  "    pm.expect(response).to.have.property('recipients');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/{{campaign_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "{{campaign_id}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campaign updated successfully\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.title).to.include(\"Updated\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Summer Language Learning Special {{$timestamp}}\",\n  \"subject\": \"🌟 Enhanced Language Learning Experience This Summer!\",\n  \"notes\": \"Updated campaign with improved messaging and better call-to-action\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/{{campaign_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "{{campaign_id}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campaign deleted successfully\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include(\"deleted successfully\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/{{campaign_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "{{campaign_id}}", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Campaign Actions",
+      "item": [
+        {
+          "name": "Preview Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Preview contains formatted content\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('formatted_content');",
+                  "    pm.expect(response).to.have.property('raw_content');",
+                  "    pm.expect(response.formatted_content).to.include('<!DOCTYPE html>');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/{{campaign_id}}/preview/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "{{campaign_id}}", "preview", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Statistics contain all required fields\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('total_campaigns');",
+                  "    pm.expect(response).to.have.property('draft_campaigns');",
+                  "    pm.expect(response).to.have.property('sent_campaigns');",
+                  "    pm.expect(response).to.have.property('total_emails_sent');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/stats/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "stats", ""]
+            }
+          }
+        },
+        {
+          "name": "Send Campaign ⚠️",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campaign sent successfully\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('sent_count');",
+                  "    pm.expect(response).to.have.property('total_recipients');",
+                  "    pm.expect(response.message).to.include(\"sent successfully\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm_send\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/{{campaign_id}}/send/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "{{campaign_id}}", "send", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "item": [
+        {
+          "name": "Invalid Campaign ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message present\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/99999/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "99999", ""]
+            }
+          }
+        },
+        {
+          "name": "No Authentication",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Authentication error message\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.detail).to.include(\"Authentication\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", ""]
+            }
+          }
+        },
+        {
+          "name": "Invalid Campaign Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Validation errors present\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('title');",
+                  "    pm.expect(response).to.have.property('subject');",
+                  "    pm.expect(response).to.have.property('content');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"subject\": \"Hi\",\n  \"content\": \"Short\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", ""]
+            }
+          }
+        },
+        {
+          "name": "Invalid Send Confirmation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Confirmation error message\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('confirm_send');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm_send\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campaigns/teacher/campaigns/{{campaign_id}}/send/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campaigns", "teacher", "campaigns", "{{campaign_id}}", "send", ""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

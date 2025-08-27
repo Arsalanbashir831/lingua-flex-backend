@@ -1,9 +1,9 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from rag_app.admin_site import admin_site
 from .models import Blog, BlogCategory, BlogView
 
 
-@admin.register(BlogCategory)
 class BlogCategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'description', 'blog_count', 'created_at']
     search_fields = ['name', 'description']
@@ -14,7 +14,6 @@ class BlogCategoryAdmin(admin.ModelAdmin):
     blog_count.short_description = 'Number of Blogs'
 
 
-@admin.register(Blog)
 class BlogAdmin(admin.ModelAdmin):
     list_display = [
         'title', 'author_name', 'category', 'status', 'view_count', 
@@ -64,7 +63,6 @@ class BlogAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-@admin.register(BlogView)
 class BlogViewAdmin(admin.ModelAdmin):
     list_display = ['blog_title', 'viewer_ip', 'viewed_at']
     list_filter = ['viewed_at', 'blog__category']
@@ -81,3 +79,9 @@ class BlogViewAdmin(admin.ModelAdmin):
     
     def has_change_permission(self, request, obj=None):
         return False  # Don't allow editing views
+
+
+# Register models with custom admin site
+admin_site.register(BlogCategory, BlogCategoryAdmin)
+admin_site.register(Blog, BlogAdmin)
+admin_site.register(BlogView, BlogViewAdmin)
