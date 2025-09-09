@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class GigsConfig(AppConfig):
+class StripePaymentsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'gigs'
+    name = 'stripe_payments'

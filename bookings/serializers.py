@@ -72,17 +72,38 @@ class BulkTeacherAvailabilitySerializer(serializers.Serializer):
 class SessionBookingSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     teacher_name = serializers.SerializerMethodField()
+    duration_hours = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, read_only=True)
 
     class Meta:
         model = SessionBooking
         fields = '__all__'
-        read_only_fields = ['student', 'status', 'zoom_meeting_id', 'zoom_join_url']
+        read_only_fields = ['student', 'status', 'zoom_meeting_id', 'zoom_join_url', 'duration_hours']
 
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}"
 
     def get_teacher_name(self, obj):
         return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+
+    def validate(self, attrs):
+        """Calculate duration_hours automatically from start_time and end_time"""
+        start_time = attrs.get('start_time')
+        end_time = attrs.get('end_time')
+        
+        if start_time and end_time:
+            if start_time >= end_time:
+                raise serializers.ValidationError("Start time must be before end time")
+            
+            # Auto-calculate duration in hours
+            duration_seconds = (end_time - start_time).total_seconds()
+            duration_hours = round(duration_seconds / 3600, 2)  # Convert to hours with 2 decimal places
+            attrs['duration_hours'] = duration_hours
+            
+            # Set scheduled_datetime if not provided
+            if not attrs.get('scheduled_datetime'):
+                attrs['scheduled_datetime'] = start_time
+        
+        return attrs
 
     def create(self, validated_data):
         validated_data['student'] = self.context['request'].user

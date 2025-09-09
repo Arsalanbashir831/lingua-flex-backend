@@ -5,7 +5,7 @@ Usage: python manage.py sync_roles_to_supabase
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from lessons.models import TeacherProfile
+from accounts.models import TeacherProfile
 from supabase import create_client
 import os
 from django.conf import settings

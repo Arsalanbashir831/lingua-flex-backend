@@ -24,12 +24,11 @@ urlpatterns = [
     path('admin/', admin_site.urls),  # Use custom admin site
     path('django-admin/', admin.site.urls),  # Keep default admin as backup
     path('api/', include('core.urls')),
-    # path('api/payments/', include('payments.urls')),  # Temporarily disabled
     path('api/accounts/', include('accounts.urls')),
-    path('api/lessons/', include('lessons.urls')),
     path('api/bookings/', include('bookings.urls')),
     path('api/blogs/', include('blogs.urls')),  # Added blogs URLs
     path('api/campaigns/', include('campaigns.urls')),  # Added campaigns URLs
+    path('api/payments/', include('stripe_payments.urls')),  # Added Stripe payments URLs
 ]
 
 urlpatterns += [

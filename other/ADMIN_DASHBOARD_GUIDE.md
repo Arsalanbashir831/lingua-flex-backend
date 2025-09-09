@@ -39,14 +39,7 @@ The main dashboard displays:
 - **Teachers**: Teacher availability and scheduling
 - **Students**: Student booking history and preferences
 
-#### Lesson Management (`lessons` app)
-- **AI Sessions**: Monitor AI-powered learning sessions
-- **Voice Avatars**: Manage AI voice personalities
-- **Learning Contexts**: Educational scenarios and difficulty levels
-- **Conversations**: AI interaction logs
-- **Learning Progress**: Student progress tracking
-
-#### Gig Management (`gigs` app)
+#### Gig Management (in `accounts` app)
 - **Gigs**: Freelance tutoring opportunities
 - **Gig Reviews**: Rating and feedback system
 

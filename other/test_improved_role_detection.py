@@ -109,7 +109,7 @@ def check_django_role_detection():
     print("=" * 40)
     
     try:
-        from lessons.models import TeacherProfile
+        from accounts.models import TeacherProfile
         from django.contrib.auth import get_user_model
         User = get_user_model()
         

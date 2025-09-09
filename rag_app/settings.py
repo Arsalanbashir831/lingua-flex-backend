@@ -42,9 +42,13 @@ AUTH_USER_MODEL = "core.User"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+# Frontend URL for payment returns
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 
@@ -82,10 +86,9 @@ INSTALLED_APPS = [
     'core',
     'bookings',
     'accounts',
-    'payments',
-    'lessons',
     'blogs',  
     'campaigns',
+    'stripe_payments',
     "corsheaders",
 ]
 
@@ -209,3 +212,26 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
 }
+
+
+# =============================================================================
+# STRIPE PAYMENT SETTINGS
+# =============================================================================
+
+# Stripe API Keys (get these from your Stripe dashboard)
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+
+# Stripe settings
+STRIPE_LIVE_MODE = False  # Set to True in production
+STRIPE_TEST_SECRET_KEY = os.getenv('STRIPE_TEST_SECRET_KEY', '')
+STRIPE_TEST_PUBLISHABLE_KEY = os.getenv('STRIPE_TEST_PUBLISHABLE_KEY', '')
+
+# Payment settings
+PAYMENT_CURRENCY = 'USD'
+PLATFORM_FEE_PERCENTAGE = 0.05  # 5% platform fee
+MINIMUM_PLATFORM_FEE_CENTS = 100  # $1 minimum fee
+
+# Email settings for payment notifications
+PAYMENT_EMAIL_NOTIFICATIONS = True
