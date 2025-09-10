@@ -40,6 +40,11 @@ BASE_URL_SIGNIN=os.getenv("BASE_URL_SIGNIN", "")
 BASE_URL = os.getenv("BASE_URL", "")
 AUTH_USER_MODEL = "core.User"
 
+# Google OAuth Configuration
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 

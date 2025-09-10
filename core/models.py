@@ -48,6 +48,36 @@ class SupabaseUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+    def create_oauth_user(self, id, email, first_name=None, last_name=None, auth_provider='GOOGLE', **extra_fields):
+        """
+        Create user from OAuth provider (Google, etc.)
+        These users are automatically verified
+        """
+        if not id:
+            raise ValueError("OAuth user must have an id")
+        if not email:
+            raise ValueError("OAuth user must have an email")
+
+        email = self.normalize_email(email)
+        username = username = email.split("@")[0]
+        
+        # Set OAuth-specific defaults
+        extra_fields.setdefault('is_oauth_user', True)
+        extra_fields.setdefault('email_verified', True)
+        extra_fields.setdefault('auth_provider', auth_provider)
+        
+        user = self.model(
+            id=id, 
+            email=email, 
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            **extra_fields
+        )
+        user.set_unusable_password()
+        user.save(using=self._db)
+        return user
+
     def create_superuser(self, email, password=None, **extra_fields):
         """
         Let you create a Django admin superuser manually (no Supabase id). We'll fabricate a UUID.
@@ -67,6 +97,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         STUDENT = 'STUDENT', 'Student'
         TEACHER = 'TEACHER', 'Teacher'
         ADMIN = 'ADMIN', 'Administrator'
+    
+    class AuthProvider(models.TextChoices):
+        EMAIL = 'EMAIL', 'Email/Password'
+        GOOGLE = 'GOOGLE', 'Google OAuth'
 
     id = models.CharField(primary_key=True, max_length=255)
     email = models.EmailField(unique=True)
@@ -79,6 +113,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True, null=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
 
+    # OAuth fields
+    auth_provider = models.CharField(max_length=20, choices=AuthProvider.choices, default=AuthProvider.EMAIL)
+    google_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    is_oauth_user = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    
     is_active = models.BooleanField(default=True)
     is_staff  = models.BooleanField(default=False)
 
