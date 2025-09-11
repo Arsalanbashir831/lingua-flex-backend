@@ -369,16 +369,61 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get', 'patch'], url_path='my-profile')
     def my_profile(self, request):
-        profile = self.get_queryset().first()
-        if not profile:
+        user = request.user
+        
+        # Ensure user is a teacher
+        if user.role != User.Role.TEACHER:
             return Response(
-                {'error': 'Teacher profile not found. Make sure you are registered as a teacher.'},
-                status=status.HTTP_404_NOT_FOUND
+                {'error': 'This endpoint is only for teachers.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Ensure user has UserProfile
+        try:
+            user_profile = user.profile
+        except UserProfile.DoesNotExist:
+            # Create UserProfile if it doesn't exist (for OAuth users)
+            user_profile = UserProfile.objects.create(
+                user=user,
+                role=user.role,
+                bio='',
+                city='',
+                country='',
+                postal_code='',
+                status='',
+                native_language='',
+                learning_language=''
+            )
+        
+        # Ensure user has TeacherProfile
+        try:
+            teacher_profile = user_profile.teacherprofile
+        except TeacherProfile.DoesNotExist:
+            # Create TeacherProfile if it doesn't exist (for OAuth users)
+            teacher_profile = TeacherProfile.objects.create(
+                user_profile=user_profile,
+                qualification='',
+                experience_years=0,
+                certificates=[],
+                about=''
+            )
+        
+        # Ensure user has Teacher model (for core functionality)
+        try:
+            teacher_model = user.teacher
+        except Teacher.DoesNotExist:
+            # Create Teacher if it doesn't exist (for OAuth users)
+            teacher_model = Teacher.objects.create(
+                user=user,
+                bio='',
+                teaching_experience=0,
+                teaching_languages=[],
+                hourly_rate=25.00
             )
         
         if request.method == 'PATCH':
             # Use comprehensive serializer for updates
-            serializer = ComprehensiveTeacherProfileSerializer(profile, data=request.data, partial=True)
+            serializer = ComprehensiveTeacherProfileSerializer(teacher_profile, data=request.data, partial=True)
             if serializer.is_valid():
                 updated_profile = serializer.save()
                 # Return comprehensive profile data after update
@@ -390,7 +435,7 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         # For GET requests, return comprehensive data
-        serializer = ComprehensiveTeacherProfileSerializer(profile)
+        serializer = ComprehensiveTeacherProfileSerializer(teacher_profile)
         return Response(serializer.data)
 
 
