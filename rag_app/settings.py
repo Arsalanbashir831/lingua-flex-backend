@@ -67,14 +67,15 @@ if not url:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.2","localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["192.168.1.2","localhost", "127.0.0.1","api.shaktiwheel.in"]
 #CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 
 CORS_ALLOWED_ORIGINS = [
     "http://192.168.10.9:3000",   # client laptop origin (React/Vite/etc)
-    
+    "https://api.shaktiwheel.in",
     "http://localhost:3000",
+    'https://linguaflex-eight.vercel.app'
 ]
 
 
