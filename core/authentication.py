@@ -34,10 +34,35 @@ class SupabaseBackend(BaseBackend):
             return None
 
         User = get_user_model()
-        user, _ = User.objects.get_or_create(id=user_id, defaults={"email": email, "username": email})
-        return user
+        
+        try:
+            # Try to get user by ID first (OAuth users)
+            user = User.objects.get(id=user_id)
+            return user
+        except User.DoesNotExist:
+            try:
+                # Try to get user by email (in case of ID mismatch)
+                user = User.objects.get(email=email)
+                return user
+            except User.DoesNotExist:
+                # Create new user only if neither ID nor email exists
+                try:
+                    user = User.objects.create(
+                        id=user_id, 
+                        email=email, 
+                        username=email.split('@')[0]
+                    )
+                    return user
+                except Exception as e:
+                    # If creation fails, try one more time to get by email
+                    # (handles race conditions)
+                    try:
+                        return User.objects.get(email=email)
+                    except User.DoesNotExist:
+                        return None
 
     def get_user(self, user_id):
+        User = get_user_model()
         try:
             return User.objects.get(pk=user_id)
         except User.DoesNotExist:
