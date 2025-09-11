@@ -1,29 +1,44 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets, generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializers import UserRegistrationSerializer, UserSerializer, FileSerializer
-from .models import User, File
-from supabase import create_client
+from rest_framework.decorators import action
+from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.conf import settings
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from supabase import create_client
-from django.conf import settings
-from django.conf import settings
-from .serializers import UserSerializer
-from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-from .serializers import UserSerializer
-from gotrue.errors import AuthApiError
 import uuid
 import os
-from django.db import transaction
-from rest_framework.generics import DestroyAPIView
+from datetime import datetime
+# Temporary fix for ZoomClient import issue
+try:
+    from zoomus import ZoomClient
+    # Initialize Zoom client only if credentials are configured
+    zoom_client = None
+    if (hasattr(settings, 'ZOOM_API_KEY') and settings.ZOOM_API_KEY and 
+        hasattr(settings, 'ZOOM_API_SECRET') and settings.ZOOM_API_SECRET and 
+        hasattr(settings, 'ZOOM_ACCOUNT_ID') and settings.ZOOM_ACCOUNT_ID):
+        try:
+            zoom_client = ZoomClient(settings.ZOOM_ACCOUNT_ID, settings.ZOOM_API_KEY, settings.ZOOM_API_SECRET)
+        except Exception as e:
+            print(f"Warning: Could not initialize ZoomClient: {e}")
+            zoom_client = None
+except ImportError:
+    print("Warning: zoomus library not installed or outdated. Zoom functionality will be disabled.")
+    zoom_client = None
+from .models import (
+    User, File, Student, Teacher, TeacherCertificate,
+    TimeSlot, TeacherGig, Session, SessionBilling, AIConversation
+)
+from .serializers import (
+    UserRegistrationSerializer, UserSerializer, FileSerializer,
+    TeacherProfileSerializer, StudentProfileSerializer,
+    TeacherGigSerializer, SessionSerializer, SessionBillingSerializer,
+    AIConversationSerializer, TeacherCertificateSerializer,
+    TimeSlotSerializer
+)
+from supabase import create_client
+from gotrue.errors import AuthApiError
 
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
@@ -43,8 +58,9 @@ class RegisterView(APIView):
                 phone_number = user_data.get('phone_number', '')
                 gender = user_data.get('gender', '')
                 date_of_birth = user_data.get('date_of_birth', None)
+                role = user_data.get('role', 'STUDENT')  # Default to STUDENT if not provided
 
-                response = supabase.auth.sign_up({"email": email, "password": password})
+                response = supabase.auth.sign_up({"email": email, "password": password,'options': {'redirect_to': settings.BASE_URL_SIGNIN }})
                 if response.user:
                     supabase.auth.admin.update_user_by_id(response.user.id, {'user_metadata': {
                         'username': username,
@@ -52,23 +68,36 @@ class RegisterView(APIView):
                         'last_name': last_name,
                         'phone_number': phone_number,
                         'gender': gender,
-                        'date_of_birth': date_of_birth.isoformat() if date_of_birth else None,
-                        'options': {'redirect_to': settings.BASE_URL_SIGNIN }
+                        'date_of_birth': date_of_birth.isoformat() if date_of_birth else None                        
                         
                     }})
-                    user_model = User(
-                        id=response.user.id,
-                        email=email,
-                        username=username,
-                        first_name=first_name,
-                        last_name=last_name,
-                        phone_number=phone_number,
-                        gender=gender,
-                        date_of_birth=date_of_birth,
-                        is_active=True
-                    )
-                    user_model.set_unusable_password()
-                    user_model.save()
+                    # Create the user
+                    with transaction.atomic():
+                        user_model = User(
+                            id=response.user.id,
+                            email=email,
+                            username=username,
+                            first_name=first_name,
+                            last_name=last_name,
+                            phone_number=phone_number,
+                            gender=gender,
+                            date_of_birth=date_of_birth,
+                            role=role,
+                            is_active=True
+                        )
+                        user_model.set_unusable_password()
+                        user_model.save()
+
+                        # If role is teacher, create the teacher profile
+                        if role == 'TEACHER':
+                            Teacher.objects.create(
+                                user=user_model,
+                                bio=user_data.get('bio', ''),
+                                teaching_experience=user_data['years_of_experience'],
+                                teaching_languages=[],  # Can be updated later
+                                hourly_rate=0  # Default value, can be updated later
+                            )
+
                     return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
                 else:
                     return Response({'error': 'Registration failed'}, status=status.HTTP_400_BAD_REQUEST)
@@ -121,11 +150,23 @@ class LoginView(APIView):
         user = response.user
         if not user:
             return Response({'error': 'Invalid login credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Get the user from Django database to fetch the role
+        try:
+            django_user = User.objects.get(id=user.id)
+            user_role = django_user.role
+        except User.DoesNotExist:
+            # If user doesn't exist in Django database, default to STUDENT
+            user_role = User.Role.STUDENT
 
         return Response({
             'access_token': response.session.access_token,
             'refresh_token': response.session.refresh_token,
-            'user': {'email': user.email, 'id': user.id}
+            'user': {
+                'email': user.email, 
+                'id': user.id,
+                'role': user_role
+            }
         }, status=status.HTTP_200_OK)
 
 
@@ -197,6 +238,83 @@ class PasswordResetConfirmView(APIView):
         return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
 
 
+class ResendVerificationView(APIView):
+    """
+    Resend email verification link for unverified users
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {'error': 'Email is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Check if user exists in Django database
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'User with this email does not exist'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Try to resend verification email directly
+            # Supabase will handle checking if user exists and is unverified
+            try:
+                resend_response = supabase.auth.resend(
+                    {
+                        "type": "signup",
+                        "email": email,
+                        "options": {
+                            "email_redirect_to": settings.BASE_URL_SIGNIN,
+                        },
+                    }
+                )
+                
+                return Response(
+                    {
+                        'message': 'Verification email has been resent successfully, if user is not verified.',
+                        'email': email,
+                        #'instructions': 'Please check your email and click the verification link to activate your account.'
+                    }, 
+                    status=status.HTTP_200_OK
+                )
+                
+            except Exception as supabase_error:
+                error_message = str(supabase_error)
+                
+                # Handle specific Supabase errors
+                if 'user not found' in error_message.lower():
+                    return Response(
+                        {'error': 'User with this email does not exist in the authentication system'}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                elif 'already confirmed' in error_message.lower() or 'already verified' in error_message.lower():
+                    return Response(
+                        {
+                            'error': 'User is already verified', 
+                            'message': 'Your email is already verified. You can log in directly.'
+                        }, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    return Response(
+                        {'error': f'Failed to resend verification email: {error_message}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Unexpected error: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
@@ -239,6 +357,21 @@ class TokenRefreshView(APIView):
 
 
 
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UserProfilePictureUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
@@ -250,8 +383,6 @@ class UserProfilePictureUploadView(APIView):
         if not file_obj:
             return Response({"error": "No profile_picture file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-#// ... existing code ...
-
         folder = f"user_{user.id}"
         filename = file_obj.name
         storage_key = f"{folder}/{filename}"
@@ -259,6 +390,17 @@ class UserProfilePictureUploadView(APIView):
         supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
         try:
+            # Delete previous profile picture if exists
+            if user.profile_picture and user.profile_picture.name:
+                try:
+                    # Get the file path string from ImageFieldFile
+                    previous_file_path = user.profile_picture.name
+                    delete_res = supabase.storage.from_("user-uploads").remove([previous_file_path])
+                    #print(f"Previous profile picture deletion result: {delete_res}")
+                except Exception as delete_error:
+                    print(f"Warning: Could not delete previous profile picture: {delete_error}")
+                    # Continue with upload even if deletion fails
+
             file_bytes = file_obj.read()
 
             # Upload to Supabase Storage

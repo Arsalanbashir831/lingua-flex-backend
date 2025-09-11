@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "LinguaFlex - Zoom Meeting API",
+    "description": "Complete API collection for testing Zoom meeting integration in LinguaFlex",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "teacher_id",
+      "value": ""
+    },
+    {
+      "key": "student_id",
+      "value": ""
+    },
+    {
+      "key": "booking_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login Teacher",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('teacher_id', response.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"teacher@example.com\",\n    \"password\": \"your_password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "login", ""]
+            }
+          }
+        },
+        {
+          "name": "Login Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('student_id', response.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"student@example.com\",\n    \"password\": \"your_password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "login", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Teacher Availability",
+      "item": [
+        {
+          "name": "Create Availability Slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2025-08-06\",\n    \"start_time\": \"09:00:00\",\n    \"end_time\": \"10:00:00\",\n    \"is_available\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/availability/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "availability", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Available Slots",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/bookings/slots/available/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "slots", "available", ""],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2025-08-06",
+                  "disabled": true
+                },
+                {
+                  "key": "teacher_id",
+                  "value": "{{teacher_id}}",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Teacher Schedule",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/bookings/schedule/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "schedule", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session Bookings (Zoom Integration)",
+      "item": [
+        {
+          "name": "Create Booking with Zoom",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('booking_id', response.id);",
+                  "    console.log('Zoom Meeting Created:');",
+                  "    console.log('Join URL:', response.zoom_join_url);",
+                  "    console.log('Meeting ID:', response.zoom_meeting_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"teacher\": \"{{teacher_id}}\",\n    \"start_time\": \"2025-08-06T09:00:00Z\",\n    \"end_time\": \"2025-08-06T10:00:00Z\",\n    \"session_type\": \"video_call\",\n    \"notes\": \"First language lesson - Testing Zoom integration\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", ""]
+            }
+          }
+        },
+        {
+          "name": "Get My Bookings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/my/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", "my", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Booking Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/{{booking_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", "{{booking_id}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Zoom Meeting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Zoom Meeting Created:');",
+                  "    console.log('Meeting ID:', response.meeting_details.meeting_id);",
+                  "    console.log('Join URL:', response.meeting_details.join_url);",
+                  "    console.log('Start URL:', response.meeting_details.start_url);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/{{booking_id}}/create_meeting/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", "{{booking_id}}", "create_meeting", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Meeting Info",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/{{booking_id}}/meeting_info/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", "{{booking_id}}", "meeting_info", ""]
+            }
+          }
+        },
+        {
+          "name": "Reschedule Booking (Updates Zoom)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"new_start_time\": \"2025-08-06T14:00:00Z\",\n    \"new_end_time\": \"2025-08-06T15:00:00Z\",\n    \"reason\": \"Schedule conflict resolved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/{{booking_id}}/reschedule/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", "{{booking_id}}", "reschedule", ""]
+            }
+          }
+        },
+        {
+          "name": "Cancel Booking (Deletes Zoom)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"reason\": \"Personal emergency - need to cancel\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/bookings/{{booking_id}}/cancel/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "bookings", "{{booking_id}}", "cancel", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session Feedback",
+      "item": [
+        {
+          "name": "Create Session Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"booking\": \"{{booking_id}}\",\n    \"rating\": 5,\n    \"comment\": \"Excellent session! Very helpful and engaging.\",\n    \"is_from_student\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings/feedback/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "feedback", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Session Feedback",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/bookings/feedback/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "feedback", ""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

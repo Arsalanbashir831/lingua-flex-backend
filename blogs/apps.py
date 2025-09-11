@@ -1,0 +1,11 @@
+from django.apps import AppConfig
+
+
+class BlogsConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'blogs'
+    verbose_name = 'Blog Management'
+    
+    def ready(self):
+        # Import signals here if needed in the future
+        pass

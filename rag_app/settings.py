@@ -17,6 +17,11 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 
+# Zoom API settings (Server-to-Server OAuth)
+ZOOM_ACCOUNT_ID = os.getenv('ZOOM_ACCOUNT_ID', '')
+ZOOM_CLIENT_ID = os.getenv('ZOOM_CLIENT_ID', '')
+ZOOM_CLIENT_SECRET = os.getenv('ZOOM_CLIENT_SECRET', '')
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'. Changes
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,10 +37,25 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BASE_URL_RESET_PASSWORD=os.getenv("BASE_URL_RESET_PASSWORD", "")
 BASE_URL_SIGNIN=os.getenv("BASE_URL_SIGNIN", "")
+BASE_URL = os.getenv("BASE_URL", "")
 AUTH_USER_MODEL = "core.User"
+
+# Google OAuth Configuration
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+# Frontend URL for payment returns
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 
 
 url = os.getenv("SUPABASE_DB_URL", "").strip()
@@ -47,31 +67,16 @@ if not url:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.3","localhost", "127.0.0.1"]
-
-ALLOWED_HOSTS = ["api.shaktiwheel.in", "127.0.0.1", "localhost"]
-
-# For Django 4+ use full scheme for CSRF trusted origins
-CSRF_TRUSTED_ORIGINS = [
-    "https://api.shaktiwheel.in",
-    "http://api.shaktiwheel.in",   # keep during initial HTTP testing; remove later if you force HTTPS
-]
-
+ALLOWED_HOSTS = ["192.168.1.2","localhost", "127.0.0.1","api.shaktiwheel.in"]
 #CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 
 CORS_ALLOWED_ORIGINS = [
     "http://192.168.10.9:3000",   # client laptop origin (React/Vite/etc)
-    
+    "https://api.shaktiwheel.in",
     "http://localhost:3000",
+    'https://linguaflex-eight.vercel.app'
 ]
-
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
 
 
 # Application definition
@@ -85,6 +90,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'core',
+    'bookings',
+    'accounts',
+    'blogs',  
+    'campaigns',
+    'stripe_payments',
     "corsheaders",
 ]
 
@@ -199,7 +209,8 @@ REST_FRAMEWORK = {
 }
 
 AUTHENTICATION_BACKENDS = [
-    "core.authentication.SupabaseBackend",
+    'django.contrib.auth.backends.ModelBackend',  # For Django admin login
+    "core.authentication.SupabaseBackend",        # For API token authentication
 ]
 
 SIMPLE_JWT = {
@@ -207,3 +218,26 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
 }
+
+
+# =============================================================================
+# STRIPE PAYMENT SETTINGS
+# =============================================================================
+
+# Stripe API Keys (get these from your Stripe dashboard)
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+
+# Stripe settings
+STRIPE_LIVE_MODE = False  # Set to True in production
+STRIPE_TEST_SECRET_KEY = os.getenv('STRIPE_TEST_SECRET_KEY', '')
+STRIPE_TEST_PUBLISHABLE_KEY = os.getenv('STRIPE_TEST_PUBLISHABLE_KEY', '')
+
+# Payment settings
+PAYMENT_CURRENCY = 'USD'
+PLATFORM_FEE_PERCENTAGE = 0.05  # 5% platform fee
+MINIMUM_PLATFORM_FEE_CENTS = 100  # $1 minimum fee
+
+# Email settings for payment notifications
+PAYMENT_EMAIL_NOTIFICATIONS = True

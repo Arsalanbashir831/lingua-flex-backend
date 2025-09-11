@@ -18,10 +18,17 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import permissions
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from .admin_site import admin_site
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin_site.urls),  # Use custom admin site
+    path('django-admin/', admin.site.urls),  # Keep default admin as backup
     path('api/', include('core.urls')),
+    path('api/accounts/', include('accounts.urls')),
+    path('api/bookings/', include('bookings.urls')),
+    path('api/blogs/', include('blogs.urls')),  # Added blogs URLs
+    path('api/campaigns/', include('campaigns.urls')),  # Added campaigns URLs
+    path('api/payments/', include('stripe_payments.urls')),  # Added Stripe payments URLs
 ]
 
 urlpatterns += [

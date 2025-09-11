@@ -1,0 +1,9 @@
+# Additional requirements for FastAPI chat with database access
+psycopg2-binary==2.9.7
+# or alternatively: psycopg2==2.9.7 (requires PostgreSQL development headers)
+
+# If you prefer asyncpg for async database operations:
+# asyncpg==0.28.0
+
+# Note: Add these to your existing requirements.txt file or install separately:
+# pip install psycopg2-binary
