@@ -1,0 +1,473 @@
+{
+  "info": {
+    "name": "LinguaFlex Backend-Only Payments",
+    "description": "Complete backend-only payment flow for LinguaFlex gig bookings",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"student@example.com\",\n    \"password\": \"testpass123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/login/",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "login", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Backend Payment Methods",
+      "item": [
+        {
+          "name": "Add Payment Method (Save Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"card_number\": \"{{test_card_number}}\",\n    \"exp_month\": {{test_exp_month}},\n    \"exp_year\": {{test_exp_year}},\n    \"cvc\": \"{{test_cvc}}\",\n    \"cardholder_name\": \"John Doe\",\n    \"save_for_future\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/add-payment-method/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "add-payment-method", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Payment Method (Declined Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"card_number\": \"4000000000000002\",\n    \"exp_month\": 12,\n    \"exp_year\": 2025,\n    \"cvc\": \"123\",\n    \"cardholder_name\": \"John Doe\",\n    \"save_for_future\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/add-payment-method/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "add-payment-method", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Backend Payment Processing",
+      "item": [
+        {
+          "name": "Process Payment (New Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"gig_id\": {{test_gig_id}},\n    \"card_details\": {\n        \"card_number\": \"{{test_card_number}}\",\n        \"exp_month\": {{test_exp_month}},\n        \"exp_year\": {{test_exp_year}},\n        \"cvc\": \"{{test_cvc}}\",\n        \"cardholder_name\": \"Jane Smith\"\n    },\n    \"save_card\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/process-payment/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "process-payment", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Payment (Saved Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"gig_id\": {{test_gig_id}},\n    \"saved_payment_method_id\": \"{{saved_payment_method_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/process-payment/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "process-payment", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Payment (Declined Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"gig_id\": {{test_gig_id}},\n    \"card_details\": {\n        \"card_number\": \"4000000000000002\",\n        \"exp_month\": 12,\n        \"exp_year\": 2025,\n        \"cvc\": \"123\",\n        \"cardholder_name\": \"Test User\"\n    },\n    \"save_card\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/process-payment/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "process-payment", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Payment (Insufficient Funds)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"gig_id\": {{test_gig_id}},\n    \"card_details\": {\n        \"card_number\": \"4000000000009995\",\n        \"exp_month\": 12,\n        \"exp_year\": 2025,\n        \"cvc\": \"123\",\n        \"cardholder_name\": \"Test User\"\n    },\n    \"save_card\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/process-payment/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "process-payment", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Method Management",
+      "item": [
+        {
+          "name": "List Saved Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/payment-methods/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "payment-methods", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/payment-methods/{{payment_method_id}}/delete/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "payment-methods", "{{payment_method_id}}", "delete", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment History",
+      "item": [
+        {
+          "name": "List Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/payments/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "payments", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/payments/{{payment_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "payments", "{{payment_id}}", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Refund Management",
+      "item": [
+        {
+          "name": "List Refund Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/refund-requests/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "refund-requests", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Refund Request Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/refund-requests/{{refund_request_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "refund-requests", "{{refund_request_id}}", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Refund (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"action\": \"approve\",\n    \"admin_notes\": \"Refund approved after review\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/refund-requests/{{refund_request_id}}/process/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "refund-requests", "{{refund_request_id}}", "process", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Dashboard",
+      "item": [
+        {
+          "name": "Payment Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stripe-payments/dashboard/",
+              "host": ["{{base_url}}"],
+              "path": ["stripe-payments", "dashboard", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Test Data Setup",
+      "item": [
+        {
+          "name": "Create Test Gig",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"English Conversation Class\",\n    \"description\": \"1-hour English conversation session\",\n    \"price\": 50.00,\n    \"duration_minutes\": 60,\n    \"scheduled_time\": \"2024-02-01T10:00:00Z\",\n    \"max_students\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/gigs/",
+              "host": ["{{base_url}}"],
+              "path": ["gigs", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "YOUR_STUDENT_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "teacher_jwt_token",
+      "value": "YOUR_TEACHER_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "admin_jwt_token",
+      "value": "YOUR_ADMIN_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "test_gig_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "test_card_number",
+      "value": "4242424242424242",
+      "type": "string"
+    },
+    {
+      "key": "test_exp_month",
+      "value": "12",
+      "type": "string"
+    },
+    {
+      "key": "test_exp_year",
+      "value": "2025",
+      "type": "string"
+    },
+    {
+      "key": "test_cvc",
+      "value": "123",
+      "type": "string"
+    },
+    {
+      "key": "saved_payment_method_id",
+      "value": "pm_1234567890",
+      "type": "string"
+    },
+    {
+      "key": "payment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "payment_method_id",
+      "value": "pm_1234567890",
+      "type": "string"
+    },
+    {
+      "key": "refund_request_id",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}
