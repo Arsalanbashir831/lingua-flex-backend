@@ -636,7 +636,7 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return SessionBooking.objects.filter(
             models.Q(student=user) | models.Q(teacher=user)
-        ).order_by('-start_time')
+        ).select_related('student', 'teacher', 'gig', 'payment').order_by('-start_time')
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):

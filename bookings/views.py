@@ -72,10 +72,10 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        # Show both student and teacher bookings
+        # Show both student and teacher bookings with payment data
         return SessionBooking.objects.filter(
             models.Q(student=user) | models.Q(teacher=user)
-        ).order_by('-start_time')
+        ).select_related('student', 'teacher', 'gig', 'payment').order_by('-start_time')
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
