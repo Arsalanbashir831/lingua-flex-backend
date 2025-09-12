@@ -525,10 +525,103 @@ class GigViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='public', permission_classes=[AllowAny])
     def public(self, request):
-        # Only return gigs with 'active' status for public viewing
+        """
+        Get public gigs with optional filtering
+        
+        Query Parameters:
+        - teacher_id: Filter by teacher user ID (UUID from teacher_details.id)
+        - category: Filter by gig category
+        - service_type: Filter by service type
+        - min_price: Minimum price per session
+        - max_price: Maximum price per session
+        """
+        # Base query - only active gigs
         gigs = Gig.objects.filter(status='active')
+        
+        # Filter by teacher user ID if provided
+        teacher_id = request.query_params.get('teacher_id')
+        if teacher_id:
+            try:
+                gigs = gigs.filter(teacher__user_profile__user__id=teacher_id)
+            except Exception:
+                # If invalid teacher_id format, return empty result
+                gigs = gigs.none()
+        
+        # Filter by category if provided
+        category = request.query_params.get('category')
+        if category:
+            gigs = gigs.filter(category__icontains=category)
+        
+        # Filter by service type if provided
+        service_type = request.query_params.get('service_type')
+        if service_type:
+            gigs = gigs.filter(service_type__icontains=service_type)
+        
+        # Filter by price range if provided
+        min_price = request.query_params.get('min_price')
+        if min_price:
+            try:
+                gigs = gigs.filter(price_per_session__gte=float(min_price))
+            except ValueError:
+                pass  # Ignore invalid price format
+        
+        max_price = request.query_params.get('max_price')
+        if max_price:
+            try:
+                gigs = gigs.filter(price_per_session__lte=float(max_price))
+            except ValueError:
+                pass  # Ignore invalid price format
+        
+        # Filter by session duration if provided
+        min_duration = request.query_params.get('min_duration')
+        if min_duration:
+            try:
+                gigs = gigs.filter(session_duration__gte=int(min_duration))
+            except ValueError:
+                pass
+        
+        max_duration = request.query_params.get('max_duration')
+        if max_duration:
+            try:
+                gigs = gigs.filter(session_duration__lte=int(max_duration))
+            except ValueError:
+                pass
+        
+        # Search in title and description if provided
+        search = request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+            gigs = gigs.filter(
+                Q(service_title__icontains=search) |
+                Q(short_description__icontains=search) |
+                Q(full_description__icontains=search)
+            )
+        
+        # Order by created date (newest first) by default
+        ordering = request.query_params.get('ordering', '-created_at')
+        if ordering in ['created_at', '-created_at', 'price_per_session', '-price_per_session', 'session_duration', '-session_duration']:
+            gigs = gigs.order_by(ordering)
+        else:
+            gigs = gigs.order_by('-created_at')
+        
         serializer = self.get_serializer(gigs, many=True)
-        return Response(serializer.data)
+        
+        # Add metadata to response
+        return Response({
+            'count': gigs.count(),
+            'results': serializer.data,
+            'filters_applied': {
+                'teacher_id': teacher_id,
+                'category': category,
+                'service_type': service_type,
+                'min_price': min_price,
+                'max_price': max_price,
+                'min_duration': min_duration,
+                'max_duration': max_duration,
+                'search': search,
+                'ordering': ordering
+            }
+        })
 
     @action(detail=True, methods=['get', 'patch'], url_path='status')
     def status(self, request, pk=None):
