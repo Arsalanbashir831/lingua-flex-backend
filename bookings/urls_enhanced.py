@@ -20,6 +20,7 @@ urlpatterns = [
     path('schedule/', TeacherAvailabilityViewSet.as_view({'get': 'teacher_schedule'}), name='teacher-schedule'),
     path('bookings/my/', SessionBookingViewSet.as_view({'get': 'my_bookings'}), name='my-bookings'),
     path('bookings/<uuid:pk>/confirm/', SessionBookingViewSet.as_view({'post': 'confirm'}), name='confirm-booking'),
+    path('bookings/<uuid:pk>/complete/', SessionBookingViewSet.as_view({'post': 'complete'}), name='complete-booking'),
     path('bookings/<uuid:pk>/cancel/', SessionBookingViewSet.as_view({'post': 'cancel'}), name='cancel-booking'),
     path('bookings/<uuid:pk>/reschedule/', SessionBookingViewSet.as_view({'post': 'reschedule'}), name='reschedule-booking'),
     path('bookings/<int:pk>/create_meeting/', SessionBookingViewSet.as_view({'post': 'create_meeting'}), name='create-meeting'),

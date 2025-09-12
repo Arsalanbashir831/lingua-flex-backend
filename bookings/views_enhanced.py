@@ -800,6 +800,70 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        """Mark a booking as completed - can be done by both student and teacher"""
+        booking = self.get_object()
+        
+        # Check if booking can be marked as completed
+        if booking.status not in ['CONFIRMED']:
+            return Response(
+                {'error': 'Only confirmed sessions can be marked as completed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if payment has been made
+        if booking.payment_status != 'PAID':
+            return Response(
+                {'error': 'Session can only be marked as completed after payment is made'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if user is either student or teacher of this booking
+        if request.user not in [booking.student, booking.teacher]:
+            return Response(
+                {'error': 'Only the student or teacher can mark the session as completed'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Optional: Check if session time has passed (business rule)
+        current_time = timezone.now()
+        if booking.end_time > current_time:
+            return Response(
+                {
+                    'error': 'Cannot mark session as completed before its scheduled end time',
+                    'details': {
+                        'session_end_time': booking.end_time.isoformat(),
+                        'current_time': current_time.isoformat(),
+                        'time_remaining': str(booking.end_time - current_time)
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Update booking status
+            booking.status = 'COMPLETED'
+            booking.save()
+            
+            # Log completion (using print for now since logging import might not be available)
+            print(f"Booking {booking.id} marked as completed by user {request.user.id}")
+            
+            return Response({
+                'success': True,
+                'message': 'Session marked as completed successfully',
+                'booking': SessionBookingSerializer(booking).data,
+                'completed_by': 'student' if request.user == booking.student else 'teacher',
+                'completed_at': booking.updated_at
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Error completing booking {booking.id}: {str(e)}")
+            return Response(
+                {'error': f"Error marking session as completed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
     def reschedule(self, request, pk=None):
         """Reschedule a booking"""
         booking = self.get_object()
