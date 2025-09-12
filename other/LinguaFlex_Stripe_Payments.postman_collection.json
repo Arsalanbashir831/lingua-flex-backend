@@ -1,0 +1,861 @@
+{
+  "info": {
+    "name": "LinguaFlex Stripe Payments API",
+    "description": "Complete test collection for LinguaFlex Stripe payment system with all endpoints and test scenarios",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "api_base", 
+      "value": "http://127.0.0.1:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "student_token",
+      "value": "YOUR_STUDENT_BEARER_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "teacher_token",
+      "value": "YOUR_TEACHER_BEARER_TOKEN", 
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "YOUR_ADMIN_BEARER_TOKEN",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@test.com\",\n  \"password\": \"testpass123\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"Student\",\n  \"user_type\": \"student\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/register/",
+              "host": ["{{api_base}}"],
+              "path": ["auth", "register", ""]
+            }
+          }
+        },
+        {
+          "name": "Register Teacher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teacher@test.com\",\n  \"password\": \"testpass123\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"Teacher\",\n  \"user_type\": \"teacher\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/register/",
+              "host": ["{{api_base}}"],
+              "path": ["auth", "register", ""]
+            }
+          }
+        },
+        {
+          "name": "Login Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@test.com\",\n  \"password\": \"testpass123\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/login/",
+              "host": ["{{api_base}}"],
+              "path": ["auth", "login", ""]
+            }
+          }
+        },
+        {
+          "name": "Login Teacher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teacher@test.com\",\n  \"password\": \"testpass123\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/login/",
+              "host": ["{{api_base}}"],
+              "path": ["auth", "login", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 Setup Test Data",
+      "item": [
+        {
+          "name": "Create Teacher Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Experienced English teacher with 5 years of experience\",\n  \"languages\": [\"English\", \"Spanish\"],\n  \"teaching_experience\": 5,\n  \"hourly_rate\": 25.00,\n  \"availability\": \"Flexible hours, weekdays and weekends\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/accounts/teacher-profiles/",
+              "host": ["{{api_base}}"],
+              "path": ["accounts", "teacher-profiles", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Gig",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"language\",\n  \"service_type\": \"Language Consultation\",\n  \"service_title\": \"English Conversation Practice\",\n  \"short_description\": \"Improve your English speaking skills with personalized practice\",\n  \"full_description\": \"One-on-one conversation practice focused on fluency, confidence, and natural communication. Perfect for intermediate to advanced learners.\",\n  \"price_per_session\": \"25.00\",\n  \"session_duration\": 60,\n  \"tags\": [\"english\", \"conversation\", \"speaking\", \"fluency\"],\n  \"what_you_provide_in_session\": [\n    \"Personalized feedback on pronunciation\",\n    \"Grammar correction in real-time\",\n    \"Vocabulary expansion exercises\",\n    \"Confidence building techniques\",\n    \"Cultural context explanations\"\n  ],\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/accounts/gigs/",
+              "host": ["{{api_base}}"],
+              "path": ["accounts", "gigs", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Session Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacher\": 2,\n  \"gig\": 1,\n  \"start_time\": \"2024-12-20T10:00:00Z\",\n  \"end_time\": \"2024-12-20T11:00:00Z\",\n  \"notes\": \"Looking forward to improving my English conversation skills. Focus on business vocabulary please.\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/bookings/bookings/",
+              "host": ["{{api_base}}"],
+              "path": ["bookings", "bookings", ""]
+            }
+          }
+        },
+        {
+          "name": "Teacher Confirms Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{api_base}}/bookings/bookings/1/confirm/",
+              "host": ["{{api_base}}"],
+              "path": ["bookings", "bookings", "1", "confirm", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Payment Processing",
+      "item": [
+        {
+          "name": "Create Payment Intent (Frontend Flow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_booking_id\": 1,\n  \"save_payment_method\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/create-payment-intent/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "create-payment-intent", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Payment Intent (API Testing)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_booking_id\": 1,\n  \"payment_method_id\": \"pm_card_visa\",\n  \"save_payment_method\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/create-payment-intent/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "create-payment-intent", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Payment Intent with Saved Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_booking_id\": 2,\n  \"payment_method_id\": \"pm_card_visa\",\n  \"save_payment_method\": false\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/create-payment-intent/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "create-payment-intent", ""]
+            }
+          }
+        },
+        {
+          "name": "Confirm Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_intent_id\": \"pi_REPLACE_WITH_ACTUAL_ID\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/confirm-payment/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "confirm-payment", ""]
+            }
+          }
+        },
+        {
+          "name": "❌ Create Payment Intent (Invalid Booking)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_booking_id\": 999,\n  \"save_payment_method\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/create-payment-intent/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "create-payment-intent", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Payment Management",
+      "item": [
+        {
+          "name": "List All Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/payments/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payments", ""]
+            }
+          }
+        },
+        {
+          "name": "List Payments (Filtered by Status)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/payments/?status=COMPLETED&limit=10",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payments", ""],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "COMPLETED"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/payments/1/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payments", "1", ""]
+            }
+          }
+        },
+        {
+          "name": "List Payments (Teacher View)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacher_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/payments/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payments", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Saved Payment Methods",
+      "item": [
+        {
+          "name": "List Saved Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/payment-methods/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payment-methods", ""]
+            }
+          }
+        },
+        {
+          "name": "Save Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method_id\": \"pm_card_visa\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/payment-methods/save/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payment-methods", "save", ""]
+            }
+          }
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/payment-methods/pm_REPLACE_WITH_ACTUAL_ID/delete/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payment-methods", "pm_REPLACE_WITH_ACTUAL_ID", "delete", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔄 Refund System",
+      "item": [
+        {
+          "name": "Create Refund Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_id\": 1,\n  \"reason\": \"Session was cancelled by teacher at the last minute. I was already prepared and had to cancel other commitments.\",\n  \"requested_amount_dollars\": 25.00\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", ""]
+            }
+          }
+        },
+        {
+          "name": "List Refund Requests (Student)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", ""]
+            }
+          }
+        },
+        {
+          "name": "List All Refund Requests (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Refund Request Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/1/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", "1", ""]
+            }
+          }
+        },
+        {
+          "name": "Admin Approve Refund",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"admin_notes\": \"Valid complaint. Teacher confirmed the last-minute cancellation. Approved for full refund as per our policy.\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/1/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", "1", ""]
+            }
+          }
+        },
+        {
+          "name": "Admin Reject Refund",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\",\n  \"admin_notes\": \"Session was completed successfully according to teacher feedback. Student participated fully. No grounds for refund.\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/1/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", "1", ""]
+            }
+          }
+        },
+        {
+          "name": "Process Approved Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/1/process/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", "1", "process", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📈 Admin Dashboard",
+      "item": [
+        {
+          "name": "Payment Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/dashboard/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "dashboard", ""]
+            }
+          }
+        },
+        {
+          "name": "Payment Dashboard (Date Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/dashboard/?date_from=2024-12-01&date_to=2024-12-31",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "dashboard", ""],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-12-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔗 Webhooks",
+      "item": [
+        {
+          "name": "Stripe Webhook (Payment Success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "t=1234567890,v1=test_signature_hash"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test_payment_intent\",\n      \"object\": \"payment_intent\",\n      \"status\": \"succeeded\",\n      \"amount\": 2500,\n      \"currency\": \"usd\",\n      \"charges\": {\n        \"data\": [\n          {\n            \"id\": \"ch_test_charge\"\n          }\n        ]\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/webhooks/stripe/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "webhooks", "stripe", ""]
+            }
+          }
+        },
+        {
+          "name": "Stripe Webhook (Payment Failed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "t=1234567890,v1=test_signature_hash"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_webhook_failed\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.payment_failed\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test_payment_intent_failed\",\n      \"object\": \"payment_intent\",\n      \"status\": \"requires_payment_method\",\n      \"amount\": 2500,\n      \"currency\": \"usd\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/webhooks/stripe/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "webhooks", "stripe", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ Error Testing",
+      "item": [
+        {
+          "name": "❌ Unauthorized Payment Access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments/payments/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "payments", ""]
+            }
+          }
+        },
+        {
+          "name": "❌ Pay for Unconfirmed Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_booking_id\": 999,\n  \"save_payment_method\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/create-payment-intent/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "create-payment-intent", ""]
+            }
+          }
+        },
+        {
+          "name": "❌ Refund Unpaid Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_id\": 999,\n  \"reason\": \"Test invalid refund\",\n  \"requested_amount_dollars\": 25.00\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/payments/refund-requests/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "refund-requests", ""]
+            }
+          }
+        },
+        {
+          "name": "❌ Student Access Admin Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{student_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base}}/payments/dashboard/",
+              "host": ["{{api_base}}"],
+              "path": ["payments", "dashboard", ""]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}"
+      }
+    ]
+  }
+}

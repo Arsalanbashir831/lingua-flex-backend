@@ -26,6 +26,7 @@ urlpatterns = [
     
     # Fixed booking endpoints - using int instead of uuid since SessionBooking uses auto-increment IDs
     path('bookings/<int:pk>/confirm/', SessionBookingViewSet.as_view({'post': 'confirm'}), name='confirm-booking'),
+    path('bookings/<int:pk>/complete/', SessionBookingViewSet.as_view({'post': 'complete'}), name='complete-booking'),
     path('bookings/<int:pk>/cancel/', SessionBookingViewSet.as_view({'post': 'cancel'}), name='cancel-booking'),
     path('bookings/<int:pk>/reschedule/', SessionBookingViewSet.as_view({'post': 'reschedule'}), name='reschedule-booking'),
     path('bookings/<int:pk>/create_meeting/', SessionBookingViewSet.as_view({'post': 'create_meeting'}), name='create-meeting'),

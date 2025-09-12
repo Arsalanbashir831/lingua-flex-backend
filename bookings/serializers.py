@@ -73,17 +73,47 @@ class SessionBookingSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     teacher_name = serializers.SerializerMethodField()
     duration_hours = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, read_only=True)
+    payment_id = serializers.SerializerMethodField()
+    payment_details = serializers.SerializerMethodField()
 
     class Meta:
         model = SessionBooking
         fields = '__all__'
-        read_only_fields = ['student', 'status', 'zoom_meeting_id', 'zoom_join_url', 'duration_hours']
+        read_only_fields = ['student', 'status', 'zoom_meeting_id', 'zoom_join_url', 'duration_hours', 'payment_id', 'payment_details']
 
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}"
 
     def get_teacher_name(self, obj):
         return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+
+    def get_payment_id(self, obj):
+        """Get the payment ID associated with this booking"""
+        try:
+            if hasattr(obj, 'payment') and obj.payment:
+                return obj.payment.id
+            return None
+        except Exception:
+            return None
+    
+    def get_payment_details(self, obj):
+        """Get payment details for this booking"""
+        try:
+            if hasattr(obj, 'payment') and obj.payment:
+                payment = obj.payment
+                return {
+                    'payment_id': payment.id,
+                    'amount_paid': float(payment.amount_dollars),
+                    'payment_status': payment.status,
+                    'stripe_payment_intent_id': payment.stripe_payment_intent_id,
+                    'platform_fee': float(payment.platform_fee_cents / 100),
+                    'session_cost': float((payment.amount_cents - payment.platform_fee_cents) / 100),
+                    'payment_date': payment.created_at.isoformat() if payment.created_at else None,
+                    'currency': payment.currency
+                }
+            return None
+        except Exception:
+            return None
 
     def validate(self, attrs):
         """Calculate duration_hours automatically from start_time and end_time"""
