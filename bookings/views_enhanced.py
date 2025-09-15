@@ -970,6 +970,221 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
             "booking": SessionBookingSerializer(booking, context={'request': request}).data
         })
 
+    @action(detail=True, methods=['post'])
+    def request_reschedule(self, request, pk=None):
+        """Request a reschedule that requires confirmation from the other party"""
+        booking = self.get_object()
+        
+        # Get required data
+        new_start_time_str = request.data.get('new_start_time') or request.data.get('start_time')
+        new_end_time_str = request.data.get('new_end_time') or request.data.get('end_time')
+        duration = request.data.get('duration', 60)
+        reason = request.data.get('reason', '')
+        
+        if not new_start_time_str:
+            return Response(
+                {"error": "new_start_time or start_time is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Only student or teacher can request reschedule
+        if request.user not in [booking.student, booking.teacher]:
+            return Response(
+                {"error": "You can only request reschedule for your own bookings"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Can't request reschedule for completed or cancelled sessions
+        if booking.status not in ['PENDING', 'CONFIRMED']:
+            return Response(
+                {"error": "Cannot request reschedule for completed or cancelled sessions"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if there's already a pending reschedule request
+        if booking.reschedule_request_status == 'PENDING':
+            return Response(
+                {"error": "There is already a pending reschedule request for this booking"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            new_start_time = datetime.fromisoformat(new_start_time_str.replace('Z', '+00:00'))
+            
+            # Calculate end time based on provided end_time or duration
+            if new_end_time_str:
+                new_end_time = datetime.fromisoformat(new_end_time_str.replace('Z', '+00:00'))
+            else:
+                new_end_time = new_start_time + timedelta(minutes=int(duration))
+        except ValueError:
+            return Response(
+                {"error": "Invalid datetime format. Use ISO format (YYYY-MM-DDTHH:MM:SSZ)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_start_time >= new_end_time:
+            return Response(
+                {"error": "Start time must be before end time"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if new time slot is available
+        conflicting_booking = SessionBooking.objects.filter(
+            teacher=booking.teacher,
+            start_time__lt=new_end_time,
+            end_time__gt=new_start_time,
+            status__in=['PENDING', 'CONFIRMED']
+        ).exclude(id=booking.id).exists()
+        
+        if conflicting_booking:
+            return Response(
+                {"error": "Requested time slot is not available"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Determine who is requesting the reschedule
+        if request.user == booking.student:
+            requested_by = 'STUDENT'
+        else:
+            requested_by = 'TEACHER'
+        
+        # Store the requested new times in a temporary field (you may want to add these fields to the model)
+        # For now, we'll store them in the notes field with a special format
+        reschedule_data = {
+            "requested_start_time": new_start_time.isoformat(),
+            "requested_end_time": new_end_time.isoformat(),
+            "reason": reason,
+            "requested_at": timezone.now().isoformat()
+        }
+        
+        # Update booking with reschedule request
+        booking.reschedule_request_status = 'PENDING'
+        booking.reschedule_requested_by = requested_by
+        # Store the reschedule request details in notes (temporary solution)
+        import json
+        booking.notes = json.dumps(reschedule_data)
+        booking.save()
+        
+        # Get the other party's information
+        other_party = booking.teacher if request.user == booking.student else booking.student
+        
+        return Response({
+            "message": "Reschedule request sent successfully",
+            "reschedule_request": {
+                "requested_by": requested_by,
+                "status": "PENDING",
+                "requested_start_time": new_start_time,
+                "requested_end_time": new_end_time,
+                "reason": reason,
+                "awaiting_response_from": other_party.email
+            },
+            "booking": SessionBookingSerializer(booking, context={'request': request}).data
+        })
+
+    @action(detail=True, methods=['post'])
+    def respond_reschedule(self, request, pk=None):
+        """Respond to a reschedule request (confirm or decline)"""
+        booking = self.get_object()
+        
+        action = request.data.get('action')  # 'CONFIRMED' or 'DECLINED'
+        response_message = request.data.get('response_message', '')
+        
+        if not action:
+            return Response(
+                {"error": "action is required ('CONFIRMED' or 'DECLINED')"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if action not in ['CONFIRMED', 'DECLINED']:
+            return Response(
+                {"error": "action must be either 'CONFIRMED' or 'DECLINED'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Only the OTHER party can respond to the reschedule request
+        if booking.reschedule_requested_by == 'STUDENT' and request.user != booking.teacher:
+            return Response(
+                {"error": "Only the teacher can respond to this reschedule request"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        elif booking.reschedule_requested_by == 'TEACHER' and request.user != booking.student:
+            return Response(
+                {"error": "Only the student can respond to this reschedule request"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if there's a pending reschedule request
+        if booking.reschedule_request_status != 'PENDING':
+            return Response(
+                {"error": "No pending reschedule request found for this booking"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update reschedule status
+        booking.reschedule_request_status = action
+        
+        if action == 'CONFIRMED':
+            # Parse the reschedule request details from notes
+            try:
+                import json
+                reschedule_data = json.loads(booking.notes)
+                new_start_time = datetime.fromisoformat(reschedule_data['requested_start_time'])
+                new_end_time = datetime.fromisoformat(reschedule_data['requested_end_time'])
+                
+                # Apply the reschedule
+                old_start = booking.start_time
+                old_end = booking.end_time
+                
+                booking.start_time = new_start_time
+                booking.end_time = new_end_time
+                
+                # Update Zoom meeting if it exists
+                if booking.zoom_meeting_id:
+                    zoom_service = ZoomService()
+                    try:
+                        zoom_service.update_meeting(booking.zoom_meeting_id, booking)
+                    except Exception as e:
+                        # Log the error but don't fail the reschedule
+                        print(f"Failed to update Zoom meeting {booking.zoom_meeting_id}: {str(e)}")
+                
+                # Clear reschedule tracking after successful reschedule
+                booking.reschedule_request_status = 'NONE'
+                booking.reschedule_requested_by = None
+                booking.notes = ''  # Clear the temporary reschedule data
+                
+                booking.save()
+                
+                return Response({
+                    "message": "Reschedule request confirmed and booking updated successfully",
+                    "changes": {
+                        "old_start_time": old_start,
+                        "old_end_time": old_end,
+                        "new_start_time": new_start_time,
+                        "new_end_time": new_end_time,
+                        "response_message": response_message
+                    },
+                    "booking": SessionBookingSerializer(booking, context={'request': request}).data
+                })
+                
+            except (json.JSONDecodeError, KeyError) as e:
+                return Response(
+                    {"error": "Failed to parse reschedule request data"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        else:  # action == 'DECLINED'
+            # Clear reschedule tracking
+            booking.reschedule_request_status = 'NONE'
+            booking.reschedule_requested_by = None
+            booking.notes = ''  # Clear the temporary reschedule data
+            booking.save()
+            
+            return Response({
+                "message": "Reschedule request declined",
+                "response_message": response_message,
+                "booking": SessionBookingSerializer(booking, context={'request': request}).data
+            })
+
     @action(detail=False, methods=['get'])
     def my_bookings(self, request):
         """Get current user's bookings with filtering options"""

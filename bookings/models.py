@@ -44,6 +44,18 @@ class SessionBooking(models.Model):
         ('FAILED', 'Payment Failed'),
         ('REFUNDED', 'Refunded')
     ]
+    
+    RESCHEDULE_REQUEST_STATUS_CHOICES = [
+        ('NONE', 'No Reschedule Request'),
+        ('PENDING', 'Reschedule Pending Confirmation'),
+        ('CONFIRMED', 'Reschedule Confirmed'),
+        ('DECLINED', 'Reschedule Declined')
+    ]
+    
+    RESCHEDULE_REQUESTED_BY_CHOICES = [
+        ('STUDENT', 'Student'),
+        ('TEACHER', 'Teacher')
+    ]
 
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='booked_sessions')
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teaching_sessions')
@@ -60,6 +72,21 @@ class SessionBooking(models.Model):
     # Status tracking
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='UNPAID')  # Added payment status
+    
+    # Reschedule tracking
+    reschedule_request_status = models.CharField(
+        max_length=20, 
+        choices=RESCHEDULE_REQUEST_STATUS_CHOICES, 
+        default='NONE',
+        help_text="Status of reschedule request"
+    )
+    reschedule_requested_by = models.CharField(
+        max_length=20, 
+        choices=RESCHEDULE_REQUESTED_BY_CHOICES, 
+        null=True, 
+        blank=True,
+        help_text="Who requested the reschedule"
+    )
     
     # Zoom integration
     zoom_meeting_id = models.CharField(max_length=500, blank=True, null=True)  # Increased length for Zoom URLs
