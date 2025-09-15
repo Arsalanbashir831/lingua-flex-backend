@@ -131,6 +131,9 @@ Authorization: Bearer {{your_jwt_token}}
         "id": "booking-uuid-here",
         "reschedule_request_status": "PENDING",
         "reschedule_requested_by": "STUDENT",
+        "reschedule_request_start_time": "2025-09-20T10:00:00Z",
+        "reschedule_request_end_time": "2025-09-20T11:00:00Z",
+        "reschedule_request_reason": "Emergency meeting came up",
         // ... other booking fields
     }
 }
@@ -196,6 +199,10 @@ Authorization: Bearer {{your_jwt_token}}
         "id": "booking-uuid-here",
         "reschedule_request_status": "NONE",
         "reschedule_requested_by": null,
+        "reschedule_request_start_time": null,
+        "reschedule_request_end_time": null,
+        "reschedule_request_reason": "",
+        "previous_reschedule_request_status": "CONFIRMED",
         "start_time": "2025-09-20T10:00:00Z",
         "end_time": "2025-09-20T11:00:00Z"
     }
@@ -211,6 +218,10 @@ Authorization: Bearer {{your_jwt_token}}
         "id": "booking-uuid-here", 
         "reschedule_request_status": "NONE",
         "reschedule_requested_by": null,
+        "reschedule_request_start_time": null,
+        "reschedule_request_end_time": null,
+        "reschedule_request_reason": "",
+        "previous_reschedule_request_status": "DECLINED",
         // ... original booking times remain unchanged
     }
 }

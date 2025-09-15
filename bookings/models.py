@@ -56,6 +56,12 @@ class SessionBooking(models.Model):
         ('STUDENT', 'Student'),
         ('TEACHER', 'Teacher')
     ]
+    
+    PREVIOUS_RESCHEDULE_STATUS_CHOICES = [
+        ('NONE', 'No Previous Request'),
+        ('CONFIRMED', 'Previous Request Confirmed'),
+        ('DECLINED', 'Previous Request Declined')
+    ]
 
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='booked_sessions')
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teaching_sessions')
@@ -86,6 +92,26 @@ class SessionBooking(models.Model):
         null=True, 
         blank=True,
         help_text="Who requested the reschedule"
+    )
+    previous_reschedule_request_status = models.CharField(
+        max_length=20,
+        choices=PREVIOUS_RESCHEDULE_STATUS_CHOICES,
+        default='NONE',
+        help_text="Status of the previous reschedule request (for historical tracking)"
+    )
+    reschedule_request_start_time = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Requested new start time for reschedule"
+    )
+    reschedule_request_end_time = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Requested new end time for reschedule"
+    )
+    reschedule_request_reason = models.TextField(
+        blank=True,
+        help_text="Reason for the reschedule request"
     )
     
     # Zoom integration

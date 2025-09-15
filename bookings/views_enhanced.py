@@ -1048,21 +1048,12 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
         else:
             requested_by = 'TEACHER'
         
-        # Store the requested new times in a temporary field (you may want to add these fields to the model)
-        # For now, we'll store them in the notes field with a special format
-        reschedule_data = {
-            "requested_start_time": new_start_time.isoformat(),
-            "requested_end_time": new_end_time.isoformat(),
-            "reason": reason,
-            "requested_at": timezone.now().isoformat()
-        }
-        
-        # Update booking with reschedule request
+        # Update booking with reschedule request data
         booking.reschedule_request_status = 'PENDING'
         booking.reschedule_requested_by = requested_by
-        # Store the reschedule request details in notes (temporary solution)
-        import json
-        booking.notes = json.dumps(reschedule_data)
+        booking.reschedule_request_start_time = new_start_time
+        booking.reschedule_request_end_time = new_end_time
+        booking.reschedule_request_reason = reason
         booking.save()
         
         # Get the other party's information
@@ -1124,59 +1115,59 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
         booking.reschedule_request_status = action
         
         if action == 'CONFIRMED':
-            # Parse the reschedule request details from notes
-            try:
-                import json
-                reschedule_data = json.loads(booking.notes)
-                new_start_time = datetime.fromisoformat(reschedule_data['requested_start_time'])
-                new_end_time = datetime.fromisoformat(reschedule_data['requested_end_time'])
-                
-                # Apply the reschedule
-                old_start = booking.start_time
-                old_end = booking.end_time
-                
-                booking.start_time = new_start_time
-                booking.end_time = new_end_time
-                
-                # Update Zoom meeting if it exists
-                if booking.zoom_meeting_id:
-                    zoom_service = ZoomService()
-                    try:
-                        zoom_service.update_meeting(booking.zoom_meeting_id, booking)
-                    except Exception as e:
-                        # Log the error but don't fail the reschedule
-                        print(f"Failed to update Zoom meeting {booking.zoom_meeting_id}: {str(e)}")
-                
-                # Clear reschedule tracking after successful reschedule
-                booking.reschedule_request_status = 'NONE'
-                booking.reschedule_requested_by = None
-                booking.notes = ''  # Clear the temporary reschedule data
-                
-                booking.save()
-                
-                return Response({
-                    "message": "Reschedule request confirmed and booking updated successfully",
-                    "changes": {
-                        "old_start_time": old_start,
-                        "old_end_time": old_end,
-                        "new_start_time": new_start_time,
-                        "new_end_time": new_end_time,
-                        "response_message": response_message
-                    },
-                    "booking": SessionBookingSerializer(booking, context={'request': request}).data
-                })
-                
-            except (json.JSONDecodeError, KeyError) as e:
+            # Get the reschedule request details from the dedicated fields
+            if not booking.reschedule_request_start_time or not booking.reschedule_request_end_time:
                 return Response(
-                    {"error": "Failed to parse reschedule request data"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    {"error": "Reschedule request details not found"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
-        
-        else:  # action == 'DECLINED'
-            # Clear reschedule tracking
+            
+            # Apply the reschedule
+            old_start = booking.start_time
+            old_end = booking.end_time
+            
+            booking.start_time = booking.reschedule_request_start_time
+            booking.end_time = booking.reschedule_request_end_time
+            
+            # Update Zoom meeting if it exists
+            if booking.zoom_meeting_id:
+                zoom_service = ZoomService()
+                try:
+                    zoom_service.update_meeting(booking.zoom_meeting_id, booking)
+                except Exception as e:
+                    # Log the error but don't fail the reschedule
+                    print(f"Failed to update Zoom meeting {booking.zoom_meeting_id}: {str(e)}")
+            
+            # Clear reschedule tracking after successful reschedule and save previous status
+            booking.previous_reschedule_request_status = 'CONFIRMED'
             booking.reschedule_request_status = 'NONE'
             booking.reschedule_requested_by = None
-            booking.notes = ''  # Clear the temporary reschedule data
+            booking.reschedule_request_start_time = None
+            booking.reschedule_request_end_time = None
+            booking.reschedule_request_reason = ''
+            
+            booking.save()
+            
+            return Response({
+                "message": "Reschedule request confirmed and booking updated successfully",
+                "changes": {
+                    "old_start_time": old_start,
+                    "old_end_time": old_end,
+                    "new_start_time": booking.start_time,
+                    "new_end_time": booking.end_time,
+                    "response_message": response_message
+                },
+                "booking": SessionBookingSerializer(booking, context={'request': request}).data
+            })
+        
+        else:  # action == 'DECLINED'
+            # Clear reschedule tracking and save previous status
+            booking.previous_reschedule_request_status = 'DECLINED'
+            booking.reschedule_request_status = 'NONE'
+            booking.reschedule_requested_by = None
+            booking.reschedule_request_start_time = None
+            booking.reschedule_request_end_time = None
+            booking.reschedule_request_reason = ''
             booking.save()
             
             return Response({
