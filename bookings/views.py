@@ -259,16 +259,26 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Optional: Check if session time has passed (business rule)
+        # Check if session time has passed (business rule)
         current_time = timezone.now()
-        if booking.end_time > current_time:
+        
+        # Ensure both times are timezone-aware for proper comparison
+        booking_end_time = booking.end_time
+        if timezone.is_naive(booking_end_time):
+            booking_end_time = timezone.make_aware(booking_end_time)
+        
+        if booking_end_time > current_time:
             return Response(
                 {
                     'error': 'Cannot mark session as completed before its scheduled end time',
                     'details': {
-                        'session_end_time': booking.end_time.isoformat(),
+                        'session_end_time': booking_end_time.isoformat(),
                         'current_time': current_time.isoformat(),
-                        'time_remaining': str(booking.end_time - current_time)
+                        'time_remaining': str(booking_end_time - current_time),
+                        'timezone_info': {
+                            'session_end_timezone': str(booking_end_time.tzinfo),
+                            'current_time_timezone': str(current_time.tzinfo)
+                        }
                     }
                 },
                 status=status.HTTP_400_BAD_REQUEST
@@ -279,7 +289,8 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
             booking.status = 'COMPLETED'
             booking.save()
             
-            logger.info(f"Booking {booking.id} marked as completed by user {request.user.id}")
+            # Log completion (using print for now since logging import might not be available)
+            print(f"Booking {booking.id} marked as completed by user {request.user.id}")
             
             return Response({
                 'success': True,
@@ -290,7 +301,7 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
-            logger.error(f"Error completing booking {booking.id}: {str(e)}")
+            print(f"Error completing booking {booking.id}: {str(e)}")
             return Response(
                 {'error': f"Error marking session as completed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

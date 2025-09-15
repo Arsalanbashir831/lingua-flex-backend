@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from core.models import User
 from django.utils.translation import gettext_lazy as _
@@ -37,24 +38,30 @@ class Language(models.Model):
         return self.name
 
 class Chat(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     participant1 = models.ForeignKey(User, related_name='chats_as_participant1', on_delete=models.CASCADE)
     participant2 = models.ForeignKey(User, related_name='chats_as_participant2', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('participant1', 'participant2')
+        db_table = 'chats'  # Explicitly set table name to match Supabase
 
     def __str__(self):
         return f"Chat between {self.participant1.email} and {self.participant2.email}"
 
 class Message(models.Model):
-    chat = models.ForeignKey(Chat, related_name='messages', on_delete=models.CASCADE)
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    chat_id = models.ForeignKey(Chat, related_name='messages', on_delete=models.CASCADE, db_column='chat_id')
+    sender_id = models.ForeignKey(User, on_delete=models.CASCADE, db_column='sender_id')
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = 'messages'  # Explicitly set table name to match Supabase
+
     def __str__(self):
-        return f"Message from {self.sender.email} at {self.timestamp}"
+        return f"Message from {self.sender_id.email} at {self.timestamp}"
 
 class Gig(models.Model):
     class Category(models.TextChoices):
