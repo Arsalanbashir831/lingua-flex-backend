@@ -350,7 +350,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
 
 class TeacherProfileViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        """
+        Allow public access to list action, require authentication for others
+        """
+        if self.action == 'list':
+            # Public access for listing all teachers
+            return []
+        # Require authentication for all other actions
+        return [IsAuthenticated()]
     
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -359,7 +367,8 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.action == 'list':
-            return TeacherProfile.objects.all()
+            # Return all active teacher profiles for public listing
+            return TeacherProfile.objects.select_related('user_profile__user').all()
         elif self.action == 'my_profile':
             return TeacherProfile.objects.filter(
                 user_profile__user=self.request.user,
