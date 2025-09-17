@@ -21,8 +21,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from .admin_site import admin_site
 
 urlpatterns = [
-    path('admin/', admin_site.urls),  # Use custom admin site
-    path('django-admin/', admin.site.urls),  # Keep default admin as backup
+    path('admin/', admin.site.urls),  # Use default admin site
+    path('django-admin/', admin_site.urls),  # Use custom admin site
     path('api/', include('core.urls')),
     path('api/accounts/', include('accounts.urls')),
     path('api/bookings/', include('bookings.urls')),

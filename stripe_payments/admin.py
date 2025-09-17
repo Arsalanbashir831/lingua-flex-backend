@@ -1,3 +1,4 @@
+
 """
 Enhanced Admin interface for Stripe payment system with complete management capabilities
 """
@@ -14,7 +15,7 @@ from django.utils.decorators import method_decorator
 import csv
 import json
 import stripe
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 
 from .models import (
@@ -23,6 +24,16 @@ from .models import (
 )
 from .services import StripePaymentService
 
+
+from .models import PaymentSettings
+# Register PaymentSettings in admin
+@admin.register(PaymentSettings)
+class PaymentSettingsAdmin(admin.ModelAdmin):
+    list_display = ["platform_fee_percent"]
+    fields = ["platform_fee_percent"]
+    def has_add_permission(self, request):
+        # Only allow one settings row
+        return not PaymentSettings.objects.exists()
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
@@ -46,7 +57,8 @@ class PaymentAdmin(admin.ModelAdmin):
         'stripe_payment_intent_id', 'stripe_charge_id', 'stripe_customer_id',
         'amount_cents', 'hourly_rate_cents', 'platform_fee_cents',
         'created_at', 'paid_at', 'updated_at', 'calculate_fees',
-        'stripe_dashboard_link', 'refund_history'
+        'stripe_dashboard_link', 'refund_history',
+        'amount_display_large', 'payment_status_badge_display', 'platform_fee_display_large'
     ]
     
     fieldsets = (
@@ -150,22 +162,18 @@ class PaymentAdmin(admin.ModelAdmin):
     booking_link.short_description = 'Booking'
     
     def amount_display(self, obj):
-        """Display formatted amount with currency"""
-        return format_html('<strong>${:.2f}</strong>', obj.amount_dollars)
+        """Display amount as a simple string (no formatting)"""
+        return str(obj.amount_dollars)
     amount_display.short_description = 'Amount'
     
     def amount_display_large(self, obj):
-        """Large amount display for detail view"""
-        return format_html(
-            '<div style="font-size: 24px; font-weight: bold; color: #4caf50;">'
-            '${:.2f} {}</div>',
-            obj.amount_dollars, obj.currency.upper()
-        )
+        """Large amount display for detail view (no formatting)"""
+        return f"{obj.amount_dollars} {obj.currency.upper()}"
     amount_display_large.short_description = 'Payment Amount'
     
     def platform_fee_display(self, obj):
-        """Display platform fee"""
-        return format_html('${:.2f}', Decimal(obj.platform_fee_cents) / 100)
+        """Display platform fee as a simple string (no formatting)"""
+        return str(Decimal(obj.platform_fee_cents) / 100)
     platform_fee_display.short_description = 'Platform Fee'
     
     def platform_fee_display_large(self, obj):
@@ -396,7 +404,8 @@ class RefundRequestAdmin(admin.ModelAdmin):
         'payment', 'student', 'requested_amount_cents',
         'stripe_refund_id', 'refunded_amount_cents',
         'created_at', 'refunded_at', 'updated_at', 'payment_details_display',
-        'refund_calculation', 'stripe_refund_link'
+        'refund_calculation', 'stripe_refund_link',
+        'urgency_badge_display', 'status_badge_display', 'requested_amount_display_large'
     ]
     
     fieldsets = (
@@ -503,10 +512,10 @@ class RefundRequestAdmin(admin.ModelAdmin):
     student_link.short_description = 'Student'
     
     def payment_link(self, obj):
-        """Enhanced payment link with amount"""
+        """Enhanced payment link with amount (no formatting)"""
         url = reverse('admin:stripe_payments_payment_change', args=[obj.payment.id])
         return format_html(
-            '<a href="{}" target="_blank">Payment #{}<br><small>${:.2f}</small></a>',
+            '<a href="{}" target="_blank">Payment #{}<br><small>{}</small></a>',
             url, obj.payment.id, obj.payment.amount_dollars
         )
     payment_link.short_description = 'Payment'
@@ -532,23 +541,23 @@ class RefundRequestAdmin(admin.ModelAdmin):
     session_info.short_description = 'Session Info'
     
     def requested_amount_display(self, obj):
-        """Enhanced amount display"""
-        percentage = (obj.requested_amount_dollars / obj.payment.amount_dollars) * 100
-        return format_html(
-            '<strong>${:.2f}</strong><br><small>({:.0f}% of payment)</small>',
-            obj.requested_amount_dollars, percentage
-        )
+        """Display requested amount as a simple string (no formatting)"""
+        try:
+            percentage = (float(obj.requested_amount_dollars) / float(obj.payment.amount_dollars)) * 100
+            percentage_str = f"{percentage:.0f}"
+        except Exception:
+            percentage_str = "-"
+        return f"{obj.requested_amount_dollars} ({percentage_str}% of payment)"
     requested_amount_display.short_description = 'Requested Amount'
     
     def requested_amount_display_large(self, obj):
-        """Large amount display for detail view"""
-        percentage = (obj.requested_amount_dollars / obj.payment.amount_dollars) * 100
-        return format_html(
-            '<div style="font-size: 24px; font-weight: bold; color: #f44336;">'
-            '${:.2f}</div>'
-            '<div style="color: #757575;">({:.0f}% of ${:.2f} payment)</div>',
-            obj.requested_amount_dollars, percentage, obj.payment.amount_dollars
-        )
+        """Large amount display for detail view (no formatting)"""
+        try:
+            percentage = (float(obj.requested_amount_dollars) / float(obj.payment.amount_dollars)) * 100
+            percentage_str = f"{percentage:.0f}"
+        except Exception:
+            percentage_str = "-"
+        return f"{obj.requested_amount_dollars} ({percentage_str}% of {obj.payment.amount_dollars} payment)"
     requested_amount_display_large.short_description = 'Refund Amount'
     
     def payment_details_display(self, obj):

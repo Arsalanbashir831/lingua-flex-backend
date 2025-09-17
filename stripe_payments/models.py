@@ -1,3 +1,18 @@
+# Platform-wide payment settings (singleton)
+from django.db import models
+
+class PaymentSettings(models.Model):
+    platform_fee_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=5.00,
+        help_text="Platform fee percentage (e.g., 5.00 for 5%)"
+    )
+
+    class Meta:
+        verbose_name = "Payment Settings"
+        verbose_name_plural = "Payment Settings"
+
+    def __str__(self):
+        return f"Platform Fee: {self.platform_fee_percent}%"
 from django.db import models
 from django.utils import timezone
 from decimal import Decimal

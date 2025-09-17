@@ -360,16 +360,18 @@ class ProcessBookingPaymentView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # 3. Calculate payment amounts
-            # Calculate duration from booking times
             duration_hours = self.calculate_booking_duration(booking.start_time, booking.end_time)
-            
-            # Get hourly rate from gig
             hourly_rate = float(gig.price_per_session)
             session_cost = hourly_rate * duration_hours
-            platform_fee = session_cost * 0.05  # 5% of session cost
+            # Get platform fee percent from PaymentSettings
+            from stripe_payments.models import PaymentSettings
+            try:
+                settings = PaymentSettings.objects.first()
+                platform_fee_percent = float(settings.platform_fee_percent) / 100 if settings else 0.05
+            except Exception:
+                platform_fee_percent = 0.05
+            platform_fee = session_cost * platform_fee_percent
             total_amount = session_cost + platform_fee
-            
-            # Convert to cents for Stripe
             session_cost_cents = int(session_cost * 100)
             platform_fee_cents = int(platform_fee * 100)
             total_amount_cents = int(total_amount * 100)
@@ -639,10 +641,15 @@ class ProcessDirectPaymentView(APIView):
             session_duration = float(data['session_duration_hours'])
             hourly_rate = float(gig.price_per_session)
             session_cost = hourly_rate * session_duration
-            platform_fee = session_cost * 0.05  # 5% of session cost
+            # Get platform fee percent from PaymentSettings
+            from stripe_payments.models import PaymentSettings
+            try:
+                settings = PaymentSettings.objects.first()
+                platform_fee_percent = float(settings.platform_fee_percent) / 100 if settings else 0.05
+            except Exception:
+                platform_fee_percent = 0.05
+            platform_fee = session_cost * platform_fee_percent
             total_amount = session_cost + platform_fee
-            
-            # Convert to cents for Stripe
             session_cost_cents = int(session_cost * 100)
             platform_fee_cents = int(platform_fee * 100)
             total_amount_cents = int(total_amount * 100)
