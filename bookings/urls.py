@@ -5,6 +5,7 @@ from .views_enhanced import (
     SessionBookingViewSet,
     SessionFeedbackViewSet
 )
+from .zoom_webhooks import zoom_webhook_handler
 
 router = DefaultRouter()
 router.register(r'availability', TeacherAvailabilityViewSet, basename='availability')
@@ -31,6 +32,10 @@ urlpatterns = [
     path('bookings/<int:pk>/reschedule/', SessionBookingViewSet.as_view({'post': 'reschedule'}), name='reschedule-booking'),
     path('bookings/<int:pk>/create_meeting/', SessionBookingViewSet.as_view({'post': 'create_meeting'}), name='create-meeting'),
     path('bookings/<int:pk>/meeting_info/', SessionBookingViewSet.as_view({'get': 'meeting_info'}), name='meeting-info'),
+    path('bookings/<int:pk>/complete_manually/', SessionBookingViewSet.as_view({'post': 'complete_manually'}), name='complete-booking-manually'),
+    
+    # Zoom webhook endpoint
+    path('zoom/webhook/', zoom_webhook_handler, name='zoom-webhook'),
     
     # Include router URLs LAST
     path('', include(router.urls)),

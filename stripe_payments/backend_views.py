@@ -276,20 +276,6 @@ class ProcessBookingPaymentView(APIView):
                     code="processing_error"
                 )
     
-    def calculate_booking_duration(self, start_time, end_time):
-        """Calculate duration in hours from start and end times"""
-        from datetime import datetime
-        import pytz
-        
-        # Parse datetime strings
-        if isinstance(start_time, str):
-            start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-        if isinstance(end_time, str):
-            end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-        
-        # Calculate duration in hours
-        duration = (end_time - start_time).total_seconds() / 3600
-        return round(duration, 2)
     
     def post(self, request):
         # Input validation
@@ -360,8 +346,8 @@ class ProcessBookingPaymentView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # 3. Calculate payment amounts
-            # Calculate duration from booking times
-            duration_hours = self.calculate_booking_duration(booking.start_time, booking.end_time)
+            # Use duration_hours from booking (provided in payload)
+            duration_hours = float(booking.duration_hours)
             
             # Get hourly rate from gig
             hourly_rate = float(gig.price_per_session)

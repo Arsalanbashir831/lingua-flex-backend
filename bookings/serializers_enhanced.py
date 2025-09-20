@@ -62,7 +62,8 @@ class SessionBookingSerializer(serializers.ModelSerializer):
         return obj.teacher.email
 
     def get_duration_minutes(self, obj):
-        return int((obj.end_time - obj.start_time).total_seconds() / 60)
+        # Use duration_hours from the model instead of calculating from start/end times
+        return int(float(obj.duration_hours) * 60)
     
     def get_can_cancel(self, obj):
         """Check if the current user can cancel this booking"""

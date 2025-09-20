@@ -72,9 +72,7 @@ class SessionBookingAdmin(admin.ModelAdmin):
     time_slot.short_description = 'Time'
     
     def duration(self, obj):
-        duration = obj.end_time - obj.start_time
-        hours = duration.total_seconds() / 3600
-        return f"{hours:.1f}h"
+        return f"{obj.duration_hours:.1f}h"
     duration.short_description = 'Duration'
     
     def booking_actions(self, obj):

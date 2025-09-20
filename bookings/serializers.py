@@ -72,14 +72,14 @@ class BulkTeacherAvailabilitySerializer(serializers.Serializer):
 class SessionBookingSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     teacher_name = serializers.SerializerMethodField()
-    duration_hours = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, read_only=True)
+    duration_hours = serializers.DecimalField(max_digits=5, decimal_places=2, required=True)
     payment_id = serializers.SerializerMethodField()
     payment_details = serializers.SerializerMethodField()
 
     class Meta:
         model = SessionBooking
         fields = '__all__'
-        read_only_fields = ['student', 'status', 'zoom_meeting_id', 'zoom_join_url', 'duration_hours', 'payment_id', 'payment_details']
+        read_only_fields = ['student', 'status', 'zoom_meeting_id', 'zoom_join_url', 'payment_id', 'payment_details']
 
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}"
@@ -116,18 +116,23 @@ class SessionBookingSerializer(serializers.ModelSerializer):
             return None
 
     def validate(self, attrs):
-        """Calculate duration_hours automatically from start_time and end_time"""
+        """Validate start_time, end_time, and duration_hours"""
         start_time = attrs.get('start_time')
         end_time = attrs.get('end_time')
+        duration_hours = attrs.get('duration_hours')
         
-        if start_time and end_time:
-            if start_time >= end_time:
-                raise serializers.ValidationError("Start time must be before end time")
-            
-            # Auto-calculate duration in hours
+        if start_time and end_time and duration_hours:
+            # Calculate actual duration from start and end times
             duration_seconds = (end_time - start_time).total_seconds()
-            duration_hours = round(duration_seconds / 3600, 2)  # Convert to hours with 2 decimal places
-            attrs['duration_hours'] = duration_hours
+            actual_duration_hours = duration_seconds / 3600
+            
+            # Allow for small rounding differences (within 1 minute tolerance)
+            duration_diff = abs(actual_duration_hours - float(duration_hours))
+            if duration_diff > 0.017:  # 1 minute = 0.017 hours
+                raise serializers.ValidationError(
+                    f"Duration mismatch: provided duration_hours ({duration_hours}) doesn't match "
+                    f"the time difference between start_time and end_time ({actual_duration_hours:.2f} hours)"
+                )
             
             # Set scheduled_datetime if not provided
             if not attrs.get('scheduled_datetime'):

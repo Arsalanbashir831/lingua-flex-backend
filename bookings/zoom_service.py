@@ -103,7 +103,7 @@ class ZoomService:
                 'topic': f"Language Session with {booking.teacher.first_name} {booking.teacher.last_name}",
                 'type': 2,  # Scheduled meeting
                 'start_time': booking.start_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'duration': int((booking.end_time - booking.start_time).total_seconds() / 60),
+                'duration': int(float(booking.duration_hours) * 60),
                 'timezone': 'UTC',
                 'settings': {
                     'host_video': True,
@@ -159,7 +159,7 @@ class ZoomService:
             'Content-Type': 'application/json'
         }
         
-        duration = int((booking.end_time - booking.start_time).total_seconds() / 60)
+        duration = int(float(booking.duration_hours) * 60)
         start_time = booking.start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         
         # Get display names safely

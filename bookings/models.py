@@ -127,15 +127,23 @@ class SessionBooking(models.Model):
     cancellation_reason = models.TextField(blank=True)
 
     def clean(self):
-        if self.start_time >= self.end_time:
-            raise ValidationError('Start time must be before end time')
+        # Validate that the session is not in the past
         if self.start_time < timezone.now():
             raise ValidationError('Cannot book sessions in the past')
         
-        # Calculate duration if not provided
-        if not self.duration_hours and self.start_time and self.end_time:
+        # Validate duration consistency if all fields are present
+        if self.start_time and self.end_time and self.duration_hours:
+            # Calculate actual duration from start and end times
             duration_seconds = (self.end_time - self.start_time).total_seconds()
-            self.duration_hours = round(duration_seconds / 3600, 2)  # Convert to hours
+            actual_duration_hours = duration_seconds / 3600
+            
+            # Allow for small rounding differences (within 1 minute tolerance)
+            duration_diff = abs(actual_duration_hours - float(self.duration_hours))
+            if duration_diff > 0.017:  # 1 minute = 0.017 hours
+                raise ValidationError(
+                    f'Duration mismatch: provided duration_hours ({self.duration_hours}) doesn\'t match '
+                    f'the time difference between start_time and end_time ({actual_duration_hours:.2f} hours)'
+                )
         
         # Set scheduled_datetime if not provided
         if not self.scheduled_datetime:
