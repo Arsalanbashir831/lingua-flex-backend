@@ -527,10 +527,43 @@ class GigViewSet(viewsets.ModelViewSet):
             teacher_profile = user.profile.teacherprofile
         except (AttributeError, TeacherProfile.DoesNotExist):
             raise serializers.ValidationError('You must be a teacher to create a gig.')
+        
+        # Check if teacher already has a gig with the same category
+        category = serializer.validated_data.get('category')
+        existing_gig = Gig.objects.filter(teacher=teacher_profile, category=category).first()
+        
+        if existing_gig:
+            category_display = dict(Gig.Category.choices).get(category, category)
+            raise serializers.ValidationError({
+                'exception_err': f"You already have a gig with the category '{category_display}'. "
+                               f"Each teacher can only have one gig per category."
+            })
+        
         serializer.save(teacher=teacher_profile)
 
     def perform_update(self, serializer):
-        self.perform_create(serializer)
+        user = self.request.user
+        try:
+            teacher_profile = user.profile.teacherprofile
+        except (AttributeError, TeacherProfile.DoesNotExist):
+            raise serializers.ValidationError('You must be a teacher to update a gig.')
+        
+        # Check if teacher is trying to change category to one they already have
+        category = serializer.validated_data.get('category')
+        if category:
+            existing_gig = Gig.objects.filter(
+                teacher=teacher_profile, 
+                category=category
+            ).exclude(pk=serializer.instance.pk).first()
+            
+            if existing_gig:
+                category_display = dict(Gig.Category.choices).get(category, category)
+                raise serializers.ValidationError({
+                    'exception_err': f"You already have a gig with the category '{category_display}'. "
+                                   f"Each teacher can only have one gig per category."
+                })
+        
+        serializer.save(teacher=teacher_profile)
 
     @action(detail=False, methods=['get'], url_path='public', permission_classes=[AllowAny])
     def public(self, request):

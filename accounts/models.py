@@ -66,7 +66,7 @@ class Message(models.Model):
 class Gig(models.Model):
     class Category(models.TextChoices):
         LANGUAGE_CONSULTATION = 'language', 'Language Consultation'
-        ASTROLOGICAL_CONSULTATION = 'astrological', 'Astrological Consultation'
+        ASTROLOGICAL_CONSULTATION = 'astrology', 'Astrology Reading'
     
     class Status(models.TextChoices):
         ACTIVE = 'active', 'Active'
