@@ -39,8 +39,8 @@ class Language(models.Model):
 
 class Chat(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    participant1 = models.ForeignKey(User, related_name='chats_as_participant1', on_delete=models.CASCADE)
-    participant2 = models.ForeignKey(User, related_name='chats_as_participant2', on_delete=models.CASCADE)
+    participant1 = models.ForeignKey(User, related_name='chats_as_participant1', on_delete=models.CASCADE, db_column='participant1')
+    participant2 = models.ForeignKey(User, related_name='chats_as_participant2', on_delete=models.CASCADE, db_column='participant2')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

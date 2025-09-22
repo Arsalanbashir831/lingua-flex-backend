@@ -21,7 +21,6 @@ import dj_database_url
 ZOOM_ACCOUNT_ID = os.getenv('ZOOM_ACCOUNT_ID', '')
 ZOOM_CLIENT_ID = os.getenv('ZOOM_CLIENT_ID', '')
 ZOOM_CLIENT_SECRET = os.getenv('ZOOM_CLIENT_SECRET', '')
-ZOOM_WEBHOOK_SECRET = os.getenv('ZOOM_WEBHOOK_SECRET', '')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'. Changes
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -76,7 +75,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.10.9:3000",   # client laptop origin (React/Vite/etc)
     "https://api.shaktiwheel.in",
     "http://localhost:3000",
-    'https://linguaflex-eight.vercel.app','https://lingua-flex-landing.vercel.app','https://app.parlezhub.com/','https://parlezhub.com/'
+    'https://linguaflex-eight.vercel.app','https://lingua-flex-landing.vercel.app','https://app.parlezhub.com','https://parlezhub.com'
 ]
 
 
