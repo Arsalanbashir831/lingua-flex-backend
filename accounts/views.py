@@ -141,6 +141,137 @@ def supabase_messages(request, chat_id):
     result = supabase.table("messages").select("*").eq("chat_id", chat_id).order("timestamp").execute()
     return Response(result.data)
 
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def become_teacher(request):
+    """Create a teacher profile for the authenticated user if one does not exist."""
+    user = request.user
+    # If already has teacher, return existing
+    if user.has_teacher():
+        # Try to return accounts TeacherProfile if available
+        try:
+            tp = user.profile.teacherprofile
+            serializer = TeacherProfileSerializer(tp)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception:
+            # Fallback: return simple message
+            return Response({'detail': 'Teacher profile already exists.'}, status=status.HTTP_200_OK)
+
+    # Create teacher profile (atomic)
+    try:
+        tp = user.create_teacher_profile(create_core_teacher=True)
+        serializer = TeacherProfileSerializer(tp)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def become_student(request):
+    """Create a student record for the authenticated user if one does not exist."""
+    user = request.user
+    if user.has_student():
+        try:
+            s = user.student
+            # Return minimal info
+            return Response({'id': s.id, 'user_id': str(user.id)}, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({'detail': 'Student profile already exists.'}, status=status.HTTP_200_OK)
+
+    try:
+        s = user.create_student_profile()
+        return Response({'id': s.id, 'user_id': str(user.id)}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def roles_status(request):
+    """Return whether the authenticated user has teacher and/or student profiles."""
+    user = request.user
+    # Determine presence flags (tolerant: consider accounts.UserProfile as student presence)
+    try:
+        has_teacher = bool(getattr(user, 'has_teacher', lambda: False)())
+    except Exception:
+        has_teacher = False
+
+    # Consider a user to be a student if they have a core.Student or an accounts.UserProfile
+    try:
+        has_student_core = bool(getattr(user, 'has_student', lambda: False)())
+    except Exception:
+        has_student_core = False
+
+    try:
+        has_userprofile = hasattr(user, 'profile') and user.profile is not None
+    except Exception:
+        has_userprofile = False
+
+    has_student = has_student_core or has_userprofile
+
+    # Prepare serialized payloads if available
+    teacher_data = None
+    student_data = None
+
+    # Student profile: use ComprehensiveUserProfileSerializer if UserProfile exists
+    if has_userprofile:
+        try:
+            student_profile = user.profile
+            student_data = ComprehensiveUserProfileSerializer(student_profile).data
+        except Exception:
+            student_data = None
+
+    # Teacher profile: prefer accounts.TeacherProfile (ComprehensiveTeacherProfileSerializer)
+    if has_teacher:
+        try:
+            teacher_profile = None
+            # Prefer accounts TeacherProfile if present
+            if hasattr(user, 'profile'):
+                try:
+                    teacher_profile = user.profile.teacherprofile
+                except Exception:
+                    teacher_profile = None
+
+            if teacher_profile is not None:
+                teacher_data = ComprehensiveTeacherProfileSerializer(teacher_profile).data
+            else:
+                # Fallback: if core.Teacher exists but no accounts TeacherProfile, build a minimal object
+                try:
+                    core_teacher = user.teacher
+                    # Build a minimal dict equivalent to ComprehensiveTeacherProfileSerializer output
+                    teacher_data = {
+                        'id': user.id,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'phone_number': user.phone_number,
+                        'gender': user.gender,
+                        'date_of_birth': user.date_of_birth,
+                        'role': user.role,
+                        'has_teacher': True,
+                        'has_student': has_student,
+                        'profile_picture': getattr(user, 'profile_picture', None),
+                        'created_at': user.created_at,
+                        'bio': core_teacher.bio,
+                        'qualification': None,
+                        'experience_years': core_teacher.teaching_experience,
+                        'certificates': [],
+                        'about': None,
+                    }
+                except Exception:
+                    teacher_data = None
+        except Exception:
+            teacher_data = None
+
+    return Response({
+        'has_teacher': bool(has_teacher),
+        'teacher_profile': teacher_data,
+        'has_student': bool(has_student),
+        'student_profile': student_data,
+    })
+
 class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Language.objects.filter(is_active=True)
     serializer_class = LanguageSerializer

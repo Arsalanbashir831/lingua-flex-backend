@@ -144,6 +144,90 @@ class User(AbstractBaseUser, PermissionsMixin):
         else:
             return self.username or self.email.split('@')[0]
 
+    # Role helper methods to support having both student and teacher profiles
+    def has_teacher(self):
+        """Return True if the user has a teacher record in core or accounts apps."""
+        # core.Teacher one-to-one
+        try:
+            if hasattr(self, 'teacher') and self.teacher is not None:
+                return True
+        except Exception:
+            pass
+
+        # accounts.TeacherProfile via user.profile.teacherprofile
+        try:
+            if hasattr(self, 'profile') and hasattr(self.profile, 'teacherprofile'):
+                return True
+        except Exception:
+            pass
+
+        return False
+
+    def has_student(self):
+        """Return True if the user has a student record in core."""
+        try:
+            if hasattr(self, 'student') and self.student is not None:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def create_teacher_profile(self, *, create_core_teacher=True):
+        """Create accounts.TeacherProfile and optionally core.Teacher for this user.
+
+        Returns the TeacherProfile instance.
+        """
+        from django.db import transaction
+        from accounts.models import UserProfile, TeacherProfile as AccountsTeacherProfile
+        from core.models import Teacher as CoreTeacher
+
+        with transaction.atomic():
+            # Ensure UserProfile exists
+            user_profile = getattr(self, 'profile', None)
+            if user_profile is None:
+                user_profile = UserProfile.objects.create(user=self, role=self.role)
+
+            # Create accounts.TeacherProfile if missing
+            tp = None
+            try:
+                tp = user_profile.teacherprofile
+            except Exception:
+                tp = AccountsTeacherProfile.objects.create(
+                    user_profile=user_profile,
+                    qualification='',
+                    experience_years=0,
+                    certificates=[],
+                    about=''
+                )
+
+            # Optionally create core.Teacher
+            if create_core_teacher:
+                try:
+                    _ = self.teacher
+                except Exception:
+                    CoreTeacher.objects.create(
+                        user=self,
+                        bio='',
+                        teaching_experience=0,
+                        teaching_languages=[],
+                        hourly_rate=0
+                    )
+
+        return tp
+
+    def create_student_profile(self):
+        """Create core.Student for this user if missing and return it."""
+        from django.db import transaction
+        from core.models import Student as CoreStudent
+
+        with transaction.atomic():
+            try:
+                s = self.student
+                return s
+            except Exception:
+                s = CoreStudent.objects.create(user=self, learning_goals='', proficiency_level='BEGINNER', target_languages=[])
+                return s
+
 class TimeSlot(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='time_slots')
     start_time = models.DateTimeField()

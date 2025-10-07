@@ -130,6 +130,8 @@ class ComprehensiveTeacherProfileSerializer(serializers.ModelSerializer):
             'gender': user.gender,
             'date_of_birth': user.date_of_birth,
             'role': user.role,  # Add user role
+            'has_teacher': getattr(user, 'has_teacher', lambda: False)(),
+            'has_student': getattr(user, 'has_student', lambda: False)(),
             'profile_picture': profile_picture_url,  # Add profile picture URL
             'created_at': user.created_at,  # Add created_at from user
         })
