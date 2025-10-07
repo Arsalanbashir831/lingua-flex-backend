@@ -23,11 +23,13 @@ This project is a Django-based backend application integrated with Supabase and 
 Follow these detailed steps to set up the project locally:
 
 1. **Clone the repository**
+
    - Open a terminal or command prompt.
    - Run `git clone <repository_url>` replacing `<repository_url>` with your repository's URL.
    - Navigate into the cloned directory: `cd backend_supabase`.
 
 2. **Set up a Python virtual environment**
+
    - Create a virtual environment by running:
      - On Windows: `python -m venv venv`
      - On macOS/Linux: `python3 -m venv venv`
@@ -37,22 +39,26 @@ Follow these detailed steps to set up the project locally:
      - On macOS/Linux: `source venv/bin/activate`
 
 3. **Install required dependencies**
+
    - With the virtual environment activated, run:
      ```
      pip install -r requirements.txt
      ```
 
 4. **Configure environment variables**
+
    - Create a `.env` file in the project root directory.
    - Define all required environment variables as listed in the Environment Variables section.
 
 5. **Apply database migrations**
+
    - Run the following command to setup the database schema:
      ```
      python manage.py migrate
      ```
 
 6. **Run the development server**
+
    - Start the Django development server with:
      ```
      python manage.py runserver
@@ -124,3 +130,62 @@ OPENAI_API_KEY=your_openai_api_key
 ## License
 
 Specify your project license here.
+
+---
+
+## Running both servers (Django + FastAPI)
+
+This project uses Django for the primary REST API and a small FastAPI app (`fastapi_chat.py`) for realtime chat and notifications. You can run both locally during development on different ports.
+
+Recommended ports:
+
+- Django: 8000
+- FastAPI (uvicorn): 8001
+
+PowerShell example (from project root):
+
+1. Activate virtual environment and install dependencies (if not already done):
+
+```powershell
+# Activate venv (PowerShell)
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+2. Ensure required environment variables are set in a `.env` file (project loads with python-dotenv). At minimum verify Supabase DB and keys (see Environment Variables above).
+
+3. Apply migrations and create a superuser if needed:
+
+```powershell
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+4. Start Django (port 8000):
+
+```powershell
+# In Terminal A
+python manage.py runserver 0.0.0.0:8000
+```
+
+5. Start FastAPI with uvicorn (port 8001):
+
+```powershell
+# In Terminal B
+python -m uvicorn fastapi_chat:app --host 0.0.0.0 --port 8001 --reload
+```
+
+6. Verify
+
+- Django: http://127.0.0.1:8000/ and admin at `/django-admin/` or `/admin/`.
+- FastAPI: http://127.0.0.1:8001/docs (Swagger) or http://127.0.0.1:8001/redoc
+
+Notes and troubleshooting:
+
+- Use separate terminals for each server so you can watch logs.
+- If `uvicorn` isn't available, use `python -m uvicorn ...` as shown above.
+- Ensure `SUPABASE_SERVICE_ROLE_KEY` and other server-only secrets are only used on the server and never exposed to client code.
+- FastAPI's token decoding in `fastapi_chat.py` currently skips signature verification; do not use that in production. Prefer verifying JWTs with Supabase JWKs or via Supabase API.
+- For production, run Django and FastAPI behind a reverse proxy (nginx) and use gunicorn/uvicorn workers instead of `runserver`/`--reload`.
