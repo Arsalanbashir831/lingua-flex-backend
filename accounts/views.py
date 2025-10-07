@@ -16,6 +16,10 @@ from core.models import User, Teacher
 from django.conf import settings
 from django.utils import timezone
 from supabase import create_client
+import resend
+import logging
+
+logger = logging.getLogger(__name__)
 
 SUPABASE_URL = getattr(settings, "SUPABASE_URL", None)
 SUPABASE_SERVICE_ROLE_KEY = getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", None)
@@ -418,6 +422,28 @@ class RegisterWithProfileView(generics.CreateAPIView):
                     teaching_languages=[],  # Can be updated later
                     hourly_rate=0  # Default value, can be updated later
                 )
+
+            # Add to Resend audience (non-blocking)
+            try:
+                api_key = getattr(settings, 'RESEND_API_KEY', '')
+                audience_id = getattr(settings, 'RESEND_AUDIENCE_ID', '')
+                if api_key and audience_id:
+                    resend.api_key = api_key
+                    params = {
+                        'email': data['email'],
+                        'first_name': first_name,
+                        'last_name': last_name,
+                        'unsubscribed': False,
+                        'audience_id': audience_id,
+                    }
+                    try:
+                        resend.Contacts.create(params)
+                    except Exception as re_err:
+                        logger.warning('Resend contact create failed: %s', re_err)
+
+            except Exception as e_resend:
+                # Ensure any resend errors do not break registration
+                logger.exception('Unexpected error while adding contact to Resend: %s', e_resend)
 
             return Response(
                 {'message': 'Registration successful. Please verify your email.'},
