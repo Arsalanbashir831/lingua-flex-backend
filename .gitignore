@@ -2,6 +2,10 @@ check
 venv
 .env
 __pycache__
+# Ignore Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
 *.pyc
 *.pyo
 *.pyd
