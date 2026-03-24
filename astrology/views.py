@@ -8,6 +8,7 @@ Three views:
 """
 from datetime import datetime
 
+import logging
 import pytz
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
@@ -18,6 +19,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import BirthProfile, NatalChartCache, TransitCache
 from .serializers import BirthProfileSerializer
 from .services import AstrologyAPIClient, AstrologyAPIError
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -149,12 +152,16 @@ class NatalChartView(APIView):
         # Return from cache if available
         try:
             cache = profile.natal_cache
+            msg = f"Natal chart retrieved from DATABASE cache for user: {request.user.email}"
+            logger.info(msg)
             return Response(_build_natal_response(
                 cache.birth_details_data,
                 cache.divisional_data,
                 profile
             ))
         except NatalChartCache.DoesNotExist:
+            msg = f"Natal chart CACHE MISS for user: {request.user.email}. Calling Astrology.io API..."
+            logger.info(msg)
             pass
 
         # Cache miss — call the external API
@@ -217,11 +224,17 @@ class TransitView(APIView):
         try:
             cache = profile.transit_cache
             if not _is_transit_stale(cache, profile.timezone_str):
+                msg = f"Transit data retrieved from DATABASE cache for user: {request.user.email}"
+                logger.info(msg)
+                print(f">>> {msg}")
                 return Response(self._shape_response(cache.transit_data))
         except TransitCache.DoesNotExist:
             cache = None
 
         # Cache miss or stale — call the API
+        msg = f"Transit data CACHE MISS (or stale) for user: {request.user.email}. Calling Astrology.io API..."
+        logger.info(msg)
+        print(f">>> {msg}")
         client = AstrologyAPIClient()
         try:
             transit = client.get_transit(profile)

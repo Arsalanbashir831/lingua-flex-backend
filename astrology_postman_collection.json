@@ -1,0 +1,205 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+		"name": "LinguaFlex - Astrology",
+		"description": "API collection for the Vedic Astrology features in LinguaFlex.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Birth Profile",
+			"item": [
+				{
+					"name": "Get Birth Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/birth-profile/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"birth-profile",
+								""
+							]
+						},
+						"description": "Retrieves the current user's birth profile."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Birth Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"birth_year\": 1990,\n    \"birth_month\": 4,\n    \"birth_day\": 15,\n    \"birth_hour\": 6,\n    \"birth_minute\": 30,\n    \"city\": \"Delhi\",\n    \"country_code\": \"IN\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/astrology/birth-profile/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"birth-profile",
+								""
+							]
+						},
+						"description": "Creates a new birth profile for the authenticated user."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Birth Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"birth_year\": 1992,\n    \"birth_month\": 5,\n    \"birth_day\": 20,\n    \"birth_hour\": 15,\n    \"birth_minute\": 45,\n    \"city\": \"Kolkata\",\n    \"country_code\": \"IN\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/astrology/birth-profile/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"birth-profile",
+								""
+							]
+						},
+						"description": "Updates the existing birth profile for the authenticated user."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Charts",
+			"item": [
+				{
+					"name": "Get Natal Chart",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/natal-chart/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"natal-chart",
+								""
+							]
+						},
+						"description": "Retrieves the cached natal chart (D1 and D9) for the user. Triggers API call if not cached."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Daily Transits",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/transits/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"transits",
+								""
+							]
+						},
+						"description": "Retrieves the daily transit chart based on the user's local time. Invalidate cache daily."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "your_supabase_token_here",
+			"type": "string"
+		}
+	]
+}
