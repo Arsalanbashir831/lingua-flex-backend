@@ -1288,6 +1288,45 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
             }
         })
 
+    @action(detail=True, methods=['post'])
+    def complete_manually(self, request, pk=None):
+        """
+        Manually mark a booking as completed (backup method)
+        """
+        booking = self.get_object()
+        
+        # Check if user can complete this booking
+        if request.user not in [booking.teacher, booking.student]:
+            return Response(
+                {'error': 'Only the teacher or student can complete this booking'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if booking.status == 'COMPLETED':
+            return Response(
+                {'error': 'Booking is already completed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if booking.status == 'CANCELLED':
+            return Response(
+                {'error': 'Cannot complete a cancelled booking'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Mark as completed
+        booking.status = 'COMPLETED'
+        booking.save()
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Booking {booking.id} manually marked as completed by {request.user.email}")
+        
+        return Response({
+            'message': 'Booking marked as completed successfully',
+            'booking': SessionBookingSerializer(booking, context={'request': request}).data
+        })
+
 
 class SessionFeedbackViewSet(viewsets.ModelViewSet):
     serializer_class = SessionFeedbackSerializer
@@ -1391,41 +1430,4 @@ class SessionFeedbackViewSet(viewsets.ModelViewSet):
         return Response({
             "message": "Feedback updated successfully",
             "feedback": serializer.data
-        })
-
-    @action(detail=True, methods=['post'])
-    def complete_manually(self, request, pk=None):
-        """
-        Manually mark a booking as completed (backup method)
-        """
-        booking = self.get_object()
-        
-        # Check if user can complete this booking
-        if request.user not in [booking.teacher, booking.student]:
-            return Response(
-                {'error': 'Only the teacher or student can complete this booking'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        if booking.status == 'COMPLETED':
-            return Response(
-                {'error': 'Booking is already completed'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        if booking.status == 'CANCELLED':
-            return Response(
-                {'error': 'Cannot complete a cancelled booking'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Mark as completed
-        booking.status = 'COMPLETED'
-        booking.save()
-        
-        logger.info(f"Booking {booking.id} manually marked as completed by {request.user.email}")
-        
-        return Response({
-            'message': 'Booking marked as completed successfully',
-            'booking': SessionBookingSerializer(booking, context={'request': request}).data
         })

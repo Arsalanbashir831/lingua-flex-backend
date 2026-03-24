@@ -1,0 +1,5549 @@
+openapi: 3.0.3
+info:
+  title: LinguaFlex API
+  version: 1.0.0
+  description: Backend API for the LinguaFlex language tutoring platform.
+paths:
+  /api/accounts/become-student/:
+    post:
+      operationId: api_accounts_become_student_create
+      description: Create a student record for the authenticated user if one does
+        not exist.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/accounts/become-teacher/:
+    post:
+      operationId: api_accounts_become_teacher_create
+      description: Create a teacher profile for the authenticated user if one does
+        not exist.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/accounts/chats/:
+    get:
+      operationId: api_accounts_chats_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Chat'
+          description: ''
+    post:
+      operationId: api_accounts_chats_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Chat'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+          description: ''
+  /api/accounts/chats/{id}/:
+    get:
+      operationId: api_accounts_chats_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+          description: ''
+    put:
+      operationId: api_accounts_chats_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Chat'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+          description: ''
+    patch:
+      operationId: api_accounts_chats_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedChat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedChat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedChat'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+          description: ''
+    delete:
+      operationId: api_accounts_chats_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/accounts/chats/start/:
+    post:
+      operationId: api_accounts_chats_start_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Chat'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+          description: ''
+  /api/accounts/gigs/:
+    get:
+      operationId: api_accounts_gigs_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Gig'
+          description: ''
+    post:
+      operationId: api_accounts_gigs_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Gig'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Gig'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Gig'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+  /api/accounts/gigs/{id}/:
+    get:
+      operationId: api_accounts_gigs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gig.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+    put:
+      operationId: api_accounts_gigs_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gig.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Gig'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Gig'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Gig'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+    patch:
+      operationId: api_accounts_gigs_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gig.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGig'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGig'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGig'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+    delete:
+      operationId: api_accounts_gigs_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gig.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/accounts/gigs/{id}/status/:
+    get:
+      operationId: api_accounts_gigs_status_retrieve
+      description: Get or update the status of a specific gig
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gig.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+    patch:
+      operationId: api_accounts_gigs_status_partial_update
+      description: Get or update the status of a specific gig
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gig.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGig'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGig'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGig'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+  /api/accounts/gigs/public/:
+    get:
+      operationId: api_accounts_gigs_public_retrieve
+      description: |-
+        Get public gigs with optional filtering
+
+        Query Parameters:
+        - teacher_id: Filter by teacher user ID (UUID from teacher_details.id)
+        - category: Filter by gig category
+        - service_type: Filter by service type
+        - min_price: Minimum price per session
+        - max_price: Maximum price per session
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+  /api/accounts/gigs/status-summary/:
+    get:
+      operationId: api_accounts_gigs_status_summary_retrieve
+      description: Get a summary of all gig statuses for the teacher
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gig'
+          description: ''
+  /api/accounts/languages/:
+    get:
+      operationId: api_accounts_languages_list
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Language'
+          description: ''
+  /api/accounts/languages/{id}/:
+    get:
+      operationId: api_accounts_languages_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this language.
+        required: true
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Language'
+          description: ''
+  /api/accounts/profiles/:
+    get:
+      operationId: api_accounts_profiles_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+          description: ''
+    post:
+      operationId: api_accounts_profiles_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/accounts/profiles/{id}/:
+    get:
+      operationId: api_accounts_profiles_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user profile.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    put:
+      operationId: api_accounts_profiles_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user profile.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: api_accounts_profiles_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user profile.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfile'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    delete:
+      operationId: api_accounts_profiles_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user profile.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/accounts/profiles/me/:
+    get:
+      operationId: api_accounts_profiles_me_retrieve
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    put:
+      operationId: api_accounts_profiles_me_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: api_accounts_profiles_me_partial_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfile'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/accounts/profiles/me/roles/:
+    get:
+      operationId: api_accounts_profiles_me_roles_retrieve
+      description: Return whether the authenticated user has teacher and/or student
+        profiles.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/accounts/register/:
+    post:
+      operationId: api_accounts_register_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationWithProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationWithProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationWithProfile'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegistrationWithProfile'
+          description: ''
+  /api/accounts/supabase/chats/:
+    get:
+      operationId: api_accounts_supabase_chats_retrieve
+      description: Get all chats for the authenticated user with participant details
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/accounts/supabase/messages/{chat_id}/:
+    get:
+      operationId: api_accounts_supabase_messages_retrieve
+      parameters:
+      - in: path
+        name: chat_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/accounts/teacher/students/:
+    get:
+      operationId: api_accounts_teacher_students_list
+      description: |-
+        GET endpoint for teachers to retrieve all student details
+        Supports filtering, searching, and pagination
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStudentDetailList'
+          description: ''
+  /api/accounts/teacher/students-statistics/:
+    get:
+      operationId: api_accounts_teacher_students_statistics_retrieve
+      description: Get comprehensive student statistics
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/accounts/teacher/students/{student_id}/:
+    get:
+      operationId: api_accounts_teacher_students_retrieve
+      description: GET endpoint for teachers to retrieve a specific student's details
+        by ID
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDetail'
+          description: ''
+  /api/accounts/teachers/:
+    get:
+      operationId: api_accounts_teachers_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeacherProfile'
+          description: ''
+    post:
+      operationId: api_accounts_teachers_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherProfileCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherProfileCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherProfileCreate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherProfileCreate'
+          description: ''
+  /api/accounts/teachers/{id}/:
+    get:
+      operationId: api_accounts_teachers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher profile.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherProfile'
+          description: ''
+    put:
+      operationId: api_accounts_teachers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher profile.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherProfileCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherProfileCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherProfileCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherProfileCreate'
+          description: ''
+    patch:
+      operationId: api_accounts_teachers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher profile.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherProfileCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherProfileCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherProfileCreate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherProfileCreate'
+          description: ''
+    delete:
+      operationId: api_accounts_teachers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher profile.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/accounts/teachers/my-profile/:
+    get:
+      operationId: api_accounts_teachers_my_profile_retrieve
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherProfile'
+          description: ''
+    patch:
+      operationId: api_accounts_teachers_my_profile_partial_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherProfile'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherProfile'
+          description: ''
+  /api/accounts/voice-conversations/:
+    get:
+      operationId: api_accounts_voice_conversations_list
+      description: ViewSet for managing OpenAI speech-to-speech voice conversations
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+    post:
+      operationId: api_accounts_voice_conversations_create
+      description: ViewSet for managing OpenAI speech-to-speech voice conversations
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceConversationCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VoiceConversationCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoiceConversationCreate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversationCreate'
+          description: ''
+  /api/accounts/voice-conversations/{id}/:
+    get:
+      operationId: api_accounts_voice_conversations_retrieve
+      description: ViewSet for managing OpenAI speech-to-speech voice conversations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this voice conversation.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+    put:
+      operationId: api_accounts_voice_conversations_update
+      description: ViewSet for managing OpenAI speech-to-speech voice conversations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this voice conversation.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceConversation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VoiceConversation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoiceConversation'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+    patch:
+      operationId: api_accounts_voice_conversations_partial_update
+      description: ViewSet for managing OpenAI speech-to-speech voice conversations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this voice conversation.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedVoiceConversation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedVoiceConversation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedVoiceConversation'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+    delete:
+      operationId: api_accounts_voice_conversations_destroy
+      description: ViewSet for managing OpenAI speech-to-speech voice conversations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this voice conversation.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/accounts/voice-conversations/{id}/add_feedback/:
+    patch:
+      operationId: api_accounts_voice_conversations_add_feedback_partial_update
+      description: Add or update AI feedback for a conversation
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this voice conversation.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedVoiceConversation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedVoiceConversation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedVoiceConversation'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+  /api/accounts/voice-conversations/by-language/{language}/:
+    get:
+      operationId: api_accounts_voice_conversations_by_language_retrieve
+      description: Get conversations filtered by target language
+      parameters:
+      - in: path
+        name: language
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+  /api/accounts/voice-conversations/by-type/{conv_type}/:
+    get:
+      operationId: api_accounts_voice_conversations_by_type_retrieve
+      description: Get conversations filtered by conversation type
+      parameters:
+      - in: path
+        name: conv_type
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+  /api/accounts/voice-conversations/summary/:
+    get:
+      operationId: api_accounts_voice_conversations_summary_retrieve
+      description: Get summary statistics of user's voice conversations
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceConversation'
+          description: ''
+  /api/astrology/birth-profile/:
+    get:
+      operationId: api_astrology_birth_profile_retrieve
+      description: |-
+        GET  — Retrieve the authenticated user's birth profile
+        POST — Create (fails if already exists; use PUT to update)
+        PUT  — Update existing birth profile (also clears cached charts so they
+               are recalculated on the next natal-chart request)
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_astrology_birth_profile_create
+      description: |-
+        GET  — Retrieve the authenticated user's birth profile
+        POST — Create (fails if already exists; use PUT to update)
+        PUT  — Update existing birth profile (also clears cached charts so they
+               are recalculated on the next natal-chart request)
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+    put:
+      operationId: api_astrology_birth_profile_update
+      description: |-
+        GET  — Retrieve the authenticated user's birth profile
+        POST — Create (fails if already exists; use PUT to update)
+        PUT  — Update existing birth profile (also clears cached charts so they
+               are recalculated on the next natal-chart request)
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/astrology/natal-chart/:
+    get:
+      operationId: api_astrology_natal_chart_retrieve
+      description: |-
+        GET — Returns combined D1 + D9 chart data plus full planet details.
+
+        Data is computed once (on first request) and cached permanently in
+        NatalChartCache. Subsequent calls are DB-only (no external API hit).
+        timezone_str is backfilled from the API response on first call.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/astrology/transits/:
+    get:
+      operationId: api_astrology_transits_retrieve
+      description: |-
+        GET — Returns today's planetary transits relative to the natal Moon.
+
+        Cache invalidation strategy (no cron):
+          - On each request, compare cached_for_date with today in the user's
+            local timezone (stored in BirthProfile.timezone_str).
+          - If the dates differ → call the API and refresh the cache.
+          - If timezone_str is not yet set (natal chart not fetched) → fall back to UTC.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/auth/google/callback/:
+    post:
+      operationId: api_auth_google_callback_create
+      description: |-
+        Handle Google OAuth callback and create/login user
+
+        POST /api/auth/google/callback/
+        {
+            "access_token": "supabase_access_token",
+            "refresh_token": "supabase_refresh_token",
+            "role": "STUDENT" | "TEACHER"  # optional - only needed for new user registration
+        }
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/google/complete-profile/:
+    post:
+      operationId: api_auth_google_complete_profile_create
+      description: |-
+        Complete profile setup for OAuth users - matches RegisterWithProfileView schema
+
+        POST /api/auth/google/complete-profile/
+        {
+            // Common fields
+            "phone_number": "+1234567890",
+            "gender": "Male",
+            "date_of_birth": "1990-01-01",
+
+            // UserProfile (accounts model) fields
+            "bio": "I love languages",
+            "city": "New York",
+            "country": "USA",
+            "postal_code": "10001",
+            "native_language": "English",
+            "learning_language": "Spanish",
+
+            // Teacher-specific fields (if role is TEACHER)
+            "qualification": "TESOL Certified",
+            "experience_years": 5,
+            "certificates": ["cert1.pdf", "cert2.pdf"],
+            "about": "Experienced teacher with 5 years...",
+            "teaching_experience": 5,
+            "teaching_languages": ["English", "Spanish"],
+            "hourly_rate": 30.00,
+
+            // Student-specific fields (if role is STUDENT)
+            "learning_goals": "Improve conversational skills",
+            "proficiency_level": "INTERMEDIATE",
+            "target_languages": ["Spanish", "French"]
+        }
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/auth/google/initiate/:
+    post:
+      operationId: api_auth_google_initiate_create
+      description: |-
+        Initiate Google OAuth flow with optional role selection
+
+        POST /api/auth/google/initiate/
+        {
+            "role": "STUDENT" | "TEACHER",  # optional - required for new users, optional for existing users
+            "redirect_url": "https://yourfrontend.com/auth/callback"  # optional
+        }
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/google/status/:
+    get:
+      operationId: api_auth_google_status_retrieve
+      description: |-
+        Get current user's OAuth status and profile completion status
+
+        GET /api/auth/google/status/
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/blogs/categories/:
+    get:
+      operationId: api_blogs_categories_list
+      description: |-
+        List and create blog categories
+        GET: List all categories (public)
+        POST: Create category (teachers only)
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlogCategory'
+          description: ''
+    post:
+      operationId: api_blogs_categories_create
+      description: |-
+        List and create blog categories
+        GET: List all categories (public)
+        POST: Create category (teachers only)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlogCategory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BlogCategory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BlogCategory'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogCategory'
+          description: ''
+  /api/blogs/teacher/blogs/:
+    get:
+      operationId: api_blogs_teacher_blogs_list
+      description: |-
+        List and create blogs for authenticated teachers
+        GET: List teacher's blogs with filtering and search
+        POST: Create new blog (supports both JSON and thumbnail file upload)
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBlogListList'
+          description: ''
+    post:
+      operationId: api_blogs_teacher_blogs_create
+      description: |-
+        List and create blogs for authenticated teachers
+        GET: List teacher's blogs with filtering and search
+        POST: Create new blog (supports both JSON and thumbnail file upload)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlogCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BlogCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BlogCreateUpdate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogCreateUpdate'
+          description: ''
+  /api/blogs/teacher/blogs/{blog_id}/duplicate/:
+    post:
+      operationId: api_blogs_teacher_blogs_duplicate_create
+      description: Create a duplicate of an existing blog
+      parameters:
+      - in: path
+        name: blog_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/blogs/teacher/blogs/{blog_id}/update-thumbnail/:
+    patch:
+      operationId: api_blogs_teacher_blogs_update_thumbnail_partial_update
+      description: Update blog thumbnail and delete previous one from Supabase
+      parameters:
+      - in: path
+        name: blog_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/blogs/teacher/blogs/{id}/:
+    get:
+      operationId: api_blogs_teacher_blogs_retrieve
+      description: |-
+        Retrieve, update, and delete specific blog for authenticated teacher
+        GET: Get blog details
+        PUT/PATCH: Update blog (supports both JSON and thumbnail file upload)
+        DELETE: Delete blog
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogDetail'
+          description: ''
+    put:
+      operationId: api_blogs_teacher_blogs_update
+      description: |-
+        Retrieve, update, and delete specific blog for authenticated teacher
+        GET: Get blog details
+        PUT/PATCH: Update blog (supports both JSON and thumbnail file upload)
+        DELETE: Delete blog
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlogCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BlogCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BlogCreateUpdate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogCreateUpdate'
+          description: ''
+    patch:
+      operationId: api_blogs_teacher_blogs_partial_update
+      description: |-
+        Retrieve, update, and delete specific blog for authenticated teacher
+        GET: Get blog details
+        PUT/PATCH: Update blog (supports both JSON and thumbnail file upload)
+        DELETE: Delete blog
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBlogCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBlogCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBlogCreateUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogCreateUpdate'
+          description: ''
+    delete:
+      operationId: api_blogs_teacher_blogs_destroy
+      description: |-
+        Retrieve, update, and delete specific blog for authenticated teacher
+        GET: Get blog details
+        PUT/PATCH: Update blog (supports both JSON and thumbnail file upload)
+        DELETE: Delete blog
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/blogs/teacher/blogs/bulk-update/:
+    post:
+      operationId: api_blogs_teacher_blogs_bulk_update_create
+      description: Update status of multiple blogs at once
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/blogs/teacher/blogs/stats/:
+    get:
+      operationId: api_blogs_teacher_blogs_stats_retrieve
+      description: Get blog statistics for the authenticated teacher
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/blogs/teacher/blogs/upload-thumbnail/:
+    post:
+      operationId: api_blogs_teacher_blogs_upload_thumbnail_create
+      description: Upload a thumbnail image and return the public URL
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/blogs/view/:
+    get:
+      operationId: api_blogs_view_list
+      description: Public endpoint to list published blogs (no authentication required)
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBlogListList'
+          description: ''
+  /api/blogs/view/{slug}/:
+    get:
+      operationId: api_blogs_view_retrieve
+      description: |-
+        Public endpoint to view a specific published blog
+        Also tracks views for analytics
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogDetail'
+          description: ''
+  /api/bookings/availability/:
+    get:
+      operationId: api_bookings_availability_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+    post:
+      operationId: api_bookings_availability_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/{id}/:
+    get:
+      operationId: api_bookings_availability_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher availability.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+    put:
+      operationId: api_bookings_availability_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher availability.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+    patch:
+      operationId: api_bookings_availability_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher availability.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+    delete:
+      operationId: api_bookings_availability_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this teacher availability.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/availability/available_slots/:
+    get:
+      operationId: api_bookings_availability_available_slots_retrieve
+      description: Get available time slots for a teacher on a specific date
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/bulk/:
+    post:
+      operationId: api_bookings_availability_bulk_create
+      description: Create multiple availability slots at once for the week
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/bulk/delete/:
+    delete:
+      operationId: api_bookings_availability_bulk_delete_destroy
+      description: Delete multiple availability slots at once
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/availability/bulk/update/:
+    put:
+      operationId: api_bookings_availability_bulk_update_update
+      description: Update multiple availability slots at once
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+    patch:
+      operationId: api_bookings_availability_bulk_update_partial_update
+      description: Update multiple availability slots at once
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/bulk_create/:
+    post:
+      operationId: api_bookings_availability_bulk_create_create
+      description: Create multiple availability slots at once for the week
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/bulk_delete/:
+    delete:
+      operationId: api_bookings_availability_bulk_delete_destroy_2
+      description: Delete multiple availability slots at once
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/availability/bulk_update/:
+    put:
+      operationId: api_bookings_availability_bulk_update_update_2
+      description: Update multiple availability slots at once
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+    patch:
+      operationId: api_bookings_availability_bulk_update_partial_update_2
+      description: Update multiple availability slots at once
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherAvailability'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/replace/:
+    put:
+      operationId: api_bookings_availability_replace_update
+      description: Replace entire weekly schedule for teacher
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/replace_weekly_schedule/:
+    put:
+      operationId: api_bookings_availability_replace_weekly_schedule_update
+      description: Replace entire weekly schedule for teacher
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailability'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/teacher_schedule/:
+    get:
+      operationId: api_bookings_availability_teacher_schedule_retrieve
+      description: Get teacher's full schedule for a date range
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/weekly/:
+    get:
+      operationId: api_bookings_availability_weekly_retrieve
+      description: Get teacher's weekly availability schedule
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/availability/weekly_availability/:
+    get:
+      operationId: api_bookings_availability_weekly_availability_retrieve
+      description: Get teacher's weekly availability schedule
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/bookings/:
+    get:
+      operationId: api_bookings_bookings_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionBooking'
+          description: ''
+    post:
+      operationId: api_bookings_bookings_create
+      description: Create a booking request (students only)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/:
+    get:
+      operationId: api_bookings_bookings_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this session booking.
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+    put:
+      operationId: api_bookings_bookings_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this session booking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+    patch:
+      operationId: api_bookings_bookings_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this session booking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionBooking'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+    delete:
+      operationId: api_bookings_bookings_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this session booking.
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/bookings/{id}/cancel/:
+    post:
+      operationId: api_bookings_bookings_cancel_create
+      description: Cancel a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/complete/:
+    post:
+      operationId: api_bookings_bookings_complete_create
+      description: Mark a booking as completed - can be done by both student and teacher
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/complete_manually/:
+    post:
+      operationId: api_bookings_bookings_complete_manually_create
+      description: Manually mark a booking as completed (backup method)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/confirm/:
+    post:
+      operationId: api_bookings_bookings_confirm_create
+      description: Confirm a booking and create Zoom meeting (teachers only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/create_meeting/:
+    post:
+      operationId: api_bookings_bookings_create_meeting_create
+      description: Create a Zoom meeting for an existing booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/meeting_info/:
+    get:
+      operationId: api_bookings_bookings_meeting_info_retrieve
+      description: Get Zoom meeting information for a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/request_reschedule/:
+    post:
+      operationId: api_bookings_bookings_request_reschedule_create
+      description: Request a reschedule that requires confirmation from the other
+        party
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this session booking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/reschedule/:
+    post:
+      operationId: api_bookings_bookings_reschedule_create
+      description: Reschedule a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/{id}/respond_reschedule/:
+    post:
+      operationId: api_bookings_bookings_respond_reschedule_create
+      description: Respond to a reschedule request (confirm or decline)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this session booking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionBooking'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/my/:
+    get:
+      operationId: api_bookings_bookings_my_retrieve
+      description: Get current user's bookings with filtering options
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/bookings/my_bookings/:
+    get:
+      operationId: api_bookings_bookings_my_bookings_retrieve
+      description: Get current user's bookings with filtering options
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBooking'
+          description: ''
+  /api/bookings/feedback/:
+    get:
+      operationId: api_bookings_feedback_list
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+    post:
+      operationId: api_bookings_feedback_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionFeedback'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionFeedback'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionFeedback'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+  /api/bookings/feedback/{id}/:
+    get:
+      operationId: api_bookings_feedback_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+    put:
+      operationId: api_bookings_feedback_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionFeedback'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionFeedback'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionFeedback'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+    patch:
+      operationId: api_bookings_feedback_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionFeedback'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionFeedback'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionFeedback'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+    delete:
+      operationId: api_bookings_feedback_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/feedback/{id}/update_feedback/:
+    patch:
+      operationId: api_bookings_feedback_update_feedback_partial_update
+      description: Update existing feedback (students only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionFeedback'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionFeedback'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionFeedback'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+  /api/bookings/feedback/my_feedback/:
+    get:
+      operationId: api_bookings_feedback_my_feedback_retrieve
+      description: Get current user's feedback
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+  /api/bookings/feedback/session_feedback/:
+    get:
+      operationId: api_bookings_feedback_session_feedback_retrieve
+      description: Get feedback for a specific session
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFeedback'
+          description: ''
+  /api/bookings/schedule/:
+    get:
+      operationId: api_bookings_schedule_retrieve
+      description: Get teacher's full schedule for a date range
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/bookings/slots/available/:
+    get:
+      operationId: api_bookings_slots_available_retrieve
+      description: Get available time slots for a teacher on a specific date
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/campaigns/teacher/campaigns/:
+    get:
+      operationId: api_campaigns_teacher_campaigns_list
+      description: |-
+        List and create campaigns for authenticated teachers
+        GET: List teacher's campaigns with filtering
+        POST: Create new campaign
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCampaignListList'
+          description: ''
+    post:
+      operationId: api_campaigns_teacher_campaigns_create
+      description: |-
+        List and create campaigns for authenticated teachers
+        GET: List teacher's campaigns with filtering
+        POST: Create new campaign
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateUpdate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignCreateUpdate'
+          description: ''
+  /api/campaigns/teacher/campaigns/{campaign_id}/preview/:
+    get:
+      operationId: api_campaigns_teacher_campaigns_preview_retrieve
+      description: |-
+        Preview how the campaign email will look
+        GET: Get formatted email preview
+      parameters:
+      - in: path
+        name: campaign_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/campaigns/teacher/campaigns/{campaign_id}/send/:
+    post:
+      operationId: api_campaigns_teacher_campaigns_send_create
+      description: Send campaign to all students
+      parameters:
+      - in: path
+        name: campaign_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/campaigns/teacher/campaigns/{campaign_id}/send-to-students/:
+    post:
+      operationId: api_campaigns_teacher_campaigns_send_to_students_create
+      description: Send campaign to specific students
+      parameters:
+      - in: path
+        name: campaign_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/campaigns/teacher/campaigns/{id}/:
+    get:
+      operationId: api_campaigns_teacher_campaigns_retrieve
+      description: |-
+        Retrieve, update, and delete campaigns for authenticated teachers
+        GET: Get campaign details with recipients
+        PUT/PATCH: Update campaign (only if status is draft)
+        DELETE: Delete campaign
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignDetail'
+          description: ''
+    put:
+      operationId: api_campaigns_teacher_campaigns_update
+      description: |-
+        Retrieve, update, and delete campaigns for authenticated teachers
+        GET: Get campaign details with recipients
+        PUT/PATCH: Update campaign (only if status is draft)
+        DELETE: Delete campaign
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateUpdate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignCreateUpdate'
+          description: ''
+    patch:
+      operationId: api_campaigns_teacher_campaigns_partial_update
+      description: |-
+        Retrieve, update, and delete campaigns for authenticated teachers
+        GET: Get campaign details with recipients
+        PUT/PATCH: Update campaign (only if status is draft)
+        DELETE: Delete campaign
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignCreateUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignCreateUpdate'
+          description: ''
+    delete:
+      operationId: api_campaigns_teacher_campaigns_destroy
+      description: |-
+        Retrieve, update, and delete campaigns for authenticated teachers
+        GET: Get campaign details with recipients
+        PUT/PATCH: Update campaign (only if status is draft)
+        DELETE: Delete campaign
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/campaigns/teacher/campaigns/stats/:
+    get:
+      operationId: api_campaigns_teacher_campaigns_stats_retrieve
+      description: Get campaign statistics
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/campaigns/teacher/students/:
+    get:
+      operationId: api_campaigns_teacher_students_retrieve
+      description: |-
+        Get list of all students available for campaign targeting
+        GET: Get all students with basic info
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/files/upload/:
+    post:
+      operationId: api_files_upload_create
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/login/:
+    post:
+      operationId: api_login_create
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/password-reset/:
+    post:
+      operationId: api_password_reset_create
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/password-reset/confirm/:
+    post:
+      operationId: api_password_reset_confirm_create
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/payments/add-payment-method/:
+    post:
+      operationId: api_payments_add_payment_method_create
+      description: |-
+        Add a new payment method using pre-built Stripe test payment methods
+        This approach avoids the raw card data restriction entirely
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/admin/analytics/:
+    get:
+      operationId: api_payments_admin_analytics_retrieve
+      description: Get payment analytics for different time periods and user segments
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/admin/refund/manage/:
+    get:
+      operationId: api_payments_admin_refund_manage_retrieve
+      description: Get all pending refund requests for admin review
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_payments_admin_refund_manage_create
+      description: Admin approve or reject refund request
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/admin/report/:
+    get:
+      operationId: api_payments_admin_report_retrieve
+      description: Generate comprehensive financial report for platform admins
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/admin/summary/{user_id}/:
+    get:
+      operationId: api_payments_admin_summary_retrieve
+      description: Get financial summary for a specific user (earnings as teacher,
+        spending as student)
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/admin/tracking/:
+    get:
+      operationId: api_payments_admin_tracking_retrieve
+      description: Comprehensive admin view for tracking all payments, platform fees,
+        and financial metrics
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/confirm-payment/:
+    post:
+      operationId: api_payments_confirm_payment_create
+      description: Confirm a PaymentIntent
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/create-payment-intent/:
+    post:
+      operationId: api_payments_create_payment_intent_create
+      description: Create a Stripe PaymentIntent for session booking
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/dashboard/:
+    get:
+      operationId: api_payments_dashboard_retrieve
+      description: Payment analytics dashboard for admins
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/history/:
+    get:
+      operationId: api_payments_history_list
+      description: |-
+        Get complete payment history for a user (student or teacher)
+        Includes filtering, sorting, and summary statistics
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPaymentList'
+          description: ''
+  /api/payments/payment-methods/:
+    get:
+      operationId: api_payments_payment_methods_list
+      description: List user's saved payment methods
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedPaymentMethod'
+          description: ''
+  /api/payments/payment-methods/{payment_method_id}/delete/:
+    delete:
+      operationId: api_payments_payment_methods_delete_destroy
+      description: Delete a saved payment method
+      parameters:
+      - in: path
+        name: payment_method_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/payments/payment-methods/save/:
+    post:
+      operationId: api_payments_payment_methods_save_create
+      description: Save a payment method for future use
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/payments/:
+    get:
+      operationId: api_payments_payments_list
+      description: List user's payments
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/payments/payments/{id}/:
+    get:
+      operationId: api_payments_payments_retrieve
+      description: Get payment details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/payments/process-booking-payment/:
+    post:
+      operationId: api_payments_process_booking_payment_create
+      description: |-
+        Process payment for an existing booking session using card data
+        This handles payment for bookings created separately
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/process-direct-payment/:
+    post:
+      operationId: api_payments_process_direct_payment_create
+      description: |-
+        Process payment directly using card data - Complete backend payment system
+        This view handles booking creation and payment processing in a single step
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/process-payment/:
+    post:
+      operationId: api_payments_process_payment_create
+      description: |-
+        Process payment for a gig using saved payment method or new card
+        Complete backend payment processing - no frontend required
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/refund-requests/:
+    get:
+      operationId: api_payments_refund_requests_list
+      description: List and create refund requests
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RefundRequest'
+          description: ''
+    post:
+      operationId: api_payments_refund_requests_create
+      description: List and create refund requests
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRefundRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateRefundRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateRefundRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRefundRequest'
+          description: ''
+  /api/payments/refund-requests/{id}/:
+    get:
+      operationId: api_payments_refund_requests_retrieve
+      description: Get and update refund request details (admin only for updates)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundRequest'
+          description: ''
+    put:
+      operationId: api_payments_refund_requests_update
+      description: Get and update refund request details (admin only for updates)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundRequest'
+          description: ''
+    patch:
+      operationId: api_payments_refund_requests_partial_update
+      description: Get and update refund request details (admin only for updates)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRefundRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRefundRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRefundRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundRequest'
+          description: ''
+  /api/payments/refund-requests/{refund_request_id}/process/:
+    post:
+      operationId: api_payments_refund_requests_process_create
+      description: Process an approved refund (admin only)
+      parameters:
+      - in: path
+        name: refund_request_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/refund/request/:
+    get:
+      operationId: api_payments_refund_request_retrieve
+      description: Get student's refund requests
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_payments_refund_request_create
+      description: |-
+        Create a refund request
+        - Automatic refund if booking is not completed
+        - Manual review if booking is completed
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/refund/status/{payment_id}/:
+    get:
+      operationId: api_payments_refund_status_retrieve
+      description: Get refund status for a payment
+      parameters:
+      - in: path
+        name: payment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/payments/summary/:
+    get:
+      operationId: api_payments_summary_retrieve
+      description: Get financial summary for a specific user (earnings as teacher,
+        spending as student)
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/register/:
+    post:
+      operationId: api_register_create
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/resend-verification/:
+    post:
+      operationId: api_resend_verification_create
+      description: Resend email verification link for unverified users
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/token/refresh/:
+    post:
+      operationId: api_token_refresh_create
+      tags:
+      - api
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/user-files/:
+    get:
+      operationId: api_user_files_retrieve
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/user-files/{file_name}/:
+    delete:
+      operationId: api_user_files_destroy
+      parameters:
+      - in: path
+        name: file_name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/user/profile/:
+    get:
+      operationId: api_user_profile_retrieve
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: api_user_profile_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: api_user_profile_partial_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/user/profile-picture/:
+    post:
+      operationId: api_user_profile_picture_create
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/user/profile-picture-url/:
+    get:
+      operationId: api_user_profile_picture_url_retrieve
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    BlankEnum:
+      enum:
+      - ''
+    BlogCategory:
+      type: object
+      description: Serializer for blog categories
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    BlogCreateUpdate:
+      type: object
+      description: Serializer for creating and updating blogs
+      properties:
+        title:
+          type: string
+          description: Blog title
+          maxLength: 200
+        content:
+          type: string
+          description: Main blog content
+        thumbnail:
+          type: string
+          nullable: true
+          description: URL or path to thumbnail image
+          maxLength: 500
+        category:
+          type: integer
+          nullable: true
+        tags:
+          description: List of tags for the blog
+        status:
+          $ref: '#/components/schemas/StatusDaeEnum'
+        meta_description:
+          type: string
+          description: SEO meta description
+          maxLength: 160
+      required:
+      - content
+      - title
+    BlogDetail:
+      type: object
+      description: Serializer for detailed blog view with full content
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          description: Blog title
+          maxLength: 200
+        slug:
+          type: string
+          readOnly: true
+          description: URL-friendly version of title
+          pattern: ^[-a-zA-Z0-9_]+$
+        content:
+          type: string
+          description: Main blog content
+        thumbnail:
+          type: string
+          nullable: true
+          description: URL or path to thumbnail image
+          maxLength: 500
+        category:
+          type: integer
+          nullable: true
+        category_name:
+          type: string
+          readOnly: true
+        tags:
+          description: List of tags for the blog
+        tag_list:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/StatusDaeEnum'
+        author:
+          type: integer
+          readOnly: true
+        author_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the blog was published
+        meta_description:
+          type: string
+          description: SEO meta description
+          maxLength: 160
+        read_time:
+          type: integer
+          readOnly: true
+          description: Estimated read time in minutes
+        view_count:
+          type: integer
+          readOnly: true
+          description: Number of views
+        is_published:
+          type: string
+          readOnly: true
+      required:
+      - author
+      - author_name
+      - category_name
+      - content
+      - created_at
+      - id
+      - is_published
+      - published_at
+      - read_time
+      - slug
+      - tag_list
+      - title
+      - updated_at
+      - view_count
+    BlogList:
+      type: object
+      description: Serializer for listing blogs (minimal fields)
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          description: Blog title
+          maxLength: 200
+        slug:
+          type: string
+          readOnly: true
+          description: URL-friendly version of title
+          pattern: ^[-a-zA-Z0-9_]+$
+        thumbnail:
+          type: string
+          nullable: true
+          description: URL or path to thumbnail image
+          maxLength: 500
+        category:
+          type: integer
+          nullable: true
+        category_name:
+          type: string
+          readOnly: true
+        tags:
+          description: List of tags for the blog
+        tag_list:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/StatusDaeEnum'
+        author_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the blog was published
+        meta_description:
+          type: string
+          description: SEO meta description
+          maxLength: 160
+        read_time:
+          type: integer
+          readOnly: true
+          description: Estimated read time in minutes
+        view_count:
+          type: integer
+          readOnly: true
+          description: Number of views
+        is_published:
+          type: string
+          readOnly: true
+      required:
+      - author_name
+      - category_name
+      - created_at
+      - id
+      - is_published
+      - published_at
+      - read_time
+      - slug
+      - tag_list
+      - title
+      - updated_at
+      - view_count
+    CampaignCreateUpdate:
+      type: object
+      description: Serializer for creating and updating campaigns
+      properties:
+        title:
+          type: string
+          description: Campaign title for reference
+          maxLength: 200
+        subject:
+          type: string
+          description: Email subject line
+          maxLength: 255
+        content:
+          type: string
+          description: Full custom email message content
+        from_name:
+          type: string
+          description: Sender name (defaults to teacher's name)
+          maxLength: 100
+        from_email:
+          type: string
+          format: email
+          description: Sender email (defaults to teacher's email)
+          maxLength: 254
+        notes:
+          type: string
+          description: Internal notes about this campaign
+      required:
+      - content
+      - subject
+      - title
+    CampaignDetail:
+      type: object
+      description: Serializer for detailed campaign view
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          description: Campaign title for reference
+          maxLength: 200
+        subject:
+          type: string
+          description: Email subject line
+          maxLength: 255
+        content:
+          type: string
+          description: Full custom email message content
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusCffEnum'
+          description: |-
+            Current status of the campaign
+
+            * `draft` - Draft
+            * `sending` - Sending
+            * `sent` - Sent
+            * `failed` - Failed
+        total_recipients:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Total number of students this campaign was sent to
+        from_name:
+          type: string
+          description: Sender name (defaults to teacher's name)
+          maxLength: 100
+        from_email:
+          type: string
+          format: email
+          description: Sender email (defaults to teacher's email)
+          maxLength: 254
+        teacher_name:
+          type: string
+          readOnly: true
+        teacher_email:
+          type: string
+          format: email
+          readOnly: true
+        recipients_count:
+          type: string
+          readOnly: true
+        recipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampaignRecipient'
+          readOnly: true
+        notes:
+          type: string
+          description: Internal notes about this campaign
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the campaign was actually sent
+      required:
+      - content
+      - created_at
+      - id
+      - recipients
+      - recipients_count
+      - sent_at
+      - subject
+      - teacher_email
+      - teacher_name
+      - title
+      - updated_at
+    CampaignList:
+      type: object
+      description: Serializer for listing campaigns
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          description: Campaign title for reference
+          maxLength: 200
+        subject:
+          type: string
+          description: Email subject line
+          maxLength: 255
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusCffEnum'
+          description: |-
+            Current status of the campaign
+
+            * `draft` - Draft
+            * `sending` - Sending
+            * `sent` - Sent
+            * `failed` - Failed
+        total_recipients:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Total number of students this campaign was sent to
+        teacher_name:
+          type: string
+          readOnly: true
+        recipients_count:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the campaign was actually sent
+      required:
+      - created_at
+      - id
+      - recipients_count
+      - sent_at
+      - subject
+      - teacher_name
+      - title
+    CampaignRecipient:
+      type: object
+      description: Serializer for campaign recipients
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student_email:
+          type: string
+          format: email
+          description: Student's email address
+          maxLength: 254
+        student_name:
+          type: string
+          description: Student's full name
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/CampaignRecipientStatusEnum'
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        delivered_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        error_message:
+          type: string
+          description: Error message if delivery failed
+      required:
+      - delivered_at
+      - id
+      - sent_at
+      - student_email
+      - student_name
+    CampaignRecipientStatusEnum:
+      enum:
+      - pending
+      - sent
+      - delivered
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `sent` - Sent
+        * `delivered` - Delivered
+        * `failed` - Failed
+    CategoryEnum:
+      enum:
+      - language
+      - astrology
+      - general
+      type: string
+      description: |-
+        * `language` - Language Consultation
+        * `astrology` - Astrology Reading
+        * `general` - General Consultancy
+    Chat:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        participant1:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        participant2:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - messages
+      - participant1
+      - participant2
+    ConversationTypeEnum:
+      enum:
+      - language
+      - astrological
+      type: string
+      description: |-
+        * `language` - Language Consultation
+        * `astrological` - Astrological Consultation
+    CreateRefundRequest:
+      type: object
+      description: Serializer for creating refund requests
+      properties:
+        payment_id:
+          type: integer
+        reason:
+          type: string
+          maxLength: 1000
+        requested_amount_dollars:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - payment_id
+      - reason
+      - requested_amount_dollars
+    DayOfWeekEnum:
+      enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      type: integer
+      description: |-
+        * `0` - Monday
+        * `1` - Tuesday
+        * `2` - Wednesday
+        * `3` - Thursday
+        * `4` - Friday
+        * `5` - Saturday
+        * `6` - Sunday
+    Gig:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        teacher:
+          type: integer
+          readOnly: true
+        teacher_details:
+          allOf:
+          - $ref: '#/components/schemas/GigTeacher'
+          readOnly: true
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        service_type:
+          type: string
+          maxLength: 100
+        service_title:
+          type: string
+          maxLength: 200
+        short_description:
+          type: string
+          maxLength: 300
+        full_description:
+          type: string
+        price_per_session:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        session_duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Duration in minutes
+        tags: {}
+        what_you_provide_in_session:
+          type: string
+        status:
+          $ref: '#/components/schemas/GigStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - category
+      - created_at
+      - full_description
+      - id
+      - price_per_session
+      - service_title
+      - service_type
+      - session_duration
+      - short_description
+      - teacher
+      - teacher_details
+      - updated_at
+      - what_you_provide_in_session
+    GigStatusEnum:
+      enum:
+      - active
+      - inactive
+      - draft
+      - suspended
+      type: string
+      description: |-
+        * `active` - Active
+        * `inactive` - Inactive
+        * `draft` - Draft
+        * `suspended` - Suspended
+    GigTeacher:
+      type: object
+      description: Serializer for teacher details in gig responses
+      properties:
+        id:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        profile_picture:
+          type: string
+          readOnly: true
+        qualification:
+          type: string
+          readOnly: true
+        experience_years:
+          type: integer
+          readOnly: true
+        about:
+          type: string
+          readOnly: true
+        bio:
+          type: string
+          readOnly: true
+        city:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        native_language:
+          type: string
+          readOnly: true
+      required:
+      - about
+      - bio
+      - city
+      - country
+      - email
+      - experience_years
+      - first_name
+      - full_name
+      - id
+      - last_name
+      - native_language
+      - profile_picture
+      - qualification
+    Language:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 10
+        is_active:
+          type: boolean
+      required:
+      - code
+      - id
+      - name
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        chat_id:
+          type: string
+          format: uuid
+        sender_id:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - chat_id
+      - content
+      - id
+      - sender_id
+      - timestamp
+    NullEnum:
+      enum:
+      - null
+    PaginatedBlogListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlogList'
+    PaginatedCampaignListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampaignList'
+    PaginatedPaymentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+    PaginatedStudentDetailList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentDetail'
+    PatchedBlogCreateUpdate:
+      type: object
+      description: Serializer for creating and updating blogs
+      properties:
+        title:
+          type: string
+          description: Blog title
+          maxLength: 200
+        content:
+          type: string
+          description: Main blog content
+        thumbnail:
+          type: string
+          nullable: true
+          description: URL or path to thumbnail image
+          maxLength: 500
+        category:
+          type: integer
+          nullable: true
+        tags:
+          description: List of tags for the blog
+        status:
+          $ref: '#/components/schemas/StatusDaeEnum'
+        meta_description:
+          type: string
+          description: SEO meta description
+          maxLength: 160
+    PatchedCampaignCreateUpdate:
+      type: object
+      description: Serializer for creating and updating campaigns
+      properties:
+        title:
+          type: string
+          description: Campaign title for reference
+          maxLength: 200
+        subject:
+          type: string
+          description: Email subject line
+          maxLength: 255
+        content:
+          type: string
+          description: Full custom email message content
+        from_name:
+          type: string
+          description: Sender name (defaults to teacher's name)
+          maxLength: 100
+        from_email:
+          type: string
+          format: email
+          description: Sender email (defaults to teacher's email)
+          maxLength: 254
+        notes:
+          type: string
+          description: Internal notes about this campaign
+    PatchedChat:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        participant1:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        participant2:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          readOnly: true
+    PatchedGig:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        teacher:
+          type: integer
+          readOnly: true
+        teacher_details:
+          allOf:
+          - $ref: '#/components/schemas/GigTeacher'
+          readOnly: true
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        service_type:
+          type: string
+          maxLength: 100
+        service_title:
+          type: string
+          maxLength: 200
+        short_description:
+          type: string
+          maxLength: 300
+        full_description:
+          type: string
+        price_per_session:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        session_duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Duration in minutes
+        tags: {}
+        what_you_provide_in_session:
+          type: string
+        status:
+          $ref: '#/components/schemas/GigStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedRefundRequest:
+      type: object
+      description: Serializer for refund requests
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reason:
+          type: string
+          description: Student's reason for refund request
+        requested_amount_cents:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          description: Requested refund amount in cents
+        requested_amount_dollars:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/RefundRequestStatusEnum'
+          readOnly: true
+        admin_notes:
+          type: string
+          readOnly: true
+          description: Admin's review notes
+        refunded_amount_cents:
+          type: integer
+          readOnly: true
+          nullable: true
+        refunded_amount_dollars:
+          type: string
+          readOnly: true
+        payment_details:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        refunded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+    PatchedSessionBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student_name:
+          type: string
+          readOnly: true
+        teacher_name:
+          type: string
+          readOnly: true
+        duration_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        payment_id:
+          type: string
+          readOnly: true
+        payment_details:
+          type: string
+          readOnly: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        scheduled_datetime:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the session is scheduled
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SessionBookingStatusEnum'
+          readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        reschedule_request_status:
+          allOf:
+          - $ref: '#/components/schemas/RescheduleRequestStatusEnum'
+          description: |-
+            Status of reschedule request
+
+            * `NONE` - No Reschedule Request
+            * `PENDING` - Reschedule Pending Confirmation
+            * `CONFIRMED` - Reschedule Confirmed
+            * `DECLINED` - Reschedule Declined
+        reschedule_requested_by:
+          nullable: true
+          description: |-
+            Who requested the reschedule
+
+            * `STUDENT` - Student
+            * `TEACHER` - Teacher
+          oneOf:
+          - $ref: '#/components/schemas/RescheduleRequestedByEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        previous_reschedule_request_status:
+          allOf:
+          - $ref: '#/components/schemas/PreviousRescheduleRequestStatusEnum'
+          description: |-
+            Status of the previous reschedule request (for historical tracking)
+
+            * `NONE` - No Previous Request
+            * `CONFIRMED` - Previous Request Confirmed
+            * `DECLINED` - Previous Request Declined
+        reschedule_request_start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Requested new start time for reschedule
+        reschedule_request_end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Requested new end time for reschedule
+        reschedule_request_reason:
+          type: string
+          description: Reason for the reschedule request
+        zoom_meeting_id:
+          type: string
+          readOnly: true
+          nullable: true
+        zoom_join_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        zoom_start_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 500
+        zoom_password:
+          type: string
+          nullable: true
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        notes:
+          type: string
+        cancellation_reason:
+          type: string
+        student:
+          type: string
+          readOnly: true
+        teacher:
+          type: string
+        gig:
+          type: integer
+          nullable: true
+    PatchedSessionFeedback:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rating:
+          allOf:
+          - $ref: '#/components/schemas/RatingEnum'
+          minimum: -2147483648
+          maximum: 2147483647
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_from_student:
+          type: boolean
+        booking:
+          type: integer
+          readOnly: true
+    PatchedTeacherAvailability:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
+          minimum: -2147483648
+          maximum: 2147483647
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        is_recurring:
+          type: boolean
+        date:
+          type: string
+          format: date
+          nullable: true
+        teacher:
+          type: string
+          readOnly: true
+    PatchedTeacherProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_profile:
+          allOf:
+          - $ref: '#/components/schemas/UserProfile'
+          readOnly: true
+        qualification:
+          type: string
+        experience_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        certificates: {}
+        about:
+          type: string
+    PatchedTeacherProfileCreate:
+      type: object
+      properties:
+        qualification:
+          type: string
+        experience_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        certificates: {}
+        about:
+          type: string
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 150
+        full_name:
+          type: string
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        gender:
+          type: string
+          nullable: true
+          maxLength: 20
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        profile_picture:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedUserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        bio:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        postal_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        status:
+          type: string
+          nullable: true
+          maxLength: 100
+        native_language:
+          type: string
+          nullable: true
+          maxLength: 50
+        learning_language:
+          type: string
+          nullable: true
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedVoiceConversation:
+      type: object
+      description: Serializer for OpenAI speech-to-speech voice conversations
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        user_email:
+          type: string
+          readOnly: true
+        topic:
+          type: string
+          description: Main topic or theme of the conversation
+          maxLength: 200
+        transcription:
+          description: JSON object containing conversation transcription data
+        native_language:
+          type: string
+          description: User's native language
+          maxLength: 50
+        target_language:
+          type: string
+          description: Language being learned/practiced
+          maxLength: 50
+        conversation_type:
+          $ref: '#/components/schemas/ConversationTypeEnum'
+        conversation_type_display:
+          type: string
+          readOnly: true
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Conversation duration in minutes
+        ai_feedback:
+          description: AI-generated feedback and analysis
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    Payment:
+      type: object
+      description: Serializer for Payment model
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatusEnum'
+          readOnly: true
+        amount_cents:
+          type: integer
+          readOnly: true
+          description: Amount in cents (USD)
+        amount_dollars:
+          type: string
+          readOnly: true
+        hourly_rate_cents:
+          type: integer
+          readOnly: true
+          description: Teacher's hourly rate in cents
+        hourly_rate_dollars:
+          type: string
+          readOnly: true
+        session_duration_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Session duration in hours
+        platform_fee_cents:
+          type: integer
+          readOnly: true
+          description: Platform fee in cents
+        currency:
+          type: string
+          maxLength: 3
+        payment_method_type:
+          type: string
+          maxLength: 50
+        student_email:
+          type: string
+          readOnly: true
+        teacher_email:
+          type: string
+          readOnly: true
+        teacher_name:
+          type: string
+          readOnly: true
+        gig_title:
+          type: string
+          readOnly: true
+        session_date:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        paid_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_cents
+      - amount_dollars
+      - created_at
+      - gig_title
+      - hourly_rate_cents
+      - hourly_rate_dollars
+      - id
+      - paid_at
+      - platform_fee_cents
+      - session_date
+      - session_duration_hours
+      - status
+      - student_email
+      - teacher_email
+      - teacher_name
+      - updated_at
+    PaymentStatusEnum:
+      enum:
+      - UNPAID
+      - PENDING
+      - PAID
+      - FAILED
+      - REFUNDED
+      type: string
+      description: |-
+        * `UNPAID` - Unpaid
+        * `PENDING` - Payment Pending
+        * `PAID` - Paid
+        * `FAILED` - Payment Failed
+        * `REFUNDED` - Refunded
+    PreviousRescheduleRequestStatusEnum:
+      enum:
+      - NONE
+      - CONFIRMED
+      - DECLINED
+      type: string
+      description: |-
+        * `NONE` - No Previous Request
+        * `CONFIRMED` - Previous Request Confirmed
+        * `DECLINED` - Previous Request Declined
+    RatingEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      type: integer
+      description: |-
+        * `1` - 1
+        * `2` - 2
+        * `3` - 3
+        * `4` - 4
+        * `5` - 5
+    RefundRequest:
+      type: object
+      description: Serializer for refund requests
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reason:
+          type: string
+          description: Student's reason for refund request
+        requested_amount_cents:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          description: Requested refund amount in cents
+        requested_amount_dollars:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/RefundRequestStatusEnum'
+          readOnly: true
+        admin_notes:
+          type: string
+          readOnly: true
+          description: Admin's review notes
+        refunded_amount_cents:
+          type: integer
+          readOnly: true
+          nullable: true
+        refunded_amount_dollars:
+          type: string
+          readOnly: true
+        payment_details:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        refunded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - admin_notes
+      - created_at
+      - id
+      - payment_details
+      - reason
+      - refunded_amount_cents
+      - refunded_amount_dollars
+      - refunded_at
+      - requested_amount_cents
+      - requested_amount_dollars
+      - reviewed_at
+      - status
+    RefundRequestStatusEnum:
+      enum:
+      - PENDING
+      - APPROVED
+      - REJECTED
+      - PROCESSED
+      type: string
+      description: |-
+        * `PENDING` - Pending Review
+        * `APPROVED` - Approved
+        * `REJECTED` - Rejected
+        * `PROCESSED` - Refund Processed
+    RescheduleRequestStatusEnum:
+      enum:
+      - NONE
+      - PENDING
+      - CONFIRMED
+      - DECLINED
+      type: string
+      description: |-
+        * `NONE` - No Reschedule Request
+        * `PENDING` - Reschedule Pending Confirmation
+        * `CONFIRMED` - Reschedule Confirmed
+        * `DECLINED` - Reschedule Declined
+    RescheduleRequestedByEnum:
+      enum:
+      - STUDENT
+      - TEACHER
+      type: string
+      description: |-
+        * `STUDENT` - Student
+        * `TEACHER` - Teacher
+    RoleEnum:
+      enum:
+      - STUDENT
+      - TEACHER
+      - ADMIN
+      type: string
+      description: |-
+        * `STUDENT` - Student
+        * `TEACHER` - Teacher
+        * `ADMIN` - Administrator
+    SavedPaymentMethod:
+      type: object
+      description: Serializer for saved payment methods
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        stripe_payment_method_id:
+          type: string
+          maxLength: 255
+        card_brand:
+          type: string
+          maxLength: 20
+        card_last_four:
+          type: string
+          maxLength: 4
+        card_exp_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        card_exp_year:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        is_default:
+          type: boolean
+        display_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - card_brand
+      - card_exp_month
+      - card_exp_year
+      - card_last_four
+      - created_at
+      - display_name
+      - id
+      - stripe_payment_method_id
+    SessionBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student_name:
+          type: string
+          readOnly: true
+        teacher_name:
+          type: string
+          readOnly: true
+        duration_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        payment_id:
+          type: string
+          readOnly: true
+        payment_details:
+          type: string
+          readOnly: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        scheduled_datetime:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the session is scheduled
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SessionBookingStatusEnum'
+          readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        reschedule_request_status:
+          allOf:
+          - $ref: '#/components/schemas/RescheduleRequestStatusEnum'
+          description: |-
+            Status of reschedule request
+
+            * `NONE` - No Reschedule Request
+            * `PENDING` - Reschedule Pending Confirmation
+            * `CONFIRMED` - Reschedule Confirmed
+            * `DECLINED` - Reschedule Declined
+        reschedule_requested_by:
+          nullable: true
+          description: |-
+            Who requested the reschedule
+
+            * `STUDENT` - Student
+            * `TEACHER` - Teacher
+          oneOf:
+          - $ref: '#/components/schemas/RescheduleRequestedByEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        previous_reschedule_request_status:
+          allOf:
+          - $ref: '#/components/schemas/PreviousRescheduleRequestStatusEnum'
+          description: |-
+            Status of the previous reschedule request (for historical tracking)
+
+            * `NONE` - No Previous Request
+            * `CONFIRMED` - Previous Request Confirmed
+            * `DECLINED` - Previous Request Declined
+        reschedule_request_start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Requested new start time for reschedule
+        reschedule_request_end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Requested new end time for reschedule
+        reschedule_request_reason:
+          type: string
+          description: Reason for the reschedule request
+        zoom_meeting_id:
+          type: string
+          readOnly: true
+          nullable: true
+        zoom_join_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        zoom_start_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 500
+        zoom_password:
+          type: string
+          nullable: true
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        notes:
+          type: string
+        cancellation_reason:
+          type: string
+        student:
+          type: string
+          readOnly: true
+        teacher:
+          type: string
+        gig:
+          type: integer
+          nullable: true
+      required:
+      - created_at
+      - duration_hours
+      - end_time
+      - id
+      - payment_details
+      - payment_id
+      - start_time
+      - status
+      - student
+      - student_name
+      - teacher
+      - teacher_name
+      - updated_at
+      - zoom_join_url
+      - zoom_meeting_id
+    SessionBookingStatusEnum:
+      enum:
+      - PENDING
+      - CONFIRMED
+      - CANCELLED
+      - COMPLETED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `CONFIRMED` - Confirmed
+        * `CANCELLED` - Cancelled
+        * `COMPLETED` - Completed
+    SessionFeedback:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rating:
+          allOf:
+          - $ref: '#/components/schemas/RatingEnum'
+          minimum: -2147483648
+          maximum: 2147483647
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_from_student:
+          type: boolean
+        booking:
+          type: integer
+          readOnly: true
+      required:
+      - booking
+      - comment
+      - created_at
+      - id
+      - is_from_student
+      - rating
+    StatusCffEnum:
+      enum:
+      - draft
+      - sending
+      - sent
+      - failed
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `sending` - Sending
+        * `sent` - Sent
+        * `failed` - Failed
+    StatusDaeEnum:
+      enum:
+      - draft
+      - published
+      - archived
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `archived` - Archived
+    StudentDetail:
+      type: object
+      description: Extended serializer for student details
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        bio:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        postal_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        status:
+          type: string
+          nullable: true
+          maxLength: 100
+        native_language:
+          type: string
+          nullable: true
+          maxLength: 50
+        learning_language:
+          type: string
+          nullable: true
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - role
+      - updated_at
+      - user
+    TeacherAvailability:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        day_of_week:
+          allOf:
+          - $ref: '#/components/schemas/DayOfWeekEnum'
+          minimum: -2147483648
+          maximum: 2147483647
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        is_recurring:
+          type: boolean
+        date:
+          type: string
+          format: date
+          nullable: true
+        teacher:
+          type: string
+          readOnly: true
+      required:
+      - day_of_week
+      - end_time
+      - id
+      - start_time
+      - teacher
+    TeacherProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_profile:
+          allOf:
+          - $ref: '#/components/schemas/UserProfile'
+          readOnly: true
+        qualification:
+          type: string
+        experience_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        certificates: {}
+        about:
+          type: string
+      required:
+      - about
+      - certificates
+      - experience_years
+      - id
+      - qualification
+      - user_profile
+    TeacherProfileCreate:
+      type: object
+      properties:
+        qualification:
+          type: string
+        experience_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        certificates: {}
+        about:
+          type: string
+      required:
+      - about
+      - experience_years
+      - qualification
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 150
+        full_name:
+          type: string
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        gender:
+          type: string
+          nullable: true
+          maxLength: 20
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        profile_picture:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - full_name
+      - id
+      - profile_picture
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        bio:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        postal_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        status:
+          type: string
+          nullable: true
+          maxLength: 100
+        native_language:
+          type: string
+          nullable: true
+          maxLength: 50
+        learning_language:
+          type: string
+          nullable: true
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - role
+      - updated_at
+      - user
+    UserRegistrationWithProfile:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+        full_name:
+          type: string
+        role:
+          type: string
+        bio:
+          type: string
+        qualification:
+          type: string
+        experience_years:
+          type: integer
+        certificates: {}
+        about:
+          type: string
+        native_language:
+          type: string
+        learning_language:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        postal_code:
+          type: string
+      required:
+      - email
+      - full_name
+      - password
+      - role
+    VoiceConversation:
+      type: object
+      description: Serializer for OpenAI speech-to-speech voice conversations
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        user_email:
+          type: string
+          readOnly: true
+        topic:
+          type: string
+          description: Main topic or theme of the conversation
+          maxLength: 200
+        transcription:
+          description: JSON object containing conversation transcription data
+        native_language:
+          type: string
+          description: User's native language
+          maxLength: 50
+        target_language:
+          type: string
+          description: Language being learned/practiced
+          maxLength: 50
+        conversation_type:
+          $ref: '#/components/schemas/ConversationTypeEnum'
+        conversation_type_display:
+          type: string
+          readOnly: true
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Conversation duration in minutes
+        ai_feedback:
+          description: AI-generated feedback and analysis
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - conversation_type_display
+      - created_at
+      - id
+      - native_language
+      - target_language
+      - topic
+      - user
+      - user_email
+      - user_name
+    VoiceConversationCreate:
+      type: object
+      description: Simplified serializer for creating voice conversations from frontend
+      properties:
+        topic:
+          type: string
+          description: Main topic or theme of the conversation
+          maxLength: 200
+        transcription:
+          description: JSON object containing conversation transcription data
+        native_language:
+          type: string
+          description: User's native language
+          maxLength: 50
+        target_language:
+          type: string
+          description: Language being learned/practiced
+          maxLength: 50
+        conversation_type:
+          $ref: '#/components/schemas/ConversationTypeEnum'
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Conversation duration in minutes
+        ai_feedback:
+          description: AI-generated feedback and analysis
+      required:
+      - native_language
+      - target_language
+      - topic

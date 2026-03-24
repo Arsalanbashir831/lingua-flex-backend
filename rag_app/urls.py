@@ -16,7 +16,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework import permissions
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from .admin_site import admin_site
 
@@ -29,6 +28,7 @@ urlpatterns = [
     path('api/blogs/', include('blogs.urls')),  # Added blogs URLs
     path('api/campaigns/', include('campaigns.urls')),  # Added campaigns URLs
     path('api/payments/', include('stripe_payments.urls')),  # Added Stripe payments URLs
+    path('api/astrology/', include('astrology.urls')),          # Vedic Astrology
 ]
 
 urlpatterns += [

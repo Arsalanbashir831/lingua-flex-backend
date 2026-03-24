@@ -254,16 +254,21 @@ class ComprehensiveUserProfileSerializer(serializers.ModelSerializer):
         return data
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)
+    sender_id = UserSerializer(read_only=True)
     class Meta:
         model = Message
-        fields = ['id', 'chat', 'sender', 'content', 'timestamp']
-        read_only_fields = ['id', 'timestamp', 'sender']
+        fields = ['id', 'chat_id', 'sender_id', 'content', 'timestamp']
+        read_only_fields = ['id', 'timestamp', 'sender_id']
 
 class ChatSerializer(serializers.ModelSerializer):
     participant1 = UserSerializer(read_only=True)
     participant2 = UserSerializer(read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Chat
+        fields = ['id', 'participant1', 'participant2', 'created_at', 'messages']
+        read_only_fields = ['id', 'created_at']
 class GigTeacherSerializer(serializers.ModelSerializer):
     """Serializer for teacher details in gig responses"""
     # User details

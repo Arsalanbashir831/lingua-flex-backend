@@ -48,6 +48,9 @@ GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# Vedic Astrology API
+ASTROLOGY_API_KEY = os.getenv("ASTROLOGY_API_KEY", "")
+
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -90,13 +93,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
+    'corsheaders',
     'core',
     'bookings',
     'accounts',
-    'blogs',  
+    'blogs',
     'campaigns',
     'stripe_payments',
-    "corsheaders",
+    'astrology',
 ]
 
 MIDDLEWARE = [
@@ -242,3 +248,18 @@ MINIMUM_PLATFORM_FEE_CENTS = 100  # $1 minimum fee
 
 # Email settings for payment notifications
 PAYMENT_EMAIL_NOTIFICATIONS = True
+
+# =============================================================================
+# DRF SPECTACULAR (Swagger / ReDoc)
+# =============================================================================
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'LinguaFlex API',
+    'DESCRIPTION': 'Backend API for the LinguaFlex language tutoring platform.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # Serve Swagger UI & ReDoc assets from the locally installed sidecar package
+    # instead of fetching from a CDN — works offline and in production too.
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
+}

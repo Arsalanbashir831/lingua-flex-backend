@@ -16,6 +16,11 @@ class TeacherAvailabilitySerializer(serializers.ModelSerializer):
     def get_teacher_name(self, obj):
         return obj.teacher.get_full_name()
 
+
+class BulkTeacherAvailabilitySerializer(serializers.Serializer):
+    """Serializer for bulk availability operations."""
+    availabilities = TeacherAvailabilitySerializer(many=True)
+
 class BookingRequestSerializer(serializers.Serializer):
     """Serializer for creating booking requests"""
     teacher_id = serializers.UUIDField()
