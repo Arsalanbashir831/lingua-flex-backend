@@ -27,6 +27,79 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
+ZODIAC_SIGNS = [
+    "Ari", "Tau", "Gem", "Can", "Leo", "Vir",
+    "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"
+]
+
+SIGN_LORDS = {
+    "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+    "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+    "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter"
+}
+
+def _calculate_house(asc_sign: str, planet_sign: str) -> int:
+    """Calculates the house number (1-12) based on Ascendant and Planet signs."""
+    try:
+        asc_idx = ZODIAC_SIGNS.index(asc_sign)
+        plt_idx = ZODIAC_SIGNS.index(planet_sign)
+        return ((plt_idx - asc_idx) % 12) + 1
+    except ValueError:
+        return 1
+
+def _build_ui_tables(positions: list, full_planets: list) -> dict:
+    """Builds Graha and Bhava details explicitly mapped for the UI."""
+    asc_pos = next((p for p in positions if p.get('planet') == 'Ascendant'), None)
+    asc_sign = asc_pos.get('sign', 'Ari') if asc_pos else 'Ari'
+    
+    planet_map = {p.get('planet'): p for p in full_planets}
+    graha_details = []
+    bhava_details = {i: {"bhava": i, "residents": [], "owner": "", "rashi": ""} for i in range(1, 13)}
+    
+    # Pre-fill Bhava details based on Ascendant
+    try:
+        asc_idx = ZODIAC_SIGNS.index(asc_sign)
+        for i in range(12):
+            sign = ZODIAC_SIGNS[(asc_idx + i) % 12]
+            bhava_details[i + 1]["rashi"] = sign
+            bhava_details[i + 1]["owner"] = SIGN_LORDS.get(sign, "")
+    except ValueError:
+        pass
+        
+    for pos in positions:
+        p_name = pos.get('planet')
+        p_sign = pos.get('sign')
+        
+        if p_name == 'Ascendant':
+            continue
+            
+        house_num = _calculate_house(asc_sign, p_sign)
+        
+        if 1 <= house_num <= 12:
+            bhava_details[house_num]["residents"].append(p_name)
+            
+        full_p = planet_map.get(p_name, {})
+        
+        # Which houses does this planet own in this specific chart?
+        ruled_houses = [h_num for h_num, h_data in bhava_details.items() if h_data["owner"] == p_name]
+                
+        graha_details.append({
+            "graha": p_name,
+            "longitude_rashi": p_sign,
+            "longitude_degree": pos.get('degree'),
+            "current_bhava": house_num,
+            "rules_bhavas": ruled_houses,
+            "nakshatra": full_p.get('nakshatra'),
+            "nakshatra_pada": full_p.get('nakshatra_pada'),
+            "nakshatra_lord": full_p.get('nakshatra_lord'),
+            "nakshatra_sublord": full_p.get('nakshatra_sublord'),
+        })
+        
+    return {
+        "graha_details": graha_details,
+        "bhava_details": list(bhava_details.values())
+    }
+
 def _is_transit_stale(cache: TransitCache, timezone_str: str) -> bool:
     """
     Returns True if the cached transit date no longer matches today's date
@@ -40,7 +113,7 @@ def _is_transit_stale(cache: TransitCache, timezone_str: str) -> bool:
 def _build_natal_response(birth_details: dict, divisional: dict, profile: BirthProfile) -> dict:
     """
     Shapes the raw API responses into a clean, frontend-friendly payload
-    that carries everything the circular chart needs.
+    that carries everything the circular chart needs, plus structured UI tables.
     """
     bd_data  = birth_details.get('data', {})
     div_data = divisional.get('data', {})
@@ -49,11 +122,15 @@ def _build_natal_response(birth_details: dict, divisional: dict, profile: BirthP
     charts    = {c['chart']: c for c in div_data.get('charts', [])}
     d1_chart  = charts.get('D1', {})
     d9_chart  = charts.get('D9', {})
+    
+    planets_list = bd_data.get('planets', [])
+    
+    d1_tables = _build_ui_tables(d1_chart.get('positions', []), planets_list)
+    d9_tables = _build_ui_tables(d9_chart.get('positions', []), planets_list)
 
     return {
         'birth_profile': BirthProfileSerializer(profile).data,
-        # Full planet detail from birth-details (house, nakshatra, dignity, etc.)
-        'planets': bd_data.get('planets', []),
+        'planets': planets_list,
         'ascendant': bd_data.get('ascendant'),
         'moon_sign': bd_data.get('moon_sign'),
         'sun_sign': bd_data.get('sun_sign'),
@@ -61,17 +138,20 @@ def _build_natal_response(birth_details: dict, divisional: dict, profile: BirthP
         'ayanamsa': bd_data.get('ayanamsa'),
         'ayanamsa_value': bd_data.get('ayanamsa_value'),
         'calculation_info': bd_data.get('calculation_info'),
-        # D1 (Rashi chart) positions — degree + sign for frontend wheel placement
+        
         'd1_chart': {
             'name': d1_chart.get('name', 'Rashi'),
             'purpose': d1_chart.get('purpose', 'Overall life and personality'),
             'positions': d1_chart.get('positions', []),
+            'graha_details': d1_tables['graha_details'],
+            'bhava_details': d1_tables['bhava_details'],
         },
-        # D9 (Navamsa chart) positions
         'd9_chart': {
             'name': d9_chart.get('name', 'Navamsa'),
             'purpose': d9_chart.get('purpose', 'Marriage and dharma'),
             'positions': d9_chart.get('positions', []),
+            'graha_details': d9_tables['graha_details'],
+            'bhava_details': d9_tables['bhava_details'],
         },
         'vargottama_planets': div_data.get('vargottama_planets', []),
     }
