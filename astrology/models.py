@@ -113,3 +113,27 @@ class AstrologyInsight(models.Model):
 
     def __str__(self):
         return f"Insight ({self.get_category_display()}): {self.birth_profile.user.email}"
+
+
+class AIPromptConfiguration(models.Model):
+    """
+    Stores a superadmin-configurable user prompt that gets appended to the base
+    Python system prompt for a given category.
+    """
+    category = models.CharField(
+        max_length=50, 
+        choices=AstrologyInsight.CATEGORY_CHOICES,
+        unique=True,
+        help_text="The astrology insight category this prompt applies to."
+    )
+    user_prompt = models.TextField(
+        help_text="This text will be appended to the end of the AI prompt to guide the AI's focus.",
+        blank=True
+    )
+    is_active = models.BooleanField(default=True, help_text="Disable to ignore this custom prompt.")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Prompt Config ({self.get_category_display()})"

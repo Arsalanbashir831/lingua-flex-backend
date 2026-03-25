@@ -167,19 +167,32 @@ class GeminiAIService:
     }
 
     @classmethod
-    def generate_insight(cls, category: str, structured_data: dict, extra_context: dict = None) -> str:
+    def generate_insight(
+        cls, category: str, structured_data: dict, extra_context: dict = None
+    ) -> str:
         import json
         from google import genai
+        from .models import AIPromptConfiguration
 
         prompt_template = cls.PROMPTS.get(category)
         if not prompt_template:
             raise ValueError(f"No prompt template found for category: {category}")
 
+        # Append custom user prompt from Admin if available
+        config = AIPromptConfiguration.objects.filter(
+            category=category, is_active=True
+        ).first()
+        if config and config.user_prompt.strip():
+            # Add separation before the custom user instructions
+            prompt_template = f"{prompt_template}\n\n-----------------------------------\nUSER PRIORITY FOCUS:\n{config.user_prompt.strip()}\n"
+
         # Categories with specific named placeholders are handled differently.
         if category == "mental_health":
             prompt = cls._build_mental_health_prompt(prompt_template, structured_data)
         elif category == "btr":
-            prompt = cls._build_btr_prompt(prompt_template, structured_data, extra_context or {})
+            prompt = cls._build_btr_prompt(
+                prompt_template, structured_data, extra_context or {}
+            )
         elif category == "marriage":
             prompt = cls._build_marriage_prompt(prompt_template, structured_data)
         elif category == "prosperity_sav":
@@ -261,7 +274,8 @@ class GeminiAIService:
         moon_house = house_map.get("Moon", "N/A")
         # Find planets conjunct Moon (same house)
         moon_conjuncts = [
-            name for name, h in house_map.items()
+            name
+            for name, h in house_map.items()
             if h == moon_house and name != "Moon" and name != "Ascendant"
         ]
         moon_str = (
@@ -276,7 +290,8 @@ class GeminiAIService:
         mercury_d1 = planet_map.get("Mercury", {})
         mercury_house = house_map.get("Mercury", "N/A")
         mercury_conjuncts = [
-            name for name, h in house_map.items()
+            name
+            for name, h in house_map.items()
             if h == mercury_house and name != "Mercury" and name != "Ascendant"
         ]
         mercury_str = (
@@ -299,8 +314,7 @@ class GeminiAIService:
                 break
 
         house4_planets = [
-            name for name, h in house_map.items()
-            if h == 4 and name != "Ascendant"
+            name for name, h in house_map.items() if h == 4 and name != "Ascendant"
         ]
         house4_str = (
             f"Sign: {house4_sign}, "
@@ -316,12 +330,15 @@ class GeminiAIService:
         )
 
     @staticmethod
-    def _build_btr_prompt(template: str, structured_data: dict, extra_context: dict) -> str:
+    def _build_btr_prompt(
+        template: str, structured_data: dict, extra_context: dict
+    ) -> str:
         """
         Uses the extra_context dictionary for user-provided life event dates,
         and injects the kp_system JSON data as {astrology_data}.
         """
         import json
+
         kp_data_str = json.dumps(structured_data.get("kp_system", {}), indent=2)
 
         return template.format(
@@ -337,8 +354,20 @@ class GeminiAIService:
     # -------------------------------------------------------------------------
     # Helper: Sign order (used for computing house signs from lagna)
     # -------------------------------------------------------------------------
-    _SIGN_ORDER = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir",
-                   "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"]
+    _SIGN_ORDER = [
+        "Ari",
+        "Tau",
+        "Gem",
+        "Can",
+        "Leo",
+        "Vir",
+        "Lib",
+        "Sco",
+        "Sag",
+        "Cap",
+        "Aqu",
+        "Pis",
+    ]
 
     @classmethod
     def _sign_of_house(cls, lagna_sign: str, house_offset: int) -> str:
@@ -362,8 +391,9 @@ class GeminiAIService:
     @classmethod
     def _get_birth_planets(cls, structured_data: dict) -> list:
         """Returns planet list from birth_details with house, rashi, dignity."""
-        return (structured_data.get("birth_details", {})
-                .get("data", {}).get("planets", []))
+        return (
+            structured_data.get("birth_details", {}).get("data", {}).get("planets", [])
+        )
 
     # -------------------------------------------------------------------------
     # Builder: Marriage Timing
@@ -397,7 +427,10 @@ class GeminiAIService:
         transit_raw = structured_data.get("transits", {})
         transits_list = transit_raw.get("data", {}).get("transits", [])
         import json
-        transits_str = json.dumps(transits_list, indent=2) if transits_list else "Not available"
+
+        transits_str = (
+            json.dumps(transits_list, indent=2) if transits_list else "Not available"
+        )
 
         return template.format(
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
@@ -421,9 +454,11 @@ class GeminiAIService:
         lagna_lord = planet_map.get("Ascendant", {}).get("lord", "N/A")
 
         sav_raw = structured_data.get("ashtakvarga", {})
-        house_breakdown = (sav_raw.get("data", {})
-                           .get("sarvashtakvarga", {})
-                           .get("house_breakdown", []))
+        house_breakdown = (
+            sav_raw.get("data", {})
+            .get("sarvashtakvarga", {})
+            .get("house_breakdown", [])
+        )
         sav_lines = []
         for h in house_breakdown:
             sav_lines.append(
@@ -435,8 +470,12 @@ class GeminiAIService:
         # Saturn's current natal house from birth_details
         birth_planets = cls._get_birth_planets(structured_data)
         saturn_house = next(
-            (p.get("house", "N/A") for p in birth_planets if p.get("planet") == "Saturn"),
-            "N/A"
+            (
+                p.get("house", "N/A")
+                for p in birth_planets
+                if p.get("planet") == "Saturn"
+            ),
+            "N/A",
         )
 
         return template.format(
@@ -461,10 +500,12 @@ class GeminiAIService:
 
         def planet_str(name):
             p = planet_map.get(name, {})
-            return (f"Sign: {p.get('sign', 'N/A')}, "
-                    f"House: {house_map.get(name, 'N/A')}, "
-                    f"Degree: {p.get('degree', 'N/A')}, "
-                    f"Lord of sign: {p.get('lord', 'N/A')}")
+            return (
+                f"Sign: {p.get('sign', 'N/A')}, "
+                f"House: {house_map.get(name, 'N/A')}, "
+                f"Degree: {p.get('degree', 'N/A')}, "
+                f"Lord of sign: {p.get('lord', 'N/A')}"
+            )
 
         return template.format(
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
@@ -487,8 +528,12 @@ class GeminiAIService:
     def _build_navatara_prompt(cls, template: str, structured_data: dict) -> str:
         birth_planets = cls._get_birth_planets(structured_data)
         moon_nakshatra = next(
-            (p.get("nakshatra", "N/A") for p in birth_planets if p.get("planet") == "Moon"),
-            "N/A"
+            (
+                p.get("nakshatra", "N/A")
+                for p in birth_planets
+                if p.get("planet") == "Moon"
+            ),
+            "N/A",
         )
         birth_raw = structured_data.get("birth_details", {})
         birth_nakshatra = birth_raw.get("data", {}).get("birth_star", moon_nakshatra)
@@ -505,6 +550,7 @@ class GeminiAIService:
     @classmethod
     def _build_medical_prompt(cls, template: str, structured_data: dict) -> str:
         import json
+
         divisional_raw = structured_data.get("divisional_data", {})
         all_charts = divisional_raw.get("data", {}).get("charts", [])
 
@@ -523,7 +569,9 @@ class GeminiAIService:
 
         transit_raw = structured_data.get("transits", {})
         transits_list = transit_raw.get("data", {}).get("transits", [])
-        transits_str = json.dumps(transits_list, indent=2) if transits_list else "Not available"
+        transits_str = (
+            json.dumps(transits_list, indent=2) if transits_list else "Not available"
+        )
 
         return template.format(
             d1_data=d1_str,
@@ -540,6 +588,7 @@ class GeminiAIService:
     @classmethod
     def _build_darakaraka_prompt(cls, template: str, structured_data: dict) -> str:
         import json
+
         planet_map = cls._get_d1_planet_map(structured_data)
 
         # Format planet degrees (excluding Ascendant, Rahu, Ketu for DK)
@@ -563,7 +612,9 @@ class GeminiAIService:
 
         transit_raw = structured_data.get("transits", {})
         transits_list = transit_raw.get("data", {}).get("transits", [])
-        transits_str = json.dumps(transits_list, indent=2) if transits_list else "Not available"
+        transits_str = (
+            json.dumps(transits_list, indent=2) if transits_list else "Not available"
+        )
 
         return template.format(
             planet_degrees=planet_degrees,
