@@ -46,6 +46,12 @@ class NatalChartCache(models.Model):
     birth_details_data = models.JSONField()
     # Raw JSON from POST /vedic/divisional-chart (requesting D1 + D9)
     divisional_data = models.JSONField()
+    
+    # Extended Data for AI Generation
+    kp_data = models.JSONField(null=True, blank=True)
+    dasha_data = models.JSONField(null=True, blank=True)
+    ashtakvarga_data = models.JSONField(null=True, blank=True)
+    
     cached_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -71,3 +77,39 @@ class TransitCache(models.Model):
 
     def __str__(self):
         return f"Transit Cache: {self.birth_profile.user.email} for {self.cached_for_date}"
+
+
+class AstrologyInsight(models.Model):
+    """
+    Caches the AI-generated astrological readings to save API costs
+    and provide instant page loads.
+    """
+    CATEGORY_CHOICES = (
+        ('mental_health', 'Mental Health'),
+        ('marriage', 'Marriage Timing'),
+        ('prosperity_sav', 'Prosperity & Career (SAV)'),
+        ('medical', 'Medical Astrology'),
+        ('btr', 'Birth Time Rectification'),
+        ('parasari', 'Parasari Relationships'),
+        ('navatara', 'Navatara (Nine Stars)'),
+        ('darakaraka', 'Spouse Profile (Jaimini)'),
+        ('planetary_states', 'Planetary Avatars & States'),
+    )
+
+    birth_profile = models.ForeignKey(
+        BirthProfile,
+        on_delete=models.CASCADE,
+        related_name='insights'
+    )
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    insight_text = models.TextField()
+    is_transit_dependent = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('birth_profile', 'category')
+
+    def __str__(self):
+        return f"Insight ({self.get_category_display()}): {self.birth_profile.user.email}"

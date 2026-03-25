@@ -1,8 +1,10 @@
 from django.urls import path
-from .views import BirthProfileView, NatalChartView, TransitView
+from .views import BirthProfileView, NatalChartView, TransitView, AstrologyInsightView
 
 urlpatterns = [
     path('birth-profile/', BirthProfileView.as_view(), name='astrology-birth-profile'),
     path('natal-chart/', NatalChartView.as_view(), name='astrology-natal-chart'),
     path('transits/', TransitView.as_view(), name='astrology-transits'),
+    path('insights/<str:category>/', AstrologyInsightView.as_view(), name='astrology-insight'),
 ]
+

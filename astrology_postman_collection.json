@@ -168,6 +168,39 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "AI Insights",
+			"item": [
+				{
+					"name": "Get Specific Category Insight",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/insights/mental_health/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"insights",
+								"mental_health",
+								""
+							]
+						},
+						"description": "Retrieves the Gemini AI written insight. Replace 'mental_health' with any other valid category (e.g. 'marriage', 'prosperity_sav', etc.)"
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"event": [

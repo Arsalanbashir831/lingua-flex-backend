@@ -10,17 +10,16 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import os
-from pathlib import Path
 from datetime import timedelta
-import dj_database_url
 
 # Zoom API settings (Server-to-Server OAuth)
-ZOOM_ACCOUNT_ID = os.getenv('ZOOM_ACCOUNT_ID', '')
-ZOOM_CLIENT_ID = os.getenv('ZOOM_CLIENT_ID', '')
-ZOOM_CLIENT_SECRET = os.getenv('ZOOM_CLIENT_SECRET', '')
+ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID", "")
+ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID", "")
+ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET", "")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'. Changes
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,13 +29,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ye6#tdjmntfyt=+^&6hiy6xx@8j1n-v%x!$_sy3bz3qoaxd%yf'
+SECRET_KEY = "django-insecure-ye6#tdjmntfyt=+^&6hiy6xx@8j1n-v%x!$_sy3bz3qoaxd%yf"
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-BASE_URL_RESET_PASSWORD=os.getenv("BASE_URL_RESET_PASSWORD", "")
-BASE_URL_SIGNIN=os.getenv("BASE_URL_SIGNIN", "")
+BASE_URL_RESET_PASSWORD = os.getenv("BASE_URL_RESET_PASSWORD", "")
+BASE_URL_SIGNIN = os.getenv("BASE_URL_SIGNIN", "")
 BASE_URL = os.getenv("BASE_URL", "")
 AUTH_USER_MODEL = "core.User"
 
@@ -71,69 +70,80 @@ if not url:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.2","localhost", "127.0.0.1","api.shaktiwheel.in",'parlezhub.com']
-#CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
+ALLOWED_HOSTS = [
+    "192.168.1.2",
+    "localhost",
+    "127.0.0.1",
+    "api.shaktiwheel.in",
+    "parlezhub.com",
+]
+# CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://192.168.10.9:3000",   # client laptop origin (React/Vite/etc)
+    "http://192.168.10.9:3000",  # client laptop origin (React/Vite/etc)
     "https://api.shaktiwheel.in",
     "http://localhost:3000",
-    'https://linguaflex-eight.vercel.app','https://lingua-flex-landing.vercel.app','https://app.parlezhub.com','https://parlezhub.com','https://shaktiwheel.in','https://www.parlezhub.com'
+    "https://linguaflex-eight.vercel.app",
+    "https://lingua-flex-landing.vercel.app",
+    "https://app.parlezhub.com",
+    "https://parlezhub.com",
+    "https://shaktiwheel.in",
+    "https://www.parlezhub.com",
 ]
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'drf_spectacular',
-    'drf_spectacular_sidecar',
-    'corsheaders',
-    'core',
-    'bookings',
-    'accounts',
-    'blogs',
-    'campaigns',
-    'stripe_payments',
-    'astrology',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
+    "corsheaders",
+    "core",
+    "bookings",
+    "accounts",
+    "blogs",
+    "campaigns",
+    "stripe_payments",
+    "astrology",
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",   # put it at the very top
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",  # put it at the very top
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'rag_app.urls'
+ROOT_URLCONF = "rag_app.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'rag_app.wsgi.application'
+WSGI_APPLICATION = "rag_app.wsgi.application"
 
 
 # Database
@@ -158,16 +168,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -175,9 +185,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -187,16 +197,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # REST_FRAMEWORK = {
 #     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -211,19 +221,18 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "core.authentication.SupabaseTokenAuthentication",
     ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',  # For Django admin login
-    "core.authentication.SupabaseBackend",        # For API token authentication
+    "django.contrib.auth.backends.ModelBackend",  # For Django admin login
+    "core.authentication.SupabaseBackend",  # For API token authentication
 ]
 
 SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=24),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
 }
 
 
@@ -232,17 +241,17 @@ SIMPLE_JWT = {
 # =============================================================================
 
 # Stripe API Keys (get these from your Stripe dashboard)
-STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
-STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
-STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
 # Stripe settings
 STRIPE_LIVE_MODE = False  # Set to True in production
-STRIPE_TEST_SECRET_KEY = os.getenv('STRIPE_TEST_SECRET_KEY', '')
-STRIPE_TEST_PUBLISHABLE_KEY = os.getenv('STRIPE_TEST_PUBLISHABLE_KEY', '')
+STRIPE_TEST_SECRET_KEY = os.getenv("STRIPE_TEST_SECRET_KEY", "")
+STRIPE_TEST_PUBLISHABLE_KEY = os.getenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
 
 # Payment settings
-PAYMENT_CURRENCY = 'USD'
+PAYMENT_CURRENCY = "USD"
 PLATFORM_FEE_PERCENTAGE = 0.05  # 5% platform fee
 MINIMUM_PLATFORM_FEE_CENTS = 100  # $1 minimum fee
 
@@ -253,16 +262,16 @@ PAYMENT_EMAIL_NOTIFICATIONS = True
 # LOGGING
 # =============================================================================
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }
 
@@ -270,13 +279,15 @@ LOGGING = {
 # DRF SPECTACULAR (Swagger / ReDoc)
 # =============================================================================
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'LinguaFlex API',
-    'DESCRIPTION': 'Backend API for the LinguaFlex language tutoring platform.',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
+    "TITLE": "LinguaFlex API",
+    "DESCRIPTION": "Backend API for the LinguaFlex language tutoring platform.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
     # Serve Swagger UI & ReDoc assets from the locally installed sidecar package
     # instead of fetching from a CDN — works offline and in production too.
-    'SWAGGER_UI_DIST': 'SIDECAR',
-    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
-    'REDOC_DIST': 'SIDECAR',
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
