@@ -454,7 +454,7 @@ class AstrologyInsightView(APIView):
                     natal_cache.ashtakvarga_data = client.get_ashtakvarga(profile)
                 data_to_pass["ashtakvarga"] = natal_cache.ashtakvarga_data
 
-            if category in ["marriage", "medical", "btr"]:
+            if category in ["marriage", "medical", "btr", "benefic_planets", "malefic_planets", "chart_analysis"]:
                 if not natal_cache.dasha_data:
                     natal_cache.dasha_data = client.get_vimshottari_dasha(profile)
                 data_to_pass["dasha"] = natal_cache.dasha_data

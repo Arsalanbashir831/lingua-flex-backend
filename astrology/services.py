@@ -153,6 +153,14 @@ class GeminiAIService:
         NAVATARA_PROMPT,
         MEDICAL_PROMPT,
         DARAKARAKA_PROMPT,
+        BENEFIC_PLANETS_PROMPT,
+        MALEFIC_PLANETS_PROMPT,
+        CHART_ANALYSIS_PROMPT,
+        PLANETARY_STATES_PROMPT,
+        ASTRO_ENERGY_PROMPT,
+        RASHI_PLANETS_PROMPT,
+        LAGNA_LORD_PROMPT,
+        CHALLENGES_PROMPT,
     )
 
     PROMPTS = {
@@ -164,6 +172,14 @@ class GeminiAIService:
         "parasari": PARASARI_PROMPT,
         "navatara": NAVATARA_PROMPT,
         "darakaraka": DARAKARAKA_PROMPT,
+        "benefic_planets": BENEFIC_PLANETS_PROMPT,
+        "malefic_planets": MALEFIC_PLANETS_PROMPT,
+        "chart_analysis": CHART_ANALYSIS_PROMPT,
+        "planetary_states": PLANETARY_STATES_PROMPT,
+        "astro_energy": ASTRO_ENERGY_PROMPT,
+        "rashi_planets": RASHI_PLANETS_PROMPT,
+        "lagna_lord": LAGNA_LORD_PROMPT,
+        "challenges": CHALLENGES_PROMPT,
     }
 
     @classmethod
@@ -205,6 +221,22 @@ class GeminiAIService:
             prompt = cls._build_medical_prompt(prompt_template, structured_data)
         elif category == "darakaraka":
             prompt = cls._build_darakaraka_prompt(prompt_template, structured_data)
+        elif category == "benefic_planets":
+            prompt = cls._build_benefic_planets_prompt(prompt_template, structured_data)
+        elif category == "malefic_planets":
+            prompt = cls._build_malefic_planets_prompt(prompt_template, structured_data)
+        elif category == "chart_analysis":
+            prompt = cls._build_chart_analysis_prompt(prompt_template, structured_data)
+        elif category == "planetary_states":
+            prompt = cls._build_planetary_states_prompt(prompt_template, structured_data)
+        elif category == "lagna_lord":
+            prompt = cls._build_lagna_lord_prompt(prompt_template, structured_data)
+        elif category == "rashi_planets":
+            prompt = cls._build_rashi_planets_prompt(prompt_template, structured_data)
+        elif category == "challenges":
+            prompt = cls._build_challenges_prompt(prompt_template, structured_data)
+        elif category == "astro_energy":
+            prompt = cls._build_astro_energy_prompt(prompt_template, structured_data)
         else:
             # All other prompts use a single {astrology_data} JSON dump
             data_str = json.dumps(structured_data, indent=2)
@@ -620,4 +652,302 @@ class GeminiAIService:
             planet_degrees=planet_degrees,
             d9_data=d9_str,
             transits=transits_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Benefic Planets
+    # Placeholders: lagna, planets, d9_data, dasha
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_benefic_planets_prompt(cls, template: str, structured_data: dict) -> str:
+        import json
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        birth_planets = cls._get_birth_planets(structured_data)
+        planet_lines = []
+        for p in birth_planets:
+            planet_lines.append(f"  {p.get('planet')} - {p.get('sign')} - House {p.get('house')}")
+        planets_str = "\n".join(planet_lines) if planet_lines else "Not available"
+
+        # Extract D9 chart
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+        d9_str = json.dumps(d9_positions, indent=2)
+
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        antardasha_end = current.get("antardasha_end", "N/A")
+        dasha_str = (
+            f"Mahadasha: {current.get('mahadasha', 'N/A')} (ends: {current.get('mahadasha_end', 'N/A')})\n"
+            f"Antardasha: {current.get('antardasha', 'N/A')} (ends: {antardasha_end})"
+        )
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            planets=planets_str,
+            d9_data=d9_str,
+            dasha=dasha_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Malefic Planets
+    # Placeholders: lagna, planets, d9_data, dasha
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_malefic_planets_prompt(cls, template: str, structured_data: dict) -> str:
+        import json
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        birth_planets = cls._get_birth_planets(structured_data)
+        planet_lines = []
+        for p in birth_planets:
+            planet_lines.append(f"  {p.get('planet')} - {p.get('sign')} - House {p.get('house')}")
+        planets_str = "\n".join(planet_lines) if planet_lines else "Not available"
+
+        # Extract D9 chart
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+        d9_str = json.dumps(d9_positions, indent=2)
+
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        antardasha_end = current.get("antardasha_end", "N/A")
+        dasha_str = (
+            f"Mahadasha: {current.get('mahadasha', 'N/A')} (ends: {current.get('mahadasha_end', 'N/A')})\n"
+            f"Antardasha: {current.get('antardasha', 'N/A')} (ends: {antardasha_end})"
+        )
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            planets=planets_str,
+            d9_data=d9_str,
+            dasha=dasha_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Chart Analysis
+    # Placeholders: lagna, d1_data, d9_data, dasha
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_chart_analysis_prompt(cls, template: str, structured_data: dict) -> str:
+        import json
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        birth_planets = cls._get_birth_planets(structured_data)
+        d1_str = json.dumps(birth_planets, indent=2) if birth_planets else "Not available"
+
+        # Extract D9 chart
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+        d9_str = json.dumps(d9_positions, indent=2)
+
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        antardasha_end = current.get("antardasha_end", "N/A")
+        dasha_str = (
+            f"Mahadasha: {current.get('mahadasha', 'N/A')} (ends: {current.get('mahadasha_end', 'N/A')})\n"
+            f"Antardasha: {current.get('antardasha', 'N/A')} (ends: {antardasha_end})"
+        )
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            d1_data=d1_str,
+            d9_data=d9_str,
+            dasha=dasha_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Planetary States
+    # Placeholders: astrology_data (D1), d9_data
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_planetary_states_prompt(cls, template: str, structured_data: dict) -> str:
+        import json
+
+        birth_planets = cls._get_birth_planets(structured_data)
+        d1_str = json.dumps(birth_planets, indent=2) if birth_planets else "Not available"
+
+        # Extract D9 chart
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+        d9_str = json.dumps(d9_positions, indent=2)
+
+        return template.format(
+            astrology_data=d1_str,
+            d9_data=d9_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Lagna Lord Position
+    # Placeholders: lagna, lagna_lord, d1_sign, d1_house, d9_sign, d9_house,
+    #               degrees, condition
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_lagna_lord_prompt(cls, template: str, structured_data: dict) -> str:
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord_name = asc.get("lord", "N/A")
+
+        # Find Lagna Lord in D1
+        birth_planets = cls._get_birth_planets(structured_data)
+        ll_d1 = next((p for p in birth_planets if p.get("planet") == lagna_lord_name), {})
+
+        # Extract D9 chart to find Lagna Lord there
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+
+        ll_d9 = next((p for p in d9_positions if p.get("planet") == lagna_lord_name), {})
+
+        condition_parts = []
+        if ll_d1.get("is_combust") == "Yes":
+            condition_parts.append("Combust")
+        if ll_d1.get("is_retrograde") == "Yes":
+            condition_parts.append("Retrograde")
+        condition_str = ", ".join(condition_parts) if condition_parts else "Normal"
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord_name})",
+            lagna_lord=lagna_lord_name,
+            d1_sign=ll_d1.get("sign", "N/A"),
+            d1_house=ll_d1.get("house", "N/A"),
+            d9_sign=ll_d9.get("sign", "N/A"),
+            d9_house=ll_d9.get("house", "N/A"),
+            degrees=ll_d1.get("degree", "N/A"),
+            condition=condition_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Meaning of Rashi Planets
+    # Placeholders: lagna, h1-h12, placements
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_rashi_planets_prompt(cls, template: str, structured_data: dict) -> str:
+        import json
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter"
+        }
+
+        # Dynamically find lord for each house
+        house_lords = {}
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(lagna_sign, h - 1)
+            lord_name = sign_lords.get(h_sign, "N/A")
+            # We need to find the house for this planet in D1
+            birth_planets = cls._get_birth_planets(structured_data)
+            p_data = next((p for p in birth_planets if p.get("planet") == lord_name), {})
+            lord_house = p_data.get("house", "N/A")
+            lord_sign = p_data.get("sign", "N/A")
+            
+            house_lords[f"h{h}"] = f"{lord_name} in House {lord_house} ({lord_sign})"
+
+        placements_data = cls._get_birth_planets(structured_data)
+        placements_str = json.dumps(placements_data, indent=2)
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            placements=placements_str,
+            **house_lords
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Challenges and Learning
+    # Placeholders: lagna, planets, d9_data
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_challenges_prompt(cls, template: str, structured_data: dict) -> str:
+        import json
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        birth_planets = cls._get_birth_planets(structured_data)
+        planet_lines = []
+        for p in birth_planets:
+            planet_lines.append(f"  {p.get('planet')} - Sign: {p.get('sign')} - House: {p.get('house')}")
+        planets_str = "\n".join(planet_lines)
+
+        # Extract D9 chart
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+        d9_str = json.dumps(d9_positions, indent=2)
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            planets=planets_str,
+            d9_data=d9_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: 12-Dimensional Astro Energy
+    # Placeholders: lagna, planets
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_astro_energy_prompt(cls, template: str, structured_data: dict) -> str:
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        birth_planets = cls._get_birth_planets(structured_data)
+        planet_lines = []
+        for p in birth_planets:
+            planet_lines.append(f"  {p.get('planet')} (House {p.get('house')}, {p.get('sign')})")
+        planets_str = "\n".join(planet_lines)
+
+        return template.format(
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            planets=planets_str,
         )
