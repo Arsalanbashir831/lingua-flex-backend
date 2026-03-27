@@ -21,7 +21,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/astrology/birth-profile/",
+							"raw": "{{base_url}}/api/astrology/birth-profile/?student_id=",
 							"host": [
 								"{{base_url}}"
 							],
@@ -30,6 +30,13 @@
 								"astrology",
 								"birth-profile",
 								""
+							],
+							"query": [
+								{
+									"key": "student_id",
+									"value": "",
+									"description": "Optional: UUID of a student whose dashboard you have been granted access to view (for Teachers only)."
+								}
 							]
 						},
 						"description": "Retrieves the current user's birth profile."
@@ -125,7 +132,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/astrology/natal-chart/",
+							"raw": "{{base_url}}/api/astrology/natal-chart/?student_id=",
 							"host": [
 								"{{base_url}}"
 							],
@@ -134,6 +141,13 @@
 								"astrology",
 								"natal-chart",
 								""
+							],
+							"query": [
+								{
+									"key": "student_id",
+									"value": "",
+									"description": "Optional: UUID of a student whose dashboard you have been granted access to view (for Teachers only)."
+								}
 							]
 						},
 						"description": "Retrieves the cached natal chart (D1 and D9) for the user. Triggers API call if not cached."
@@ -152,7 +166,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/astrology/transits/",
+							"raw": "{{base_url}}/api/astrology/transits/?student_id=",
 							"host": [
 								"{{base_url}}"
 							],
@@ -161,6 +175,13 @@
 								"astrology",
 								"transits",
 								""
+							],
+							"query": [
+								{
+									"key": "student_id",
+									"value": "",
+									"description": "Optional: UUID of a student whose dashboard you have been granted access to view (for Teachers only)."
+								}
 							]
 						},
 						"description": "Retrieves the daily transit chart based on the user's local time. Invalidate cache daily."
@@ -184,7 +205,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/astrology/insights/mental_health/",
+							"raw": "{{base_url}}/api/astrology/insights/mental_health/?student_id=",
 							"host": [
 								"{{base_url}}"
 							],
@@ -194,6 +215,13 @@
 								"insights",
 								"mental_health",
 								""
+							],
+							"query": [
+								{
+									"key": "student_id",
+									"value": "",
+									"description": "Optional: UUID of a student whose dashboard you have been granted access to view (for Teachers only)."
+								}
 							]
 						},
 						"description": "Retrieves the Gemini AI written insight. Replace 'mental_health' with any other valid category (e.g. 'marriage', 'prosperity_sav', etc.)"
@@ -201,8 +229,178 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Dashboard Access",
+			"item": [
+				{
+					"name": "Search Teachers (for Access Sharing)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/accounts/teachers/?gig_category=astrology&search=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"accounts",
+								"teachers",
+								""
+							],
+							"query": [
+								{
+									"key": "gig_category",
+									"value": "astrology",
+									"description": "Filter by gig category (e.g., 'astrology')"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search by name or email"
+								}
+							]
+						},
+						"description": "Search for teachers with an active astrology gig to grant them dashboard access."
+					},
+					"response": []
+				},
+				{
+					"name": "Grant Access to Teacher (Student)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"teacher_id\": \"target_teacher_uuid_here\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/astrology/access/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"access",
+								""
+							]
+						},
+						"description": "Student grants a teacher (who has an active astrology gig) read-only access to their dashboard."
+					},
+					"response": []
+				},
+				{
+					"name": "Revoke Access (Student)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/access/:teacher_id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"access",
+								":teacher_id",
+								""
+							],
+							"variable": [
+								{
+									"key": "teacher_id",
+									"value": "target_teacher_uuid_here"
+								}
+							]
+						},
+						"description": "Student revokes a specific teacher's access to their dashboard."
+					},
+					"response": []
+				},
+				{
+					"name": "List Granted Teachers (Student)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/access/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"access",
+								""
+							]
+						},
+						"description": "Student lists all teachers they have granted dashboard access to."
+					},
+					"response": []
+				},
+				{
+					"name": "List Accessible Students (Teacher)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/teacher/students/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"teacher",
+								"students",
+								""
+							]
+						},
+						"description": "Teacher lists all students who have granted them dashboard access. Only accessible by users with role=TEACHER."
+					},
+					"response": []
+				}
+			]
 		}
 	],
+
 	"event": [
 		{
 			"listen": "prerequest",

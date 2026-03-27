@@ -149,3 +149,33 @@ class AIPromptConfiguration(models.Model):
 
     def __str__(self):
         return f"Prompt Config ({self.get_category_display()})"
+
+
+class AstrologyDashboardAccess(models.Model):
+    """
+    Tracks which teacher has been granted access to which student's
+    astrology dashboard. A student can grant access to any teacher
+    who has an active astrology gig.
+    """
+
+    student = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="astrology_access_grants",
+        help_text="The student who owns the dashboard.",
+    )
+    teacher = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="astrology_access_received",
+        help_text="The teacher who has been granted access.",
+    )
+    granted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("student", "teacher")
+        verbose_name = "Astrology Dashboard Access"
+        verbose_name_plural = "Astrology Dashboard Accesses"
+
+    def __str__(self):
+        return f"{self.teacher.email} → can view → {self.student.email}'s dashboard"

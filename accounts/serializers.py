@@ -31,6 +31,26 @@ class TeacherProfileCreateSerializer(serializers.ModelSerializer):
         model = TeacherProfile
         fields = ['qualification', 'experience_years', 'certificates', 'about']
 
+class TeacherSearchSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source='user_profile.user.id', read_only=True)
+    first_name = serializers.CharField(source='user_profile.user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user_profile.user.last_name', read_only=True)
+    profile_picture = serializers.SerializerMethodField()
+    bio = serializers.CharField(source='user_profile.bio', read_only=True)
+
+    class Meta:
+        model = TeacherProfile
+        fields = ['id', 'first_name', 'last_name', 'profile_picture', 'bio', 'about', 'qualification', 'experience_years']
+
+    def get_profile_picture(self, obj):
+        user = obj.user_profile.user
+        if not user.profile_picture:
+            return None
+        from django.conf import settings
+        supabase_url = settings.SUPABASE_URL
+        bucket_name = "user-uploads"
+        return f"{supabase_url}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
+
 class ComprehensiveTeacherProfileSerializer(serializers.ModelSerializer):
     """Comprehensive serializer for updating all teacher information at once"""
     
