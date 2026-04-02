@@ -189,3 +189,56 @@ Notes and troubleshooting:
 - Ensure `SUPABASE_SERVICE_ROLE_KEY` and other server-only secrets are only used on the server and never exposed to client code.
 - FastAPI's token decoding in `fastapi_chat.py` currently skips signature verification; do not use that in production. Prefer verifying JWTs with Supabase JWKs or via Supabase API.
 - For production, run Django and FastAPI behind a reverse proxy (nginx) and use gunicorn/uvicorn workers instead of `runserver`/`--reload`.
+
+---
+
+## Production Deployment (VPS with uv)
+
+This project has been migrated to use `uv` for faster dependency management in production. When you pull the latest changes, use the following steps to deploy them to your VPS:
+
+1. **Pull the latest code from the repository:**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Sync the dependencies:**
+   This command ensures your `.venv` environment exactly matches the `uv.lock` file:
+   ```bash
+   uv sync
+   ```
+
+3. **Apply database migrations:**
+   Run migrations inside the `uv` environment:
+   ```bash
+   uv run python manage.py migrate
+   ```
+
+4. **Collect static files:**
+   Gather all new static assets:
+   ```bash
+   uv run python manage.py collectstatic --noinput
+   ```
+
+5. **Restart the systemd services:**
+   Restart both the Django backend (Gunicorn) and the FastAPI services to apply the code changes:
+   ```bash
+   sudo systemctl restart gunicorn
+   sudo systemctl restart fastapi-chat
+   ```
+
+6. **Check Service Status:**
+   To verify that everything is running correctly:
+   ```bash
+   sudo systemctl status gunicorn
+   sudo systemctl status fastapi-chat
+   ```
+
+7. **View Logs:**
+   If something goes wrong, you can check the logs:
+   ```bash
+   # Django/Gunicorn logs
+   sudo journalctl -u gunicorn -f
+
+   # FastAPI logs
+   sudo journalctl -u fastapi-chat -f
+   ```
