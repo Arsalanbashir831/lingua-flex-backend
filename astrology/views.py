@@ -292,6 +292,12 @@ class BirthProfileView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         profile = serializer.save(user=request.user)
+
+        # Trigger background insight generation
+        import threading
+        from .tasks import generate_all_insights_async
+        threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+
         return Response(
             BirthProfileSerializer(profile).data, status=status.HTTP_201_CREATED
         )
@@ -312,6 +318,12 @@ class BirthProfileView(APIView):
         TransitCache.objects.filter(birth_profile=profile).delete()
         AstrologyInsight.objects.filter(birth_profile=profile).delete()
         profile = serializer.save(timezone_str="")  # reset timezone too
+
+        # Trigger background insight generation
+        import threading
+        from .tasks import generate_all_insights_async
+        threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+
         return Response(BirthProfileSerializer(profile).data)
 
 
@@ -370,10 +382,12 @@ class NatalChartView(APIView):
             profile.save(update_fields=["timezone_str"])
 
         # Persist cache
-        NatalChartCache.objects.create(
+        NatalChartCache.objects.update_or_create(
             birth_profile=profile,
-            birth_details_data=birth_details,
-            divisional_data=divisional,
+            defaults={
+                "birth_details_data": birth_details,
+                "divisional_data": divisional,
+            }
         )
 
         return Response(_build_natal_response(birth_details, divisional, profile))
@@ -426,10 +440,12 @@ class TransitView(APIView):
 
         # Upsert cache
         if cache is None:
-            TransitCache.objects.create(
+            TransitCache.objects.update_or_create(
                 birth_profile=profile,
-                transit_data=transit,
-                cached_for_date=today_local,
+                defaults={
+                    "transit_data": transit,
+                    "cached_for_date": today_local,
+                }
             )
         else:
             cache.transit_data = transit
@@ -482,90 +498,115 @@ class AstrologyInsightView(APIView):
                 {"category": category, "insight_text": insight.insight_text}
             )
 
+        # Check if the background task is currently generating this insight
+        from django.core.cache import cache
+        import time
+
+        lock_key = f"generating_insight_{profile.id}_{category}"
+        if cache.get(lock_key):
+            logger.info(f"Insight ({category}) for user {profile.user.email} is currently being generated in the background. Waiting...")
+            # Poll for up to 30 seconds
+            for _ in range(30):
+                time.sleep(1)
+                insight = AstrologyInsight.objects.filter(birth_profile=profile, category=category).first()
+                if insight:
+                    return Response({"category": category, "insight_text": insight.insight_text})
+                
+                # If the lock disappears but no insight exists, the background task might have failed.
+                if not cache.get(lock_key):
+                    break
+
         # 2. Cache Miss - Need to Generate
-        msg = f"AI Insight ({category}) CACHE MISS for user: {profile.user.email}. Generating with Gemini..."
-        logger.info(msg)
-
-        # Safely grab the base natal component needed to run advanced queries.
+        cache.set(lock_key, True, timeout=90) # Lock it down so the background task skips it
         try:
-            natal_cache = profile.natal_cache
-        except NatalChartCache.DoesNotExist:
-            return Response(
-                {"detail": "Please fetch the base natal chart first."},
-                status=status.HTTP_400_BAD_REQUEST,
+            msg = f"AI Insight ({category}) CACHE MISS for user: {profile.user.email}. Generating with Gemini..."
+            logger.info(msg)
+
+            # Safely grab the base natal component needed to run advanced queries.
+            try:
+                natal_cache = profile.natal_cache
+            except NatalChartCache.DoesNotExist:
+                return Response(
+                    {"detail": "Please fetch the base natal chart first."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            client = AstrologyAPIClient()
+            data_to_pass = {
+                "birth_details": natal_cache.birth_details_data,
+                "divisional_data": natal_cache.divisional_data,
+            }
+
+            # 3. Lazy Load Extended API Data (Ashtakvarga, Vimshottari, KP, etc)
+            try:
+                if category in ["prosperity_sav", "medical"]:
+                    if not natal_cache.ashtakvarga_data:
+                        natal_cache.ashtakvarga_data = client.get_ashtakvarga(profile)
+                    data_to_pass["ashtakvarga"] = natal_cache.ashtakvarga_data
+
+                if category in [
+                    "marriage",
+                    "medical",
+                    "btr",
+                    "benefic_planets",
+                    "malefic_planets",
+                    "chart_analysis",
+                ]:
+                    if not natal_cache.dasha_data:
+                        natal_cache.dasha_data = client.get_vimshottari_dasha(profile)
+                    data_to_pass["dasha"] = natal_cache.dasha_data
+
+                if category == "btr":
+                    if not natal_cache.kp_data:
+                        natal_cache.kp_data = client.get_kp_system(profile)
+                    data_to_pass["kp_system"] = natal_cache.kp_data
+
+                if category in ["marriage", "medical", "darakaraka"]:
+                    from django.utils.timezone import localtime, now
+
+                    today_local = localtime(now()).date()
+                    transit_cache = TransitCache.objects.filter(
+                        birth_profile=profile, cached_for_date=today_local
+                    ).first()
+                    if transit_cache:
+                        data_to_pass["transits"] = transit_cache.transit_data
+                    else:
+                        transit_data = client.get_transit(profile)
+                        TransitCache.objects.update_or_create(
+                            birth_profile=profile,
+                            defaults={
+                                "transit_data": transit_data,
+                                "cached_for_date": today_local,
+                            }
+                        )
+                        data_to_pass["transits"] = transit_data
+
+                natal_cache.save()
+            except AstrologyAPIError as e:
+                return Response(
+                    {"detail": f"Failed to fetch extended astrology data: {str(e)}"},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+            # 4. Invoke Gemini API
+            try:
+                generated_text = GeminiAIService.generate_insight(category, data_to_pass)
+            except Exception as e:
+                return Response(
+                    {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # 5. Populate and Save Cache
+            new_insight, _ = AstrologyInsight.objects.update_or_create(
+                birth_profile=profile, category=category, 
+                defaults={"insight_text": generated_text}
             )
 
-        client = AstrologyAPIClient()
-        data_to_pass = {
-            "birth_details": natal_cache.birth_details_data,
-            "divisional_data": natal_cache.divisional_data,
-        }
-
-        # 3. Lazy Load Extended API Data (Ashtakvarga, Vimshottari, KP, etc)
-        try:
-            if category in ["prosperity_sav", "medical"]:
-                if not natal_cache.ashtakvarga_data:
-                    natal_cache.ashtakvarga_data = client.get_ashtakvarga(profile)
-                data_to_pass["ashtakvarga"] = natal_cache.ashtakvarga_data
-
-            if category in [
-                "marriage",
-                "medical",
-                "btr",
-                "benefic_planets",
-                "malefic_planets",
-                "chart_analysis",
-            ]:
-                if not natal_cache.dasha_data:
-                    natal_cache.dasha_data = client.get_vimshottari_dasha(profile)
-                data_to_pass["dasha"] = natal_cache.dasha_data
-
-            if category == "btr":
-                if not natal_cache.kp_data:
-                    natal_cache.kp_data = client.get_kp_system(profile)
-                data_to_pass["kp_system"] = natal_cache.kp_data
-
-            if category in ["marriage", "medical", "darakaraka"]:
-                from django.utils.timezone import localtime, now
-
-                today_local = localtime(now()).date()
-                transit_cache = TransitCache.objects.filter(
-                    birth_profile=profile, cached_for_date=today_local
-                ).first()
-                if transit_cache:
-                    data_to_pass["transits"] = transit_cache.transit_data
-                else:
-                    transit_data = client.get_transit(profile)
-                    TransitCache.objects.create(
-                        birth_profile=profile,
-                        transit_data=transit_data,
-                        cached_for_date=today_local,
-                    )
-                    data_to_pass["transits"] = transit_data
-
-            natal_cache.save()
-        except AstrologyAPIError as e:
             return Response(
-                {"detail": f"Failed to fetch extended astrology data: {str(e)}"},
-                status=status.HTTP_502_BAD_GATEWAY,
+                {"category": category, "insight_text": new_insight.insight_text}
             )
-
-        # 4. Invoke Gemini API
-        try:
-            generated_text = GeminiAIService.generate_insight(category, data_to_pass)
-        except Exception as e:
-            return Response(
-                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        # 5. Populate and Save Cache
-        new_insight = AstrologyInsight.objects.create(
-            birth_profile=profile, category=category, insight_text=generated_text
-        )
-
-        return Response(
-            {"category": category, "insight_text": new_insight.insight_text}
-        )
+        finally:
+            cache.delete(lock_key)
 
 
 # ---------------------------------------------------------------------------

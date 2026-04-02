@@ -51,13 +51,17 @@ class AstrologyAPIClient:
     def _post(self, endpoint: str, payload: dict) -> dict:
         url = f"{self.BASE_URL}/{endpoint}"
         try:
-            resp = requests.post(url, json=payload, headers=self._headers(), timeout=15)
+            resp = requests.post(url, json=payload, headers=self._headers(), timeout=45)
         except requests.RequestException as e:
             raise AstrologyAPIError(f"Network error calling {endpoint}: {e}")
 
         if not resp.ok:
+            error_data = resp.text
+            import logging
+            view_logger = logging.getLogger("astrology.views")
+            view_logger.error(f"Astrology API error [{resp.status_code}]: {error_data}")
             raise AstrologyAPIError(
-                f"Astrology API error [{resp.status_code}]: {resp.text}",
+                f"Astrology API error [{resp.status_code}]",
                 status_code=resp.status_code,
             )
 
