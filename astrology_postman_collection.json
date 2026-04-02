@@ -227,6 +227,85 @@
 						"description": "Retrieves the Gemini AI written insight. Replace 'mental_health' with any other valid category (e.g. 'marriage', 'prosperity_sav', etc.)"
 					},
 					"response": []
+				},
+				{
+					"name": "Get Chat History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/astrology/insights/mental_health/chat/?page=1&page_size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"insights",
+								"mental_health",
+								"chat",
+								""
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination (optional)."
+								},
+								{
+									"key": "page_size",
+									"value": "20",
+									"description": "Number of messages per page (optional)."
+								}
+							]
+						},
+						"description": "Retrieves the paginated chat history for a specific category (newest first). Student only."
+					},
+					"response": []
+				},
+				{
+					"name": "Send Chat Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Can you explain more about the impact of the moon on my mental health based on my chart?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/astrology/insights/mental_health/chat/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"astrology",
+								"insights",
+								"mental_health",
+								"chat",
+								""
+							]
+						},
+						"description": "Send a follow-up message to Gemini about a specific insight category. Student only."
+					},
+					"response": []
 				}
 			]
 		},

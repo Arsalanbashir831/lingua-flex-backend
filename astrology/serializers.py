@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BirthProfile, AstrologyDashboardAccess
+from .models import BirthProfile, AstrologyDashboardAccess, AstrologyChat
 from core.models import User
 
 
@@ -66,3 +66,10 @@ class StudentDashboardSummarySerializer(serializers.ModelSerializer):
 
     def get_has_birth_profile(self, obj):
         return hasattr(obj.student, 'birth_profile')
+
+
+class AstrologyChatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AstrologyChat
+        fields = ['id', 'category', 'role', 'content', 'created_at']
+        read_only_fields = ['id', 'category', 'role', 'content', 'created_at']

@@ -256,6 +256,62 @@ class GeminiAIService:
         except Exception as e:
             raise GeminiAIError(f"Failed to generate insight from Gemini: {str(e)}")
 
+    @classmethod
+    def chat_about_insight(
+        cls, category: str, structured_data: dict, insight_text: str, history: list, new_message: str
+    ) -> str:
+        import json
+        from google import genai
+        from google.genai import types
+
+        system_prompt = f"""You are an expert Vedic astrologer assistant specializing in the "{category}" category.
+
+You have been given the following pre-generated astrological insight for this person:
+--- INSIGHT START ---
+{insight_text}
+--- INSIGHT END ---
+
+You also have their complete birth and natal table data for reference:
+--- DATA START ---
+{json.dumps(structured_data, indent=2)}
+--- DATA END ---
+
+Your role is to answer follow-up questions and provide deeper clarification.
+
+STRICT RULES:
+1. ONLY answer questions directly related to the {category} topic and this user's specific birth chart or insight text.
+2. Ground ALL answers in the provided insight text and birth data. Do NOT fabricate or guess planetary positions.
+3. If the user asks something unrelated to astrology, this specific category, or their own chart, politely decline to answer.
+4. Keep answers concise, warm, insightful, and clear.
+"""
+
+        contents = []
+        for msg in history:
+            # Assume msg is dict with 'role' ('user' or 'model') and 'content'
+            contents.append(
+                types.Content(role=msg["role"], parts=[types.Part.from_text(text=msg["content"])])
+            )
+        
+        # Append the latest user message
+        contents.append(
+            types.Content(role="user", parts=[types.Part.from_text(text=new_message)])
+        )
+
+        try:
+            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.3,
+                ),
+            )
+            return response.text
+        except Exception as e:
+            raise GeminiAIError(f"Failed to generate chat response: {str(e)}")
+
+
     @staticmethod
     def _build_mental_health_prompt(template: str, structured_data: dict) -> str:
         """

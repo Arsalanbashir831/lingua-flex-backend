@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 
 from .models import (
     BirthProfile,
@@ -26,11 +27,13 @@ from .models import (
     TransitCache,
     AstrologyInsight,
     AstrologyDashboardAccess,
+    AstrologyChat,
 )
 from .serializers import (
     BirthProfileSerializer,
     AstrologyAccessSerializer,
     StudentDashboardSummarySerializer,
+    AstrologyChatSerializer,
 )
 from .services import AstrologyAPIClient, AstrologyAPIError, GeminiAIService
 
@@ -296,6 +299,7 @@ class BirthProfileView(APIView):
         # Trigger background insight generation
         import threading
         from .tasks import generate_all_insights_async
+
         threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
 
         return Response(
@@ -317,11 +321,13 @@ class BirthProfileView(APIView):
         NatalChartCache.objects.filter(birth_profile=profile).delete()
         TransitCache.objects.filter(birth_profile=profile).delete()
         AstrologyInsight.objects.filter(birth_profile=profile).delete()
+        AstrologyChat.objects.filter(birth_profile=profile).delete()
         profile = serializer.save(timezone_str="")  # reset timezone too
 
         # Trigger background insight generation
         import threading
         from .tasks import generate_all_insights_async
+
         threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
 
         return Response(BirthProfileSerializer(profile).data)
@@ -387,7 +393,7 @@ class NatalChartView(APIView):
             defaults={
                 "birth_details_data": birth_details,
                 "divisional_data": divisional,
-            }
+            },
         )
 
         return Response(_build_natal_response(birth_details, divisional, profile))
@@ -445,7 +451,7 @@ class TransitView(APIView):
                 defaults={
                     "transit_data": transit,
                     "cached_for_date": today_local,
-                }
+                },
             )
         else:
             cache.transit_data = transit
@@ -504,20 +510,28 @@ class AstrologyInsightView(APIView):
 
         lock_key = f"generating_insight_{profile.id}_{category}"
         if cache.get(lock_key):
-            logger.info(f"Insight ({category}) for user {profile.user.email} is currently being generated in the background. Waiting...")
+            logger.info(
+                f"Insight ({category}) for user {profile.user.email} is currently being generated in the background. Waiting..."
+            )
             # Poll for up to 30 seconds
             for _ in range(30):
                 time.sleep(1)
-                insight = AstrologyInsight.objects.filter(birth_profile=profile, category=category).first()
+                insight = AstrologyInsight.objects.filter(
+                    birth_profile=profile, category=category
+                ).first()
                 if insight:
-                    return Response({"category": category, "insight_text": insight.insight_text})
-                
+                    return Response(
+                        {"category": category, "insight_text": insight.insight_text}
+                    )
+
                 # If the lock disappears but no insight exists, the background task might have failed.
                 if not cache.get(lock_key):
                     break
 
         # 2. Cache Miss - Need to Generate
-        cache.set(lock_key, True, timeout=90) # Lock it down so the background task skips it
+        cache.set(
+            lock_key, True, timeout=90
+        )  # Lock it down so the background task skips it
         try:
             msg = f"AI Insight ({category}) CACHE MISS for user: {profile.user.email}. Generating with Gemini..."
             logger.info(msg)
@@ -577,7 +591,7 @@ class AstrologyInsightView(APIView):
                             defaults={
                                 "transit_data": transit_data,
                                 "cached_for_date": today_local,
-                            }
+                            },
                         )
                         data_to_pass["transits"] = transit_data
 
@@ -590,7 +604,9 @@ class AstrologyInsightView(APIView):
 
             # 4. Invoke Gemini API
             try:
-                generated_text = GeminiAIService.generate_insight(category, data_to_pass)
+                generated_text = GeminiAIService.generate_insight(
+                    category, data_to_pass
+                )
             except Exception as e:
                 return Response(
                     {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -598,8 +614,9 @@ class AstrologyInsightView(APIView):
 
             # 5. Populate and Save Cache
             new_insight, _ = AstrologyInsight.objects.update_or_create(
-                birth_profile=profile, category=category, 
-                defaults={"insight_text": generated_text}
+                birth_profile=profile,
+                category=category,
+                defaults={"insight_text": generated_text},
             )
 
             return Response(
@@ -607,6 +624,156 @@ class AstrologyInsightView(APIView):
             )
         finally:
             cache.delete(lock_key)
+
+
+# ---------------------------------------------------------------------------
+# Chat History Views
+# ---------------------------------------------------------------------------
+
+
+class ChatHistoryPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+class AstrologyInsightChatView(APIView):
+    """
+    GET  — Returns paginated chat history for a category (newest first).
+    POST — Sends a new message to Gemini, saves both user and model responses, returns model response.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, category):
+        profile, err = _resolve_profile(request)
+        if err:
+            return err
+
+        # Only the student can chat, not teachers with delegated access
+        if profile.user != request.user:
+            return Response(
+                {"detail": "You cannot view chat threads for delegated dashboards."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Order by newest first so page 1 is the most recent messages
+        chats = AstrologyChat.objects.filter(
+            birth_profile=profile, category=category
+        ).order_by("-created_at")
+
+        paginator = ChatHistoryPagination()
+        paginated_chats = paginator.paginate_queryset(chats, request)
+
+        serializer = AstrologyChatSerializer(paginated_chats, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request, category):
+        profile, err = _resolve_profile(request)
+        if err:
+            return err
+
+        # Only the student can chat (as explicitly requested)
+        if profile.user != request.user:
+            return Response(
+                {"detail": "You cannot chat on behalf of delegated dashboards."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        new_message = request.data.get("message")
+        if not new_message or not str(new_message).strip():
+            return Response(
+                {"detail": "Message is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        valid_categories = [c[0] for c in AstrologyInsight.CATEGORY_CHOICES]
+        if category not in valid_categories:
+            return Response(
+                {"detail": "Invalid category."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 1. Fetch Insight Context
+        insight = AstrologyInsight.objects.filter(
+            birth_profile=profile, category=category
+        ).first()
+        if not insight:
+            return Response(
+                {
+                    "detail": "You must generate the insight first before querying the AI."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 2. Extract structured static data
+        try:
+            natal_cache = profile.natal_cache
+        except NatalChartCache.DoesNotExist:
+            return Response(
+                {"detail": "Missing natal cache."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        structured_data = {
+            "birth_details": natal_cache.birth_details_data,
+            "divisional_data": natal_cache.divisional_data,
+        }
+        if natal_cache.dasha_data:
+            structured_data["dasha"] = natal_cache.dasha_data
+        if natal_cache.ashtakvarga_data:
+            structured_data["ashtakvarga"] = natal_cache.ashtakvarga_data
+        if natal_cache.kp_data:
+            structured_data["kp_system"] = natal_cache.kp_data
+
+        try:
+            transit_cache = profile.transit_cache
+            structured_data["transits"] = transit_cache.transit_data
+        except TransitCache.DoesNotExist:
+            pass
+
+        # 3. Retrieve up to 8 of the most recent messages from the DB
+        # (leaving room for the +2 new user/model messages to equal max 10)
+        recent_history_qs = AstrologyChat.objects.filter(
+            birth_profile=profile, category=category
+        ).order_by("-created_at")[:8]
+
+        # Reverse to chronological order
+        recent_history = [
+            {"role": msg.role, "content": msg.content}
+            for msg in reversed(list(recent_history_qs))
+        ]
+
+        # 4. Save User Message
+        user_chat = AstrologyChat.objects.create(
+            birth_profile=profile,
+            category=category,
+            role=AstrologyChat.ROLE_USER,
+            content=new_message.strip(),
+        )
+
+        # 5. Call Gemini
+        try:
+            model_response_text = GeminiAIService.chat_about_insight(
+                category=category,
+                structured_data=structured_data,
+                insight_text=insight.insight_text,
+                history=recent_history,
+                new_message=user_chat.content,
+            )
+        except Exception as e:
+            # If generation fails, we should delete the user message so they can safely retry
+            user_chat.delete()
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # 6. Save Model Response
+        model_chat = AstrologyChat.objects.create(
+            birth_profile=profile,
+            category=category,
+            role=AstrologyChat.ROLE_MODEL,
+            content=model_response_text.strip(),
+        )
+
+        return Response({"message": AstrologyChatSerializer(model_chat).data})
 
 
 # ---------------------------------------------------------------------------
