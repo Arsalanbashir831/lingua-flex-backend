@@ -25,6 +25,7 @@ from .models import (
     BirthProfile,
     NatalChartCache,
     TransitCache,
+    NakshatraPredictionCache,
     AstrologyInsight,
     AstrologyDashboardAccess,
     AstrologyChat,
@@ -467,6 +468,83 @@ class TransitView(APIView):
             "natal_moon": data.get("natal_moon"),
             "transits": data.get("transits", []),
             "summary": data.get("summary"),
+            "ayanamsa": data.get("ayanamsa"),
+        }
+
+
+class NakshatraPredictionView(APIView):
+    """
+    GET — Returns today's nakshatra predictions (tara bala, etc.) for the user.
+
+    Supports ?student_id=X for teachers with delegated access.
+    Cache invalidation strategy (no cron):
+      - On each request, compare cached_for_date with today in the user's
+        local timezone (stored in BirthProfile.timezone_str).
+      - If the dates differ → call the API and refresh the cache.
+      - If timezone_str is not yet set (natal chart not fetched) → fall back to UTC.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, err = _resolve_profile(request)
+        if err:
+            return err
+
+        tz = pytz.timezone(profile.timezone_str) if profile.timezone_str else pytz.utc
+        today_local = datetime.now(tz).date()
+
+        # Try cache
+        try:
+            cache = profile.nakshatra_prediction_cache
+            if cache.cached_for_date == today_local:
+                msg = f"Nakshatra predictions retrieved from DATABASE cache for user: {profile.user.email}"
+                logger.info(msg)
+                return Response(self._shape_response(cache.prediction_data))
+        except NakshatraPredictionCache.DoesNotExist:
+            cache = None
+
+        # Cache miss or stale — call the API
+        msg = f"Nakshatra predictions CACHE MISS (or stale) for user: {profile.user.email}. Calling Astrology.io API..."
+        logger.info(msg)
+
+        client = AstrologyAPIClient()
+        try:
+            prediction_data = client.get_nakshatra_predictions(profile)
+        except AstrologyAPIError as e:
+            return Response(
+                {"detail": f"Astrology API error: {str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Upsert cache
+        if cache is None:
+            NakshatraPredictionCache.objects.update_or_create(
+                birth_profile=profile,
+                defaults={
+                    "prediction_data": prediction_data,
+                    "cached_for_date": today_local,
+                },
+            )
+        else:
+            cache.prediction_data = prediction_data
+            cache.cached_for_date = today_local
+            cache.save()
+
+        return Response(self._shape_response(prediction_data))
+
+    def _shape_response(self, raw: dict) -> dict:
+        data = raw.get("data", {})
+        return {
+            "subject_name": data.get("subject_name"),
+            "prediction_date": data.get("prediction_date"),
+            "current_moon": data.get("current_moon"),
+            "natal_moon": data.get("natal_moon"),
+            "predictions": data.get("predictions"),
+            "guidance": data.get("guidance"),
+            "tarabala": data.get("tarabala"),
+            "overall_score": data.get("overall_score"),
+            "timing": data.get("timing"),
             "ayanamsa": data.get("ayanamsa"),
         }
 

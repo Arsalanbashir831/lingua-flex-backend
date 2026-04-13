@@ -108,6 +108,18 @@ class AstrologyAPIClient:
         }
         return self._post("transit", payload)
 
+    def get_nakshatra_predictions(self, profile) -> dict:
+        """
+        Calls POST /vedic/nakshatra-predictions.
+        Returns daily predictions based on the current Moon's transit over
+        the natal Nakshatra, including Tara Bala analysis.
+        """
+        payload = {
+            "subject": self._subject_payload(profile),
+            "options": {"language": "en"},
+        }
+        return self._post("nakshatra-predictions", payload)
+
     def get_kp_system(self, profile) -> dict:
         """
         Calls POST /vedic/kp-system.

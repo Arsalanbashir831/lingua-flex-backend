@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BirthProfile, NatalChartCache, TransitCache, AIPromptConfiguration
+from .models import BirthProfile, NatalChartCache, TransitCache, NakshatraPredictionCache, AIPromptConfiguration
 
 
 @admin.register(BirthProfile)
@@ -19,6 +19,12 @@ class NatalChartCacheAdmin(admin.ModelAdmin):
 class TransitCacheAdmin(admin.ModelAdmin):
     list_display = ['birth_profile', 'cached_for_date', 'cached_at']
     readonly_fields = ['birth_profile', 'transit_data', 'cached_for_date', 'cached_at']
+
+
+@admin.register(NakshatraPredictionCache)
+class NakshatraPredictionCacheAdmin(admin.ModelAdmin):
+    list_display = ['birth_profile', 'cached_for_date', 'cached_at']
+    readonly_fields = ['birth_profile', 'prediction_data', 'cached_for_date', 'cached_at']
 
 
 @admin.register(AIPromptConfiguration)

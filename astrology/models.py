@@ -80,6 +80,28 @@ class TransitCache(models.Model):
         )
 
 
+class NakshatraPredictionCache(models.Model):
+    """
+    Caches today's nakshatra predictions (tarabala, predictions, etc) for a user.
+    Invalidated when the current local date (in the user's timezone)
+    differs from cached_for_date.
+    """
+
+    birth_profile = models.OneToOneField(
+        BirthProfile, on_delete=models.CASCADE, related_name="nakshatra_prediction_cache"
+    )
+    # Raw JSON from POST /vedic/nakshatra-predictions
+    prediction_data = models.JSONField()
+    # The local calendar date (in user's timezone) this prediction data is valid for
+    cached_for_date = models.DateField()
+    cached_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return (
+            f"Nakshatra Prediction Cache: {self.birth_profile.user.email} for {self.cached_for_date}"
+        )
+
+
 class AstrologyInsight(models.Model):
     """
     Caches the AI-generated astrological readings to save API costs

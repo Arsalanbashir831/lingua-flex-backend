@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
-    BirthProfileView, NatalChartView, TransitView, AstrologyInsightView,
-    AstrologyInsightChatView,
+    BirthProfileView, NatalChartView, TransitView, NakshatraPredictionView,
+    AstrologyInsightView, AstrologyInsightChatView,
     AstrologyAccessView, AstrologyAccessRevokeView, TeacherStudentDashboardsView,
 )
 
@@ -9,6 +9,7 @@ urlpatterns = [
     path('birth-profile/', BirthProfileView.as_view(), name='astrology-birth-profile'),
     path('natal-chart/', NatalChartView.as_view(), name='astrology-natal-chart'),
     path('transits/', TransitView.as_view(), name='astrology-transits'),
+    path('nakshatra-predictions/', NakshatraPredictionView.as_view(), name='astrology-nakshatra-predictions'),
     path('insights/<str:category>/', AstrologyInsightView.as_view(), name='astrology-insight'),
     path('insights/<str:category>/chat/', AstrologyInsightChatView.as_view(), name='astrology-insight-chat'),
 
