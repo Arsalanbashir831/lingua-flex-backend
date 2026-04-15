@@ -58,6 +58,7 @@ class AstrologyAPIClient:
         if not resp.ok:
             error_data = resp.text
             import logging
+
             view_logger = logging.getLogger("astrology.views")
             view_logger.error(f"Astrology API error [{resp.status_code}]: {error_data}")
             raise AstrologyAPIError(
@@ -210,58 +211,93 @@ class GeminiAIService:
         if not prompt_template:
             raise ValueError(f"No prompt template found for category: {category}")
 
-        # Append custom user prompt from Admin if available
+        # Extract custom user prompt from Admin if available
         config = AIPromptConfiguration.objects.filter(
             category=category, is_active=True
         ).first()
+        user_prompt_text = ""
         if config and config.user_prompt.strip():
-            # Add separation before the custom user instructions
-            prompt_template = f"{prompt_template}\n\n-----------------------------------\nUSER PRIORITY FOCUS:\n{config.user_prompt.strip()}\n"
+            user_prompt_text = f"USER PRIORITY FOCUS:\n{config.user_prompt.strip()}\n"
 
         # Categories with specific named placeholders are handled differently.
         if category == "mental_health":
-            prompt = cls._build_mental_health_prompt(prompt_template, structured_data)
+            prompt = cls._build_mental_health_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "btr":
             prompt = cls._build_btr_prompt(
-                prompt_template, structured_data, extra_context or {}
+                prompt_template,
+                structured_data,
+                extra_context or {},
+                user_prompt=user_prompt_text,
             )
         elif category == "marriage":
-            prompt = cls._build_marriage_prompt(prompt_template, structured_data)
+            prompt = cls._build_marriage_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "prosperity_sav":
-            prompt = cls._build_sav_prompt(prompt_template, structured_data)
+            prompt = cls._build_sav_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "parasari":
-            prompt = cls._build_parasari_prompt(prompt_template, structured_data)
+            prompt = cls._build_parasari_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "navatara":
-            prompt = cls._build_navatara_prompt(prompt_template, structured_data)
+            prompt = cls._build_navatara_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "medical":
-            prompt = cls._build_medical_prompt(prompt_template, structured_data)
+            prompt = cls._build_medical_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "darakaraka":
-            prompt = cls._build_darakaraka_prompt(prompt_template, structured_data)
+            prompt = cls._build_darakaraka_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "benefic_planets":
-            prompt = cls._build_benefic_planets_prompt(prompt_template, structured_data)
+            prompt = cls._build_benefic_planets_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "malefic_planets":
-            prompt = cls._build_malefic_planets_prompt(prompt_template, structured_data)
+            prompt = cls._build_malefic_planets_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "chart_analysis":
-            prompt = cls._build_chart_analysis_prompt(prompt_template, structured_data)
+            prompt = cls._build_chart_analysis_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "planetary_states":
-            prompt = cls._build_planetary_states_prompt(prompt_template, structured_data)
+            prompt = cls._build_planetary_states_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "lagna_lord":
-            prompt = cls._build_lagna_lord_prompt(prompt_template, structured_data)
+            prompt = cls._build_lagna_lord_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "rashi_planets":
-            prompt = cls._build_rashi_planets_prompt(prompt_template, structured_data)
+            prompt = cls._build_rashi_planets_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "challenges":
-            prompt = cls._build_challenges_prompt(prompt_template, structured_data)
+            prompt = cls._build_challenges_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         elif category == "astro_energy":
-            prompt = cls._build_astro_energy_prompt(prompt_template, structured_data)
+            prompt = cls._build_astro_energy_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
         else:
             # All other prompts use a single {astrology_data} JSON dump
             data_str = json.dumps(structured_data, indent=2)
-            prompt = prompt_template.format(astrology_data=data_str)
+            prompt = prompt_template.format(
+                astrology_data=data_str, user_prompt=user_prompt_text
+            )
 
         try:
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=prompt,
             )
             return response.text
@@ -270,7 +306,12 @@ class GeminiAIService:
 
     @classmethod
     def chat_about_insight(
-        cls, category: str, structured_data: dict, insight_text: str, history: list, new_message: str
+        cls,
+        category: str,
+        structured_data: dict,
+        insight_text: str,
+        history: list,
+        new_message: str,
     ) -> str:
         import json
         from google import genai
@@ -301,9 +342,11 @@ STRICT RULES:
         for msg in history:
             # Assume msg is dict with 'role' ('user' or 'model') and 'content'
             contents.append(
-                types.Content(role=msg["role"], parts=[types.Part.from_text(text=msg["content"])])
+                types.Content(
+                    role=msg["role"], parts=[types.Part.from_text(text=msg["content"])]
+                )
             )
-        
+
         # Append the latest user message
         contents.append(
             types.Content(role="user", parts=[types.Part.from_text(text=new_message)])
@@ -312,7 +355,7 @@ STRICT RULES:
         try:
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -323,9 +366,10 @@ STRICT RULES:
         except Exception as e:
             raise GeminiAIError(f"Failed to generate chat response: {str(e)}")
 
-
     @staticmethod
-    def _build_mental_health_prompt(template: str, structured_data: dict) -> str:
+    def _build_mental_health_prompt(
+        template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         """
         Extracts specific planet/house fields from the stored API data
         and injects them into the MENTAL_HEALTH_PROMPT named placeholders.
@@ -427,6 +471,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=lagna_str,
             moon=moon_str,
             mercury=mercury_str,
@@ -435,7 +480,7 @@ STRICT RULES:
 
     @staticmethod
     def _build_btr_prompt(
-        template: str, structured_data: dict, extra_context: dict
+        template: str, structured_data: dict, extra_context: dict, user_prompt: str = ""
     ) -> str:
         """
         Uses the extra_context dictionary for user-provided life event dates,
@@ -446,6 +491,7 @@ STRICT RULES:
         kp_data_str = json.dumps(structured_data.get("kp_system", {}), indent=2)
 
         return template.format(
+            user_prompt=user_prompt,
             birth_date=extra_context.get("birth_date", "Not provided"),
             birth_time=extra_context.get("birth_time", "Not provided"),
             birth_place=extra_context.get("birth_place", "Not provided"),
@@ -504,7 +550,9 @@ STRICT RULES:
     # Placeholders: lagna, house2, house7, house11, mahadasha, antardasha, dasha_sequence
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_marriage_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_marriage_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         planet_map = cls._get_d1_planet_map(structured_data)
         asc = planet_map.get("Ascendant", {})
         lagna_sign = asc.get("sign", "N/A")
@@ -537,6 +585,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             house2=house2_sign,
             house7=house7_sign,
@@ -552,7 +601,9 @@ STRICT RULES:
     # Placeholders: lagna, sav_house_points, saturn_house
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_sav_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_sav_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         planet_map = cls._get_d1_planet_map(structured_data)
         lagna_sign = planet_map.get("Ascendant", {}).get("sign", "N/A")
         lagna_lord = planet_map.get("Ascendant", {}).get("lord", "N/A")
@@ -583,6 +634,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             sav_house_points=sav_house_points,
             saturn_house=saturn_house,
@@ -593,7 +645,9 @@ STRICT RULES:
     # Placeholders: lagna, sun, moon, mars, mercury, jupiter, venus, saturn, rahu, ketu
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_parasari_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_parasari_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         planet_map = cls._get_d1_planet_map(structured_data)
         birth_planets = cls._get_birth_planets(structured_data)
         house_map = {p.get("planet"): p.get("house", "N/A") for p in birth_planets}
@@ -612,6 +666,7 @@ STRICT RULES:
             )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             sun=planet_str("Sun"),
             moon=planet_str("Moon"),
@@ -629,7 +684,9 @@ STRICT RULES:
     # Placeholders: nakshatra, pada
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_navatara_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_navatara_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         birth_planets = cls._get_birth_planets(structured_data)
         moon_nakshatra = next(
             (
@@ -643,6 +700,7 @@ STRICT RULES:
         birth_nakshatra = birth_raw.get("data", {}).get("birth_star", moon_nakshatra)
 
         return template.format(
+            user_prompt=user_prompt,
             nakshatra=birth_nakshatra,
             pada="Not provided",
         )
@@ -652,7 +710,9 @@ STRICT RULES:
     # Placeholders: d1_data, d9_data, d30_data, dasha
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_medical_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_medical_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         divisional_raw = structured_data.get("divisional_data", {})
@@ -678,6 +738,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             d1_data=d1_str,
             d9_data=d9_str,
             d30_data=d30_str,
@@ -690,7 +751,9 @@ STRICT RULES:
     # Placeholders: planet_degrees, d9_data
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_darakaraka_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_darakaraka_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         planet_map = cls._get_d1_planet_map(structured_data)
@@ -721,6 +784,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             planet_degrees=planet_degrees,
             d9_data=d9_str,
             transits=transits_str,
@@ -731,7 +795,9 @@ STRICT RULES:
     # Placeholders: lagna, planets, d9_data, dasha
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_benefic_planets_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_benefic_planets_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         planet_map = cls._get_d1_planet_map(structured_data)
@@ -742,7 +808,9 @@ STRICT RULES:
         birth_planets = cls._get_birth_planets(structured_data)
         planet_lines = []
         for p in birth_planets:
-            planet_lines.append(f"  {p.get('planet')} - {p.get('sign')} - House {p.get('house')}")
+            planet_lines.append(
+                f"  {p.get('planet')} - {p.get('sign')} - House {p.get('house')}"
+            )
         planets_str = "\n".join(planet_lines) if planet_lines else "Not available"
 
         # Extract D9 chart
@@ -764,6 +832,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             planets=planets_str,
             d9_data=d9_str,
@@ -775,7 +844,9 @@ STRICT RULES:
     # Placeholders: lagna, planets, d9_data, dasha
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_malefic_planets_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_malefic_planets_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         planet_map = cls._get_d1_planet_map(structured_data)
@@ -786,7 +857,9 @@ STRICT RULES:
         birth_planets = cls._get_birth_planets(structured_data)
         planet_lines = []
         for p in birth_planets:
-            planet_lines.append(f"  {p.get('planet')} - {p.get('sign')} - House {p.get('house')}")
+            planet_lines.append(
+                f"  {p.get('planet')} - {p.get('sign')} - House {p.get('house')}"
+            )
         planets_str = "\n".join(planet_lines) if planet_lines else "Not available"
 
         # Extract D9 chart
@@ -808,6 +881,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             planets=planets_str,
             d9_data=d9_str,
@@ -819,7 +893,9 @@ STRICT RULES:
     # Placeholders: lagna, d1_data, d9_data, dasha
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_chart_analysis_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_chart_analysis_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         planet_map = cls._get_d1_planet_map(structured_data)
@@ -828,7 +904,9 @@ STRICT RULES:
         lagna_lord = asc.get("lord", "N/A")
 
         birth_planets = cls._get_birth_planets(structured_data)
-        d1_str = json.dumps(birth_planets, indent=2) if birth_planets else "Not available"
+        d1_str = (
+            json.dumps(birth_planets, indent=2) if birth_planets else "Not available"
+        )
 
         # Extract D9 chart
         divisional_raw = structured_data.get("divisional_data", {})
@@ -849,6 +927,7 @@ STRICT RULES:
         )
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             d1_data=d1_str,
             d9_data=d9_str,
@@ -860,11 +939,15 @@ STRICT RULES:
     # Placeholders: astrology_data (D1), d9_data
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_planetary_states_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_planetary_states_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         birth_planets = cls._get_birth_planets(structured_data)
-        d1_str = json.dumps(birth_planets, indent=2) if birth_planets else "Not available"
+        d1_str = (
+            json.dumps(birth_planets, indent=2) if birth_planets else "Not available"
+        )
 
         # Extract D9 chart
         divisional_raw = structured_data.get("divisional_data", {})
@@ -877,6 +960,7 @@ STRICT RULES:
         d9_str = json.dumps(d9_positions, indent=2)
 
         return template.format(
+            user_prompt=user_prompt,
             astrology_data=d1_str,
             d9_data=d9_str,
         )
@@ -887,7 +971,9 @@ STRICT RULES:
     #               degrees, condition
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_lagna_lord_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_lagna_lord_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         planet_map = cls._get_d1_planet_map(structured_data)
         asc = planet_map.get("Ascendant", {})
         lagna_sign = asc.get("sign", "N/A")
@@ -895,7 +981,9 @@ STRICT RULES:
 
         # Find Lagna Lord in D1
         birth_planets = cls._get_birth_planets(structured_data)
-        ll_d1 = next((p for p in birth_planets if p.get("planet") == lagna_lord_name), {})
+        ll_d1 = next(
+            (p for p in birth_planets if p.get("planet") == lagna_lord_name), {}
+        )
 
         # Extract D9 chart to find Lagna Lord there
         divisional_raw = structured_data.get("divisional_data", {})
@@ -906,7 +994,9 @@ STRICT RULES:
                 d9_positions = chart.get("positions", [])
                 break
 
-        ll_d9 = next((p for p in d9_positions if p.get("planet") == lagna_lord_name), {})
+        ll_d9 = next(
+            (p for p in d9_positions if p.get("planet") == lagna_lord_name), {}
+        )
 
         condition_parts = []
         if ll_d1.get("is_combust") == "Yes":
@@ -916,6 +1006,7 @@ STRICT RULES:
         condition_str = ", ".join(condition_parts) if condition_parts else "Normal"
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord_name})",
             lagna_lord=lagna_lord_name,
             d1_sign=ll_d1.get("sign", "N/A"),
@@ -931,7 +1022,9 @@ STRICT RULES:
     # Placeholders: lagna, h1-h12, placements
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_rashi_planets_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_rashi_planets_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         planet_map = cls._get_d1_planet_map(structured_data)
@@ -940,9 +1033,18 @@ STRICT RULES:
         lagna_lord = asc.get("lord", "N/A")
 
         sign_lords = {
-            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
-            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
-            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter"
+            "Ari": "Mars",
+            "Tau": "Venus",
+            "Gem": "Mercury",
+            "Can": "Moon",
+            "Leo": "Sun",
+            "Vir": "Mercury",
+            "Lib": "Venus",
+            "Sco": "Mars",
+            "Sag": "Jupiter",
+            "Cap": "Saturn",
+            "Aqu": "Saturn",
+            "Pis": "Jupiter",
         }
 
         # Dynamically find lord for each house
@@ -952,19 +1054,22 @@ STRICT RULES:
             lord_name = sign_lords.get(h_sign, "N/A")
             # We need to find the house for this planet in D1
             birth_planets = cls._get_birth_planets(structured_data)
-            p_data = next((p for p in birth_planets if p.get("planet") == lord_name), {})
+            p_data = next(
+                (p for p in birth_planets if p.get("planet") == lord_name), {}
+            )
             lord_house = p_data.get("house", "N/A")
             lord_sign = p_data.get("sign", "N/A")
-            
+
             house_lords[f"h{h}"] = f"{lord_name} in House {lord_house} ({lord_sign})"
 
         placements_data = cls._get_birth_planets(structured_data)
         placements_str = json.dumps(placements_data, indent=2)
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             placements=placements_str,
-            **house_lords
+            **house_lords,
         )
 
     # -------------------------------------------------------------------------
@@ -972,7 +1077,9 @@ STRICT RULES:
     # Placeholders: lagna, planets, d9_data
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_challenges_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_challenges_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         import json
 
         planet_map = cls._get_d1_planet_map(structured_data)
@@ -983,7 +1090,9 @@ STRICT RULES:
         birth_planets = cls._get_birth_planets(structured_data)
         planet_lines = []
         for p in birth_planets:
-            planet_lines.append(f"  {p.get('planet')} - Sign: {p.get('sign')} - House: {p.get('house')}")
+            planet_lines.append(
+                f"  {p.get('planet')} - Sign: {p.get('sign')} - House: {p.get('house')}"
+            )
         planets_str = "\n".join(planet_lines)
 
         # Extract D9 chart
@@ -997,6 +1106,7 @@ STRICT RULES:
         d9_str = json.dumps(d9_positions, indent=2)
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             planets=planets_str,
             d9_data=d9_str,
@@ -1007,7 +1117,9 @@ STRICT RULES:
     # Placeholders: lagna, planets
     # -------------------------------------------------------------------------
     @classmethod
-    def _build_astro_energy_prompt(cls, template: str, structured_data: dict) -> str:
+    def _build_astro_energy_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
         planet_map = cls._get_d1_planet_map(structured_data)
         asc = planet_map.get("Ascendant", {})
         lagna_sign = asc.get("sign", "N/A")
@@ -1016,10 +1128,13 @@ STRICT RULES:
         birth_planets = cls._get_birth_planets(structured_data)
         planet_lines = []
         for p in birth_planets:
-            planet_lines.append(f"  {p.get('planet')} (House {p.get('house')}, {p.get('sign')})")
+            planet_lines.append(
+                f"  {p.get('planet')} (House {p.get('house')}, {p.get('sign')})"
+            )
         planets_str = "\n".join(planet_lines)
 
         return template.format(
+            user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             planets=planets_str,
         )

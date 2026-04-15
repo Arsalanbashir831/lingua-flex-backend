@@ -86,6 +86,7 @@ D. Cognitive:
 - Guidance on acceptance (Svikarokti)
 - Mental reframing strategies
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -142,6 +143,7 @@ For each event:
 - Indicate direction of correction (earlier/later)
 - Explain which event failed and why
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -225,6 +227,7 @@ Always include Karakas:
 - Combine Dasha triggers + Jupiter transit timing
 - Narrow down to specific months/years
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -321,6 +324,7 @@ Calculate total SAV points:
   If SAV >28 -> Sade Sati favorable
   If SAV <28 -> challenging period
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -417,6 +421,7 @@ TASK:
 4. Combine into Compound Relationships (Panchadha Maitri)
 5. Identify strongest supportive planets (Great Friends)
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -476,6 +481,7 @@ TASK:
 2. Assign each Nakshatra to its Tara category
 3. Highlight favorable vs unfavorable groups
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -592,6 +598,7 @@ Include:
 
 9. SYNTHESIS
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -667,6 +674,7 @@ Incorporate the Planetary Avatars for rich contextual flavor:
 5. SYNTHESIS
 - Describe: Spouse personality, Relationship dynamics, Strengths and risks, Karmic lesson
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -734,6 +742,7 @@ ANALYSIS FRAMEWORK:
 - Cross-check strength in Navamsa (D9)
 - Identify Vargottama planets
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -800,6 +809,7 @@ ANALYSIS FRAMEWORK:
 7. D9 VALIDATION
 - Confirm strength or weakness via Navamsa
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -862,6 +872,7 @@ ANALYSIS FRAMEWORK:
 - Evaluate current Mahadasha
 - Check dignity in D9
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -933,6 +944,7 @@ Classify:
 - Check Vargottama
 - Confirm strength vs D1
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -1001,6 +1013,7 @@ For each house:
 3. Translate into real-life behavior:
 - Action-oriented interpretation
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -1084,6 +1097,7 @@ Example:
   - 3, 7, 11 -> Kama
   - 4, 8, 12 -> Moksha
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -1170,6 +1184,7 @@ ANALYSIS FRAMEWORK:
 - Combustion
 - Retrograde influence
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
@@ -1243,6 +1258,7 @@ ANALYSIS FRAMEWORK:
 6. D9 VALIDATION
 - Confirm if struggles persist or resolve over time
 
+{user_prompt}
 -----------------------------------
 
 OUTPUT FORMAT:
