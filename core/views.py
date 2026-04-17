@@ -291,6 +291,75 @@ class PasswordResetConfirmView(APIView):
         )
 
 
+class ChangePasswordView(APIView):
+    """
+    Allows an authenticated user (student or teacher) to update their password.
+    Requires the current password for verification before applying the new one.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get("current_password")
+        new_password = request.data.get("new_password")
+
+        if not current_password or not new_password:
+            return Response(
+                {"error": "current_password and new_password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if current_password == new_password:
+            return Response(
+                {"error": "New password must be different from the current password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        
+        # Step 1: Verify current password via Supabase sign-in
+        # This ensures the user actually knows their current password
+        try:
+            auth_response = supabase.auth.sign_in_with_password(
+                {"email": user.email, "password": current_password}
+            )
+        except AuthApiError as e:
+            return Response(
+                {"error": "Current password is incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Authentication failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Step 2: Update password using the access token returned from the sign-in
+        # This is the most reliable way to update a password for the current user
+        try:
+            # We create a temporary client with the bearer token from the verification sign-in
+            temp_supabase = create_client(
+                settings.SUPABASE_URL, 
+                settings.SUPABASE_ANON_KEY # Use anon key but provide user's specific session
+            )
+            temp_supabase.auth.set_session(
+                auth_response.session.access_token, 
+                auth_response.session.refresh_token
+            )
+            
+            temp_supabase.auth.update_user({"password": new_password})
+            
+            return Response(
+                {"message": "Password updated successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to update password: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
 class ResendVerificationView(APIView):
     """
     Resend email verification link for unverified users
