@@ -3,6 +3,7 @@ from .views import (
     BirthProfileView, NatalChartView, TransitView, NakshatraPredictionView,
     AstrologyInsightView, AstrologyInsightChatView,
     AstrologyAccessView, AstrologyAccessRevokeView, TeacherStudentDashboardsView,
+    GuestProfileListView, GuestProfileDetailView
 )
 
 urlpatterns = [
@@ -12,6 +13,10 @@ urlpatterns = [
     path('nakshatra-predictions/', NakshatraPredictionView.as_view(), name='astrology-nakshatra-predictions'),
     path('insights/<str:category>/', AstrologyInsightView.as_view(), name='astrology-insight'),
     path('insights/<str:category>/chat/', AstrologyInsightChatView.as_view(), name='astrology-insight-chat'),
+
+    # Guest Profiles (Astrologer Workspace)
+    path('guest-profiles/', GuestProfileListView.as_view(), name='astrology-guest-profiles'),
+    path('guest-profiles/<int:pk>/', GuestProfileDetailView.as_view(), name='astrology-guest-profile-detail'),
 
     # Dashboard access management
     path('access/', AstrologyAccessView.as_view(), name='astrology-access-manage'),

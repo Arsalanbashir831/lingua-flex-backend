@@ -9,7 +9,11 @@ class BirthProfile(models.Model):
     """
 
     user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="birth_profile"
+        User, on_delete=models.CASCADE, related_name="birth_profile", null=True, blank=True
+    )
+    guest_name = models.CharField(max_length=150, blank=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="created_guest_profiles", null=True, blank=True
     )
     birth_year = models.IntegerField()
     birth_month = models.IntegerField()
@@ -26,8 +30,14 @@ class BirthProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def display_name(self):
+        if self.user:
+            return self.user.get_full_name() or self.user.email
+        return self.guest_name or f"Guest Chart {self.id}"
+
     def __str__(self):
-        return f"Birth Profile: {self.user.email} ({self.city}, {self.country_code})"
+        return f"Birth Profile: {self.display_name} ({self.city}, {self.country_code})"
 
 
 class NatalChartCache(models.Model):
@@ -54,7 +64,7 @@ class NatalChartCache(models.Model):
 
     def __str__(self):
         return (
-            f"Natal Cache: {self.birth_profile.user.email} (cached at {self.cached_at})"
+            f"Natal Cache: {self.birth_profile.display_name} (cached at {self.cached_at})"
         )
 
 
@@ -76,7 +86,7 @@ class TransitCache(models.Model):
 
     def __str__(self):
         return (
-            f"Transit Cache: {self.birth_profile.user.email} for {self.cached_for_date}"
+            f"Transit Cache: {self.birth_profile.display_name} for {self.cached_for_date}"
         )
 
 
@@ -98,7 +108,7 @@ class NakshatraPredictionCache(models.Model):
 
     def __str__(self):
         return (
-            f"Nakshatra Prediction Cache: {self.birth_profile.user.email} for {self.cached_for_date}"
+            f"Nakshatra Prediction Cache: {self.birth_profile.display_name} for {self.cached_for_date}"
         )
 
 
@@ -142,7 +152,7 @@ class AstrologyInsight(models.Model):
 
     def __str__(self):
         return (
-            f"Insight ({self.get_category_display()}): {self.birth_profile.user.email}"
+            f"Insight ({self.get_category_display()}): {self.birth_profile.display_name}"
         )
 
 
@@ -243,6 +253,6 @@ class AstrologyChat(models.Model):
 
     def __str__(self):
         return (
-            f"[{self.role.upper()}] {self.birth_profile.user.email} / "
+            f"[{self.role.upper()}] {self.birth_profile.display_name} / "
             f"{self.category}: {self.content[:60]}"
         )

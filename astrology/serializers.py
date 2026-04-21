@@ -14,11 +14,12 @@ class BirthProfileSerializer(serializers.ModelSerializer):
             'birth_hour', 'birth_minute',
             'city', 'country_code',
             'timezone_str', 'created_at', 'updated_at',
+            'guest_name', 'created_by'
         ]
-        read_only_fields = ['id', 'user_name', 'timezone_str', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user_name', 'timezone_str', 'created_at', 'updated_at', 'created_by']
 
     def get_user_name(self, obj):
-        return obj.user.get_full_name() or obj.user.email
+        return obj.display_name
 
 
 class UserBasicSerializer(serializers.ModelSerializer):

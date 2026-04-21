@@ -226,10 +226,26 @@ def _resolve_profile(request):
     """
     from core.models import User
 
+    guest_id = request.query_params.get("guest_profile_id")
+    if guest_id:
+        try:
+            profile = BirthProfile.objects.get(id=guest_id)
+            if profile.created_by != request.user:
+                return None, Response(
+                    {"detail": "Access denied. You did not create this guest profile."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            return profile, None
+        except BirthProfile.DoesNotExist:
+            return None, Response(
+                {"detail": "Guest profile not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
     student_id = request.query_params.get("student_id")
     if not student_id:
         try:
-            return request.user.birth_profile, None
+            profile = BirthProfile.objects.get(user=request.user)
+            return profile, None
         except BirthProfile.DoesNotExist:
             return None, Response(
                 {"detail": "No birth profile found. Please create one first."},
@@ -309,7 +325,7 @@ class BirthProfileView(APIView):
 
     def put(self, request):
         try:
-            profile = request.user.birth_profile
+            profile = BirthProfile.objects.get(user=request.user)
         except BirthProfile.DoesNotExist:
             return Response(
                 {"detail": "No birth profile found. Use POST to create one."},
@@ -354,7 +370,7 @@ class NatalChartView(APIView):
         # Return from cache if available
         try:
             cache = profile.natal_cache
-            msg = f"Natal chart retrieved from DATABASE cache for user: {profile.user.email}"
+            msg = f"Natal chart retrieved from DATABASE cache for user: {profile.display_name}"
             logger.info(msg)
             return Response(
                 _build_natal_response(
@@ -362,7 +378,7 @@ class NatalChartView(APIView):
                 )
             )
         except NatalChartCache.DoesNotExist:
-            msg = f"Natal chart CACHE MISS for user: {profile.user.email}. Calling Astrology.io API..."
+            msg = f"Natal chart CACHE MISS for user: {profile.display_name}. Calling Astrology.io API..."
             logger.info(msg)
             pass
 
@@ -426,14 +442,14 @@ class TransitView(APIView):
         try:
             cache = profile.transit_cache
             if not _is_transit_stale(cache, profile.timezone_str):
-                msg = f"Transit data retrieved from DATABASE cache for user: {profile.user.email}"
+                msg = f"Transit data retrieved from DATABASE cache for user: {profile.display_name}"
                 logger.info(msg)
                 return Response(self._shape_response(cache.transit_data))
         except TransitCache.DoesNotExist:
             cache = None
 
         # Cache miss or stale — call the API
-        msg = f"Transit data CACHE MISS (or stale) for user: {profile.user.email}. Calling Astrology.io API..."
+        msg = f"Transit data CACHE MISS (or stale) for user: {profile.display_name}. Calling Astrology.io API..."
         logger.info(msg)
 
         client = AstrologyAPIClient()
@@ -498,14 +514,14 @@ class NakshatraPredictionView(APIView):
         try:
             cache = profile.nakshatra_prediction_cache
             if cache.cached_for_date == today_local:
-                msg = f"Nakshatra predictions retrieved from DATABASE cache for user: {profile.user.email}"
+                msg = f"Nakshatra predictions retrieved from DATABASE cache for user: {profile.display_name}"
                 logger.info(msg)
                 return Response(self._shape_response(cache.prediction_data))
         except NakshatraPredictionCache.DoesNotExist:
             cache = None
 
         # Cache miss or stale — call the API
-        msg = f"Nakshatra predictions CACHE MISS (or stale) for user: {profile.user.email}. Calling Astrology.io API..."
+        msg = f"Nakshatra predictions CACHE MISS (or stale) for user: {profile.display_name}. Calling Astrology.io API..."
         logger.info(msg)
 
         client = AstrologyAPIClient()
@@ -576,7 +592,7 @@ class AstrologyInsightView(APIView):
             birth_profile=profile, category=category
         ).first()
         if insight:
-            msg = f"AI Insight ({category}) CACHE HIT for user: {profile.user.email}"
+            msg = f"AI Insight ({category}) CACHE HIT for user: {profile.display_name}"
             logger.info(msg)
             return Response(
                 {"category": category, "insight_text": insight.insight_text}
@@ -589,7 +605,7 @@ class AstrologyInsightView(APIView):
         lock_key = f"generating_insight_{profile.id}_{category}"
         if cache.get(lock_key):
             logger.info(
-                f"Insight ({category}) for user {profile.user.email} is currently being generated in the background. Waiting..."
+                f"Insight ({category}) for user {profile.display_name} is currently being generated in the background. Waiting..."
             )
             # Poll for up to 30 seconds
             for _ in range(30):
@@ -611,7 +627,7 @@ class AstrologyInsightView(APIView):
             lock_key, True, timeout=90
         )  # Lock it down so the background task skips it
         try:
-            msg = f"AI Insight ({category}) CACHE MISS for user: {profile.user.email}. Generating with Gemini..."
+            msg = f"AI Insight ({category}) CACHE MISS for user: {profile.display_name}. Generating with Gemini..."
             logger.info(msg)
 
             # Safely grab the base natal component needed to run advanced queries.
@@ -729,7 +745,8 @@ class AstrologyInsightChatView(APIView):
             return err
 
         # Only the student can chat, not teachers with delegated access
-        if profile.user != request.user:
+        # Exception: A teacher can chat on behalf of a guest profile they created (user is None)
+        if profile.user != request.user and profile.created_by != request.user:
             return Response(
                 {"detail": "You cannot view chat threads for delegated dashboards."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -752,7 +769,8 @@ class AstrologyInsightChatView(APIView):
             return err
 
         # Only the student can chat (as explicitly requested)
-        if profile.user != request.user:
+        # Exception: A teacher can chat on behalf of a guest profile they created
+        if profile.user != request.user and profile.created_by != request.user:
             return Response(
                 {"detail": "You cannot chat on behalf of delegated dashboards."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -967,3 +985,89 @@ class TeacherStudentDashboardsView(APIView):
         ).select_related("student", "student__birth_profile")
         serializer = StudentDashboardSummarySerializer(grants, many=True)
         return Response(serializer.data)
+
+
+class GuestProfileListView(APIView):
+    """
+    GET  — Returns a list of all guest profiles created by the requesting user.
+    POST — Creates a new guest profile without tying it to a User.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profiles = BirthProfile.objects.filter(user__isnull=True, created_by=request.user).order_by('-created_at')
+        return Response(BirthProfileSerializer(profiles, many=True).data)
+
+    def post(self, request):
+        if not request.data.get('guest_name'):
+            return Response({"guest_name": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+            
+        serializer = BirthProfileSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        profile = serializer.save(user=None, created_by=request.user)
+
+        # Trigger background insight generation
+        import threading
+        from .tasks import generate_all_insights_async
+        threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+
+        return Response(
+            BirthProfileSerializer(profile).data, status=status.HTTP_201_CREATED
+        )
+
+
+class GuestProfileDetailView(APIView):
+    """
+    GET    — Retrieve a guest profile.
+    PUT    — Update a guest profile.
+    DELETE — Delete a guest profile.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, pk):
+        try:
+            profile = BirthProfile.objects.get(pk=pk, user__isnull=True, created_by=request.user)
+            return profile
+        except BirthProfile.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        profile = self.get_object(request, pk)
+        if not profile:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(BirthProfileSerializer(profile).data)
+
+    def put(self, request, pk):
+        profile = self.get_object(request, pk)
+        if not profile:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        serializer = BirthProfileSerializer(profile, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Clear caches because birth data might have changed
+        NatalChartCache.objects.filter(birth_profile=profile).delete()
+        TransitCache.objects.filter(birth_profile=profile).delete()
+        AstrologyInsight.objects.filter(birth_profile=profile).delete()
+        AstrologyChat.objects.filter(birth_profile=profile).delete()
+        profile = serializer.save(timezone_str="")  # reset timezone too
+
+        # Trigger background insight generation
+        import threading
+        from .tasks import generate_all_insights_async
+        threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+
+        return Response(BirthProfileSerializer(profile).data)
+
+    def delete(self, request, pk):
+        profile = self.get_object(request, pk)
+        if not profile:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        profile.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

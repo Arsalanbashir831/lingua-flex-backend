@@ -34,7 +34,7 @@ class AstrologyAPIClient:
         Builds the 'subject' block expected by the API.
         The user's full name is derived from the linked User model.
         """
-        name = profile.user.get_full_name() or profile.user.email
+        name = profile.display_name
         return {
             "name": name,
             "birth_data": {
