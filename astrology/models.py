@@ -1,5 +1,6 @@
 from django.db import models
 from core.models import User
+from .fields import EncryptedCharField, EncryptedIntegerField
 
 
 class BirthProfile(models.Model):
@@ -11,21 +12,21 @@ class BirthProfile(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="birth_profile", null=True, blank=True
     )
-    guest_name = models.CharField(max_length=150, blank=True)
+    guest_name = EncryptedCharField(max_length=500, blank=True)
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="created_guest_profiles", null=True, blank=True
     )
-    birth_year = models.IntegerField()
-    birth_month = models.IntegerField()
-    birth_day = models.IntegerField()
-    birth_hour = models.IntegerField()
-    birth_minute = models.IntegerField()
-    city = models.CharField(max_length=200)
-    country_code = models.CharField(max_length=5)  # e.g. "IN", "US"
+    birth_year = EncryptedIntegerField()
+    birth_month = EncryptedIntegerField()
+    birth_day = EncryptedIntegerField()
+    birth_hour = EncryptedIntegerField()
+    birth_minute = EncryptedIntegerField()
+    city = EncryptedCharField(max_length=500)
+    country_code = EncryptedCharField(max_length=100)  # e.g. "IN", "US"
 
     # Populated automatically after the first natal chart API call.
     # Derived from calculation_info.location.timezone in the API response.
-    timezone_str = models.CharField(max_length=100, blank=True)
+    timezone_str = EncryptedCharField(max_length=500, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
