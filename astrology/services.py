@@ -178,6 +178,7 @@ class GeminiAIService:
         RASHI_PLANETS_PROMPT,
         LAGNA_LORD_PROMPT,
         CHALLENGES_PROMPT,
+        DAILY_TARA_PROMPT,
     )
 
     PROMPTS = {
@@ -197,6 +198,7 @@ class GeminiAIService:
         "rashi_planets": RASHI_PLANETS_PROMPT,
         "lagna_lord": LAGNA_LORD_PROMPT,
         "challenges": CHALLENGES_PROMPT,
+        "daily_tara": DAILY_TARA_PROMPT,
     }
 
     @classmethod
@@ -297,7 +299,7 @@ class GeminiAIService:
         try:
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-3-flash-preview",
+                model="gemini-2.5-flash",
                 contents=prompt,
             )
             return response.text
@@ -355,7 +357,7 @@ STRICT RULES:
         try:
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-3-flash-preview",
+                model="gemini-2.5-flash",
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -1138,3 +1140,37 @@ STRICT RULES:
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             planets=planets_str,
         )
+
+    @classmethod
+    def generate_daily_tara_guidance(
+        cls, birth_nakshatra: str, transit_nakshatra: str, tara_type: str
+    ) -> dict:
+        """
+        Generates structured AI guidance for today's Tara Bala.
+        Returns a dict matching the requested JSON structure.
+        """
+        import json
+        from google import genai
+        from django.conf import settings
+
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        prompt = cls.DAILY_TARA_PROMPT.format(
+            birth_nakshatra=birth_nakshatra,
+            transit_nakshatra=transit_nakshatra,
+            tara_type=tara_type,
+        )
+
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                },
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            from .views import logger
+
+            logger.error(f"Failed to generate daily Tara guidance: {e}")
+            return None

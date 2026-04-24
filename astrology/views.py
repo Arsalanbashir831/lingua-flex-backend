@@ -516,7 +516,19 @@ class NakshatraPredictionView(APIView):
             if cache.cached_for_date == today_local:
                 msg = f"Nakshatra predictions retrieved from DATABASE cache for user: {profile.display_name}"
                 logger.info(msg)
-                return Response(self._shape_response(cache.prediction_data))
+                
+                # If AI guidance is missing for some reason but cache is valid, generate it
+                if not cache.ai_guidance:
+                    logger.info("AI guidance missing from valid cache. Generating...")
+                    data = cache.prediction_data.get("data", {})
+                    cache.ai_guidance = GeminiAIService.generate_daily_tara_guidance(
+                        birth_nakshatra=data.get("natal_moon", {}).get("nakshatra"),
+                        transit_nakshatra=data.get("current_moon", {}).get("nakshatra"),
+                        tara_type=data.get("tarabala", {}).get("name")
+                    )
+                    cache.save()
+
+                return Response(self._shape_response(cache.prediction_data, cache.ai_guidance))
         except NakshatraPredictionCache.DoesNotExist:
             cache = None
 
@@ -533,23 +545,33 @@ class NakshatraPredictionView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
+        # Generate AI guidance
+        data = prediction_data.get("data", {})
+        ai_guidance = GeminiAIService.generate_daily_tara_guidance(
+            birth_nakshatra=data.get("natal_moon", {}).get("nakshatra"),
+            transit_nakshatra=data.get("current_moon", {}).get("nakshatra"),
+            tara_type=data.get("tarabala", {}).get("name")
+        )
+
         # Upsert cache
         if cache is None:
             NakshatraPredictionCache.objects.update_or_create(
                 birth_profile=profile,
                 defaults={
                     "prediction_data": prediction_data,
+                    "ai_guidance": ai_guidance,
                     "cached_for_date": today_local,
                 },
             )
         else:
             cache.prediction_data = prediction_data
+            cache.ai_guidance = ai_guidance
             cache.cached_for_date = today_local
             cache.save()
 
-        return Response(self._shape_response(prediction_data))
+        return Response(self._shape_response(prediction_data, ai_guidance))
 
-    def _shape_response(self, raw: dict) -> dict:
+    def _shape_response(self, raw: dict, ai_guidance: dict = None) -> dict:
         data = raw.get("data", {})
         return {
             "subject_name": data.get("subject_name"),
@@ -559,6 +581,7 @@ class NakshatraPredictionView(APIView):
             "predictions": data.get("predictions"),
             "guidance": data.get("guidance"),
             "tarabala": data.get("tarabala"),
+            "ai_guidance": ai_guidance,  # New field
             "overall_score": data.get("overall_score"),
             "timing": data.get("timing"),
             "ayanamsa": data.get("ayanamsa"),

@@ -105,6 +105,8 @@ class NakshatraPredictionCache(models.Model):
     prediction_data = models.JSONField()
     # The local calendar date (in user's timezone) this prediction data is valid for
     cached_for_date = models.DateField()
+    # Optional AI-generated guidance based on today's Tara Bala
+    ai_guidance = models.JSONField(null=True, blank=True)
     cached_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
