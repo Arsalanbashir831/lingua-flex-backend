@@ -12,6 +12,7 @@ Views:
 """
 
 from datetime import datetime
+from django.db.models import Q
 
 import logging
 import pytz
@@ -988,7 +989,14 @@ class AstrologyAccessRevokeView(APIView):
         )
 
 
+class StudentDashboardPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class TeacherStudentDashboardsView(APIView):
+
     """
     GET — Teacher lists all students who have granted them dashboard access.
     Only accessible by users with role=TEACHER.
@@ -1003,9 +1011,24 @@ class TeacherStudentDashboardsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        grants = AstrologyDashboardAccess.objects.filter(
-            teacher=request.user
-        ).select_related("student", "student__birth_profile")
+        grants = AstrologyDashboardAccess.objects.filter(teacher=request.user).select_related("student", "student__birth_profile")
+
+        search = request.query_params.get("search")
+        if search:
+            grants = grants.filter(
+                Q(student__first_name__icontains=search)
+                | Q(student__last_name__icontains=search)
+                | Q(student__email__icontains=search)
+            )
+
+        grants = grants.order_by("-granted_at")
+
+        paginator = StudentDashboardPagination()
+        page = paginator.paginate_queryset(grants, request)
+        if page is not None:
+            serializer = StudentDashboardSummarySerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
         serializer = StudentDashboardSummarySerializer(grants, many=True)
         return Response(serializer.data)
 
