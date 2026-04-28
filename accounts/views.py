@@ -62,14 +62,18 @@ class UserRegistrationWithProfileSerializer(serializers.Serializer):
 def supabase_chats(request):
     """Get all chats for the authenticated user with participant details"""
     user_id = str(request.user.id)
+    role = request.query_params.get("role")
 
     # Get chats from Supabase
-    result = (
-        supabase.table("chats")
-        .select("*")
-        .or_(f"participant1.eq.{user_id},participant2.eq.{user_id}")
-        .execute()
-    )
+    query = supabase.table("chats").select("*")
+    if role == "student":
+        query = query.eq("participant1", user_id)
+    elif role == "teacher":
+        query = query.eq("participant2", user_id)
+    else:
+        query = query.or_(f"participant1.eq.{user_id},participant2.eq.{user_id}")
+
+    result = query.execute()
     chats = result.data
 
     # Enhance chats with participant details
@@ -709,6 +713,13 @@ class ChatViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        role = self.request.query_params.get("role")
+
+        if role == "student":
+            return Chat.objects.filter(participant1=user)
+        elif role == "teacher":
+            return Chat.objects.filter(participant2=user)
+
         return Chat.objects.filter(
             models.Q(participant1=user) | models.Q(participant2=user)
         )
