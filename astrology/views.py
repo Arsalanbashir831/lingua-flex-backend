@@ -1033,6 +1033,12 @@ class TeacherStudentDashboardsView(APIView):
         return Response(serializer.data)
 
 
+class GuestProfilePagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class GuestProfileListView(APIView):
     """
     GET  — Returns a list of all guest profiles created by the requesting user.
@@ -1042,7 +1048,25 @@ class GuestProfileListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profiles = BirthProfile.objects.filter(user__isnull=True, created_by=request.user).order_by('-created_at')
+        profiles_qs = BirthProfile.objects.filter(user__isnull=True, created_by=request.user).order_by('-created_at')
+
+        search = request.query_params.get("search")
+        if search:
+            search_lower = search.lower()
+            # guest_name is encrypted, so we must decrypt (evaluate) and filter in Python
+            profiles = [
+                p for p in profiles_qs
+                if p.guest_name and search_lower in p.guest_name.lower()
+            ]
+        else:
+            profiles = list(profiles_qs)
+
+        paginator = GuestProfilePagination()
+        page = paginator.paginate_queryset(profiles, request)
+        if page is not None:
+            serializer = BirthProfileSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
         return Response(BirthProfileSerializer(profiles, many=True).data)
 
     def post(self, request):
