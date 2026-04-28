@@ -187,6 +187,9 @@ def start_chat(payload: ChatCreateRequest):
     student_id = payload.student_id
     teacher_id = payload.teacher_id
     
+    if str(student_id) == str(teacher_id):
+        raise HTTPException(status_code=400, detail="You cannot initiate a chat with yourself")
+    
     # Ensure only one chat per pair (regardless of order)
     existing = supabase.table("chats").select("*").or_(
         f"and(participant1.eq.{student_id},participant2.eq.{teacher_id}),and(participant1.eq.{teacher_id},participant2.eq.{student_id})"

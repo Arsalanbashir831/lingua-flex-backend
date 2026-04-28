@@ -99,6 +99,8 @@ class SessionBookingSerializer(serializers.ModelSerializer):
     def get_payment_details(self, obj):
         """Get payment details for this booking"""
         try:
+            from django.conf import settings
+            
             if hasattr(obj, 'payment') and obj.payment:
                 payment = obj.payment
                 return {
@@ -108,8 +110,36 @@ class SessionBookingSerializer(serializers.ModelSerializer):
                     'stripe_payment_intent_id': payment.stripe_payment_intent_id,
                     'platform_fee': float(payment.platform_fee_cents / 100),
                     'session_cost': float((payment.amount_cents - payment.platform_fee_cents) / 100),
+                    'total_amount': float(payment.amount_cents / 100),
                     'payment_date': payment.created_at.isoformat() if payment.created_at else None,
                     'currency': payment.currency
+                }
+            
+            # If no payment exists, calculate expected amounts
+            if obj.gig and getattr(obj, 'duration_hours', None):
+                hourly_rate = float(obj.gig.price_per_session)
+                duration = float(obj.duration_hours)
+                session_cost = hourly_rate * duration
+                
+                # Calculate platform fee
+                platform_fee_percentage = getattr(settings, 'PLATFORM_FEE_PERCENTAGE', 0.05)
+                min_fee_cents = getattr(settings, 'MINIMUM_PLATFORM_FEE_CENTS', 100)
+                
+                calculated_fee = session_cost * platform_fee_percentage
+                platform_fee = max(calculated_fee, min_fee_cents / 100)
+                
+                total_amount = session_cost + platform_fee
+                
+                return {
+                    'payment_id': None,
+                    'amount_paid': 0.0,
+                    'payment_status': obj.payment_status or 'UNPAID',
+                    'stripe_payment_intent_id': None,
+                    'platform_fee': round(platform_fee, 2),
+                    'session_cost': round(session_cost, 2),
+                    'total_amount': round(total_amount, 2),
+                    'payment_date': None,
+                    'currency': 'USD'
                 }
             return None
         except Exception:

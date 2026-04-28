@@ -640,11 +640,12 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        """Create a booking request (students only)"""
-        if request.user.role != User.Role.STUDENT:
+        """Create a booking request"""
+        teacher_id = request.data.get('teacher')
+        if teacher_id and str(teacher_id) == str(request.user.id):
             return Response(
-                {"error": "Only students can create booking requests"},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "You cannot schedule a booking with yourself"},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         serializer = self.get_serializer(data=request.data)

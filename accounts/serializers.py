@@ -333,15 +333,31 @@ class GigTeacherSerializer(serializers.ModelSerializer):
 
 class GigSerializer(serializers.ModelSerializer):
     teacher_details = GigTeacherSerializer(source='teacher', read_only=True)
+    pricing_metadata = serializers.SerializerMethodField()
     
     class Meta:
         model = Gig
         fields = [
             'id', 'teacher', 'teacher_details', 'category', 'service_type', 'service_title', 'short_description',
             'full_description', 'price_per_session', 'session_duration', 'tags', 'what_you_provide_in_session',
-            'status', 'created_at', 'updated_at'
+            'status', 'created_at', 'updated_at', 'pricing_metadata'
         ]
-        read_only_fields = ['id', 'teacher', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'teacher', 'created_at', 'updated_at', 'pricing_metadata']
+
+    def get_pricing_metadata(self, obj):
+        try:
+            from django.conf import settings
+            return {
+                'platform_fee_percentage': getattr(settings, 'PLATFORM_FEE_PERCENTAGE', 0.05),
+                'minimum_platform_fee_dollars': getattr(settings, 'MINIMUM_PLATFORM_FEE_CENTS', 100) / 100,
+                'currency': 'USD'
+            }
+        except Exception:
+            return {
+                'platform_fee_percentage': 0.05,
+                'minimum_platform_fee_dollars': 1.0,
+                'currency': 'USD'
+            }
 
 class VoiceConversationSerializer(serializers.ModelSerializer):
     """Serializer for OpenAI speech-to-speech voice conversations"""
