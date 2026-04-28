@@ -234,7 +234,7 @@ def _resolve_profile(request):
             if profile.created_by != request.user:
                 return None, Response(
                     {"detail": "Access denied. You did not create this guest profile."},
-                    status=status.HTTP_403_FORBIDDEN
+                    status=status.HTTP_403_FORBIDDEN,
                 )
             return profile, None
         except BirthProfile.DoesNotExist:
@@ -517,7 +517,7 @@ class NakshatraPredictionView(APIView):
             if cache.cached_for_date == today_local:
                 msg = f"Nakshatra predictions retrieved from DATABASE cache for user: {profile.display_name}"
                 logger.info(msg)
-                
+
                 # If AI guidance is missing for some reason but cache is valid, generate it
                 if not cache.ai_guidance:
                     logger.info("AI guidance missing from valid cache. Generating...")
@@ -525,11 +525,13 @@ class NakshatraPredictionView(APIView):
                     cache.ai_guidance = GeminiAIService.generate_daily_tara_guidance(
                         birth_nakshatra=data.get("natal_moon", {}).get("nakshatra"),
                         transit_nakshatra=data.get("current_moon", {}).get("nakshatra"),
-                        tara_type=data.get("tarabala", {}).get("name")
+                        tara_type=data.get("tarabala", {}).get("name"),
                     )
                     cache.save()
 
-                return Response(self._shape_response(cache.prediction_data, cache.ai_guidance))
+                return Response(
+                    self._shape_response(cache.prediction_data, cache.ai_guidance)
+                )
         except NakshatraPredictionCache.DoesNotExist:
             cache = None
 
@@ -551,7 +553,7 @@ class NakshatraPredictionView(APIView):
         ai_guidance = GeminiAIService.generate_daily_tara_guidance(
             birth_nakshatra=data.get("natal_moon", {}).get("nakshatra"),
             transit_nakshatra=data.get("current_moon", {}).get("nakshatra"),
-            tara_type=data.get("tarabala", {}).get("name")
+            tara_type=data.get("tarabala", {}).get("name"),
         )
 
         # Upsert cache
@@ -812,17 +814,21 @@ class AstrologyInsightChatView(APIView):
                 {"detail": "Invalid category."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 1. Fetch Insight Context
-        insight = AstrologyInsight.objects.filter(
-            birth_profile=profile, category=category
-        ).first()
-        if not insight:
-            return Response(
-                {
-                    "detail": "You must generate the insight first before querying the AI."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        special_categories = ["d1-chart", "d9-chart"]
+        insight_text = None
+
+        if category not in special_categories:
+            insight = AstrologyInsight.objects.filter(
+                birth_profile=profile, category=category
+            ).first()
+            if not insight:
+                return Response(
+                    {
+                        "detail": "You must generate the insight first before querying the AI."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            insight_text = insight.insight_text
 
         # 2. Extract structured static data
         try:
@@ -847,6 +853,17 @@ class AstrologyInsightChatView(APIView):
             transit_cache = profile.transit_cache
             structured_data["transits"] = transit_cache.transit_data
         except TransitCache.DoesNotExist:
+            pass
+
+        try:
+            nakshatra_cache = profile.nakshatra_prediction_cache
+            structured_data["daily_tara_bala"] = {
+                "tarabala": nakshatra_cache.prediction_data.get("data", {}).get(
+                    "tarabala"
+                ),
+                "ai_guidance": nakshatra_cache.ai_guidance,
+            }
+        except NakshatraPredictionCache.DoesNotExist:
             pass
 
         # 3. Retrieve up to 8 of the most recent messages from the DB
@@ -874,7 +891,7 @@ class AstrologyInsightChatView(APIView):
             model_response_text = GeminiAIService.chat_about_insight(
                 category=category,
                 structured_data=structured_data,
-                insight_text=insight.insight_text,
+                insight_text=insight_text,
                 history=recent_history,
                 new_message=user_chat.content,
             )
@@ -996,7 +1013,6 @@ class StudentDashboardPagination(PageNumberPagination):
 
 
 class TeacherStudentDashboardsView(APIView):
-
     """
     GET — Teacher lists all students who have granted them dashboard access.
     Only accessible by users with role=TEACHER.
@@ -1011,7 +1027,9 @@ class TeacherStudentDashboardsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        grants = AstrologyDashboardAccess.objects.filter(teacher=request.user).select_related("student", "student__birth_profile")
+        grants = AstrologyDashboardAccess.objects.filter(
+            teacher=request.user
+        ).select_related("student", "student__birth_profile")
 
         search = request.query_params.get("search")
         if search:
@@ -1048,14 +1066,17 @@ class GuestProfileListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profiles_qs = BirthProfile.objects.filter(user__isnull=True, created_by=request.user).order_by('-created_at')
+        profiles_qs = BirthProfile.objects.filter(
+            user__isnull=True, created_by=request.user
+        ).order_by("-created_at")
 
         search = request.query_params.get("search")
         if search:
             search_lower = search.lower()
             # guest_name is encrypted, so we must decrypt (evaluate) and filter in Python
             profiles = [
-                p for p in profiles_qs
+                p
+                for p in profiles_qs
                 if p.guest_name and search_lower in p.guest_name.lower()
             ]
         else:
@@ -1070,18 +1091,22 @@ class GuestProfileListView(APIView):
         return Response(BirthProfileSerializer(profiles, many=True).data)
 
     def post(self, request):
-        if not request.data.get('guest_name'):
-            return Response({"guest_name": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
-            
+        if not request.data.get("guest_name"):
+            return Response(
+                {"guest_name": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = BirthProfileSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+
         profile = serializer.save(user=None, created_by=request.user)
 
         # Trigger background insight generation
         import threading
         from .tasks import generate_all_insights_async
+
         threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
 
         return Response(
@@ -1100,7 +1125,9 @@ class GuestProfileDetailView(APIView):
 
     def get_object(self, request, pk):
         try:
-            profile = BirthProfile.objects.get(pk=pk, user__isnull=True, created_by=request.user)
+            profile = BirthProfile.objects.get(
+                pk=pk, user__isnull=True, created_by=request.user
+            )
             return profile
         except BirthProfile.DoesNotExist:
             return None
@@ -1115,11 +1142,11 @@ class GuestProfileDetailView(APIView):
         profile = self.get_object(request, pk)
         if not profile:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-            
+
         serializer = BirthProfileSerializer(profile, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Clear caches because birth data might have changed
         NatalChartCache.objects.filter(birth_profile=profile).delete()
         TransitCache.objects.filter(birth_profile=profile).delete()
@@ -1130,6 +1157,7 @@ class GuestProfileDetailView(APIView):
         # Trigger background insight generation
         import threading
         from .tasks import generate_all_insights_async
+
         threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
 
         return Response(BirthProfileSerializer(profile).data)
@@ -1138,6 +1166,6 @@ class GuestProfileDetailView(APIView):
         profile = self.get_object(request, pk)
         if not profile:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-            
+
         profile.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

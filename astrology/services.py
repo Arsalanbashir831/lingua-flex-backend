@@ -299,7 +299,7 @@ class GeminiAIService:
         try:
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=prompt,
             )
             return response.text
@@ -319,12 +319,40 @@ class GeminiAIService:
         from google import genai
         from google.genai import types
 
-        system_prompt = f"""You are an expert Vedic astrologer assistant specializing in the "{category}" category.
+        if category == "d1-chart":
+            context_data = (
+                structured_data.get("divisional_data", {})
+                .get("data", {})
+                .get("charts", [])
+            )
+            d1_data = next((c for c in context_data if c.get("chart") == "D1"), {})
+            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their D1 chart.
+Here is their D1 planetary data: {json.dumps(d1_data, indent=2)}"""
+        elif category == "d9-chart":
+            context_data = (
+                structured_data.get("divisional_data", {})
+                .get("data", {})
+                .get("charts", [])
+            )
+            d9_data = next((c for c in context_data if c.get("chart") == "D9"), {})
+            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their D9 Navamsa chart.
+Here is their D9 planetary data: {json.dumps(d9_data, indent=2)}"""
+        elif category == "navatara":
+            tara_data = structured_data.get("daily_tara_bala", {})
+            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their current Navatara (Daily Tara Bala).
+Here is today's Navatara data and AI guidance: {json.dumps(tara_data, indent=2)}
+
+You also have their general Navatara life insight:
+{insight_text or "Not available"}"""
+        else:
+            system_prompt = f"""You are an expert Vedic astrologer assistant specializing in the "{category}" category.
 
 You have been given the following pre-generated astrological insight for this person:
 --- INSIGHT START ---
-{insight_text}
---- INSIGHT END ---
+{insight_text or "Not available"}
+--- INSIGHT END ---"""
+
+        system_prompt += f"""
 
 You also have their complete birth and natal table data for reference:
 --- DATA START ---
@@ -357,7 +385,7 @@ STRICT RULES:
         try:
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -1162,7 +1190,7 @@ STRICT RULES:
 
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=prompt,
                 config={
                     "response_mime_type": "application/json",

@@ -10,11 +10,19 @@ class BirthProfile(models.Model):
     """
 
     user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="birth_profile", null=True, blank=True
+        User,
+        on_delete=models.CASCADE,
+        related_name="birth_profile",
+        null=True,
+        blank=True,
     )
     guest_name = EncryptedCharField(max_length=500, blank=True)
     created_by = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="created_guest_profiles", null=True, blank=True
+        User,
+        on_delete=models.CASCADE,
+        related_name="created_guest_profiles",
+        null=True,
+        blank=True,
     )
     birth_year = EncryptedIntegerField()
     birth_month = EncryptedIntegerField()
@@ -64,9 +72,7 @@ class NatalChartCache(models.Model):
     cached_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return (
-            f"Natal Cache: {self.birth_profile.display_name} (cached at {self.cached_at})"
-        )
+        return f"Natal Cache: {self.birth_profile.display_name} (cached at {self.cached_at})"
 
 
 class TransitCache(models.Model):
@@ -86,9 +92,7 @@ class TransitCache(models.Model):
     cached_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return (
-            f"Transit Cache: {self.birth_profile.display_name} for {self.cached_for_date}"
-        )
+        return f"Transit Cache: {self.birth_profile.display_name} for {self.cached_for_date}"
 
 
 class NakshatraPredictionCache(models.Model):
@@ -99,7 +103,9 @@ class NakshatraPredictionCache(models.Model):
     """
 
     birth_profile = models.OneToOneField(
-        BirthProfile, on_delete=models.CASCADE, related_name="nakshatra_prediction_cache"
+        BirthProfile,
+        on_delete=models.CASCADE,
+        related_name="nakshatra_prediction_cache",
     )
     # Raw JSON from POST /vedic/nakshatra-predictions
     prediction_data = models.JSONField()
@@ -110,9 +116,7 @@ class NakshatraPredictionCache(models.Model):
     cached_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return (
-            f"Nakshatra Prediction Cache: {self.birth_profile.display_name} for {self.cached_for_date}"
-        )
+        return f"Nakshatra Prediction Cache: {self.birth_profile.display_name} for {self.cached_for_date}"
 
 
 class AstrologyInsight(models.Model):
@@ -138,6 +142,8 @@ class AstrologyInsight(models.Model):
         ("rashi_planets", "Meaning of the Rashi Planets"),
         ("lagna_lord", "Your Lagna Lord Position"),
         ("challenges", "Challenges and Learning"),
+        ("d1-chart", "D1 Chart Context"),
+        ("d9-chart", "D9 Navamsa Chart Context"),
     )
 
     birth_profile = models.ForeignKey(
@@ -154,9 +160,7 @@ class AstrologyInsight(models.Model):
         unique_together = ("birth_profile", "category")
 
     def __str__(self):
-        return (
-            f"Insight ({self.get_category_display()}): {self.birth_profile.display_name}"
-        )
+        return f"Insight ({self.get_category_display()}): {self.birth_profile.display_name}"
 
 
 class AIPromptConfiguration(models.Model):
