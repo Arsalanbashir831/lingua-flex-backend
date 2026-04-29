@@ -1,15 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, viewsets, generics
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.decorators import action
-from django.shortcuts import get_object_or_404
-from django.db import transaction
+from django.db import transaction, models
 from django.conf import settings
-import uuid
-import os
-from datetime import datetime
+import logging
 
 # Temporary fix for ZoomClient import issue
 try:
@@ -41,33 +37,264 @@ except ImportError:
     zoom_client = None
 from .models import (
     User,
-    File,
-    Student,
     Teacher,
-    TeacherCertificate,
-    TimeSlot,
-    TeacherGig,
-    Session,
-    SessionBilling,
-    AIConversation,
 )
 from .serializers import (
     UserRegistrationSerializer,
     UserSerializer,
-    FileSerializer,
-    TeacherProfileSerializer,
-    StudentProfileSerializer,
-    TeacherGigSerializer,
-    SessionSerializer,
-    SessionBillingSerializer,
-    AIConversationSerializer,
-    TeacherCertificateSerializer,
-    TimeSlotSerializer,
+    GoogleOAuthInitiateSerializer,
+    GoogleOAuthCallbackSerializer,
+    GoogleOAuthUserSerializer,
 )
+from accounts.models import UserProfile, TeacherProfile
 from supabase import create_client
 from gotrue.errors import AuthApiError
 
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+logger = logging.getLogger(__name__)
+
+
+class GoogleOAuthInitiateView(APIView):
+    """
+    Initiate Google OAuth flow with optional role selection
+
+    POST /api/auth/google/initiate/
+    {
+        "role": "STUDENT" | "TEACHER",  # optional - required for new users, optional for existing users
+        "redirect_url": "https://yourfrontend.com/auth/callback"  # optional
+    }
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleOAuthInitiateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "success": False,
+                    "error": "Invalid data",
+                    "details": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = serializer.validated_data
+        role = data.get("role")  # Optional now
+        redirect_url = data.get("redirect_url", settings.BASE_URL_SIGNIN)
+
+        try:
+            # Generate OAuth URL through Supabase
+            # The frontend will redirect user to this URL
+            oauth_url = f"{settings.SUPABASE_URL}/auth/v1/authorize"
+            params = {
+                "provider": "google",
+                "redirect_to": redirect_url,
+                "scopes": "openid email profile",
+            }
+
+            # Build full OAuth URL
+            param_string = "&".join([f"{k}={v}" for k, v in params.items()])
+            full_oauth_url = f"{oauth_url}?{param_string}"
+
+            response_data = {
+                "success": True,
+                "oauth_url": full_oauth_url,
+                "message": "Redirect user to oauth_url to complete Google authentication",
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error initiating Google OAuth: {e}")
+            return Response(
+                {"success": False, "error": f"Failed to initiate OAuth: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class GoogleOAuthCallbackView(APIView):
+    """
+    Handle Google OAuth callback and create/login user
+
+    POST /api/auth/google/callback/
+    {
+        "access_token": "supabase_access_token",
+        "refresh_token": "supabase_refresh_token",
+        "role": "STUDENT" | "TEACHER"  # optional - only needed for new user registration
+    }
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleOAuthCallbackSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "success": False,
+                    "error": "Invalid callback data",
+                    "details": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = serializer.validated_data
+        access_token = data["access_token"]
+        refresh_token = data.get("refresh_token")
+        provided_role = data.get("role")  # May be None for existing users
+
+        try:
+            # Get user data from Supabase using the access token
+            supabase_user = supabase.auth.get_user(access_token)
+
+            if not supabase_user.user:
+                return Response(
+                    {"success": False, "error": "Invalid access token"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+            user_data = supabase_user.user
+            email = user_data.email
+            supabase_id = user_data.id
+
+            # Extract name from user metadata or app_metadata
+            user_metadata = user_data.user_metadata or {}
+            first_name = user_metadata.get("first_name") or user_metadata.get(
+                "given_name", ""
+            )
+            last_name = user_metadata.get("last_name") or user_metadata.get(
+                "family_name", ""
+            )
+            full_name = user_metadata.get("full_name") or user_metadata.get("name", "")
+
+            # If we don't have separate first/last names, try to split full name
+            if not first_name and not last_name and full_name:
+                name_parts = full_name.strip().split(" ", 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+            # Get Google ID from provider data
+            google_id = None
+            for identity in user_data.identities or []:
+                if identity.provider == "google":
+                    google_id = identity.id
+                    break
+
+            with transaction.atomic():
+                # Check if user already exists
+                user = None
+                created = False
+                is_existing_user_login = False
+
+                try:
+                    # Try to find existing user by email or Supabase ID
+                    user = User.objects.get(
+                        models.Q(email=email) | models.Q(id=supabase_id)
+                    )
+                    is_existing_user_login = True
+
+                    # Update OAuth information if this is first OAuth login
+                    if not user.is_oauth_user:
+                        user.is_oauth_user = True
+                        user.auth_provider = User.AuthProvider.GOOGLE
+                        user.google_id = google_id
+                        user.email_verified = True
+                        user.save()
+
+                except User.DoesNotExist:
+                    # Create new OAuth user - REQUIRES role for new users
+                    if not provided_role:
+                        return Response(
+                            {
+                                "success": False,
+                                "error": "Role is required for new user registration",
+                                "requires_role_selection": True,
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                    user = User.objects.create_oauth_user(
+                        id=supabase_id,
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role=provided_role,
+                        auth_provider=User.AuthProvider.GOOGLE,
+                        google_id=google_id,
+                    )
+                    created = True
+
+                # Create role-specific profiles if user was just created - MATCH REGISTRATION EXACTLY
+                if created:
+                    # Use the provided role for new users
+                    user_role = provided_role
+
+                    # Create UserProfile first (accounts model) - this is created for ALL users
+                    user_profile = UserProfile.objects.create(
+                        user=user,
+                        role=user_role,
+                        bio="",
+                        city="",
+                        country="",
+                        postal_code="",
+                        status="",
+                        native_language="",
+                        learning_language="",
+                    )
+
+                    # Only create additional models for TEACHERS (same as RegisterWithProfileView)
+                    if user_role == User.Role.TEACHER:
+                        # Create TeacherProfile model (accounts model)
+                        TeacherProfile.objects.create(
+                            user_profile=user_profile,
+                            qualification="",
+                            experience_years=0,
+                            certificates=[],
+                            about="",
+                        )
+
+                        # Create Teacher model (core model) - for booking system
+                        Teacher.objects.create(
+                            user=user,
+                            bio="",  # Will be filled in profile completion
+                            teaching_experience=0,
+                            teaching_languages=[],
+                            hourly_rate=0,  # Default value, can be updated later
+                        )
+
+                    # For STUDENTS: Only UserProfile is created (no Student model)
+
+            # Serialize user data for response
+            user_serializer = GoogleOAuthUserSerializer(user)
+
+            return Response(
+                {
+                    "success": True,
+                    "message": f"User {'registered' if created else 'logged in'} successfully via Google",
+                    "user": user_serializer.data,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "created": created,
+                    "is_existing_user_login": is_existing_user_login,
+                    "requires_profile_completion": created,  # New users need to complete profile
+                    "flow_type": "registration" if created else "login",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except AuthApiError as e:
+            logger.error(f"Supabase auth error: {e}")
+            return Response(
+                {"success": False, "error": f"Authentication error: {str(e)}"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except Exception as e:
+            logger.error(f"Error in Google OAuth callback: {e}")
+            return Response(
+                {"success": False, "error": f"OAuth callback failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class RegisterView(APIView):
@@ -316,7 +543,7 @@ class ChangePasswordView(APIView):
             )
 
         user = request.user
-        
+
         # Step 1: Verify current password via Supabase sign-in
         # This ensures the user actually knows their current password
         try:
@@ -339,16 +566,15 @@ class ChangePasswordView(APIView):
         try:
             # We create a temporary client with the bearer token from the verification sign-in
             temp_supabase = create_client(
-                settings.SUPABASE_URL, 
-                settings.SUPABASE_ANON_KEY # Use anon key but provide user's specific session
+                settings.SUPABASE_URL,
+                settings.SUPABASE_ANON_KEY,  # Use anon key but provide user's specific session
             )
             temp_supabase.auth.set_session(
-                auth_response.session.access_token, 
-                auth_response.session.refresh_token
+                auth_response.session.access_token, auth_response.session.refresh_token
             )
-            
+
             temp_supabase.auth.update_user({"password": new_password})
-            
+
             return Response(
                 {"message": "Password updated successfully."},
                 status=status.HTTP_200_OK,
@@ -549,14 +775,6 @@ class UserProfilePictureUploadView(APIView):
         #     return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserProfileView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
-
-
 class UserProfilePictureGetView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -576,492 +794,3 @@ class UserProfilePictureGetView(APIView):
         image_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{profile_picture_key}"
 
         return Response({"profile_picture_url": image_url}, status=status.HTTP_200_OK)
-
-
-class UserFilesView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        supabase = create_client(
-            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
-        )
-
-        folder_name = f"user_{request.user.id}"
-
-        try:
-            files = supabase.storage.from_("user-uploads").list(
-                path=folder_name,
-                options={
-                    "limit": 100,
-                    "offset": 0,
-                    "sortBy": {"column": "name", "order": "asc"},
-                },
-            )
-
-            # helper to build path once
-            def full_path(name: str) -> str:
-                return f"{folder_name}/{name}"
-
-            # ----- OPTION A: bucket is PUBLIC -----
-            # get_public_url = supabase.storage.from_("user-uploads").get_public_url
-
-            # ----- OPTION B: bucket is PRIVATE (recommended) -----
-            create_signed_url = supabase.storage.from_("user-uploads").create_signed_url
-            EXPIRES_IN = 3600  # seconds
-
-            files_info = []
-            for f in files:
-                if not f["name"].lower().endswith(".pdf"):
-                    continue
-
-                path = full_path(f["name"])
-
-                # PUBLIC:
-                # url = get_public_url(path)
-
-                # PRIVATE (signed):
-                signed = create_signed_url(path, EXPIRES_IN)
-                url = signed.get("signedURL") or signed.get(
-                    "signed_url"
-                )  # lib versions differ
-
-                files_info.append(
-                    {
-                        "name": f["name"],
-                        "updated_at": f.get("updated_at"),
-                        "created_at": f.get("created_at"),
-                        "id": f.get("id"),
-                        "url": url,
-                    }
-                )
-
-            return Response({"files": files_info}, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class FileUploadView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        user = request.user
-        folder = f"user_{user.id}"
-
-        supabase = create_client(
-            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
-        )
-
-        uploaded_file = request.FILES.get("file")
-        if not uploaded_file:
-            return Response(
-                {"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        ext = uploaded_file.name.split(".")[-1].lower()
-        filename = f"{uuid.uuid4()}.{ext}"
-        storage_key = f"{folder}/{filename}"
-
-        try:
-            file_bytes = uploaded_file.read()
-
-            # 1) Upload to Supabase
-            res = supabase.storage.from_("user-uploads").upload(
-                storage_key, file_bytes, {"content-type": uploaded_file.content_type}
-            )
-            if isinstance(res, dict) and res.get("error"):
-                return Response(
-                    {"error": res["error"]["message"]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # 2) Save DB row without embedding pipeline
-            with transaction.atomic():
-                file_obj = File.objects.create(
-                    user=user,
-                    file=uploaded_file,  # FileField writes to MEDIA_ROOT/uploads/...
-                    filename=uploaded_file.name,  # original name
-                    storage_key=storage_key,
-                )
-
-            return Response(
-                {
-                    "message": "File uploaded successfully",
-                    "file_id": file_obj.id,
-                    "storage_key": storage_key,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except Exception as e:
-            # Optional: clean up supabase object if DB/embedding failed
-            try:
-                supabase.storage.from_("user-uploads").remove([storage_key])
-            except Exception:
-                pass
-
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class UserFileDeleteView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    # def delete(self, request, file_id):
-    #     user = request.user
-    #     supabase_token = request.headers.get("Authorization", "").replace("Bearer ", "")
-
-    #     try:
-    #         # Initialize supabase client with service role key
-    #         supabase = create_client(
-    #             settings.SUPABASE_URL,
-    #             settings.SUPABASE_SERVICE_ROLE_KEY,
-    #             options={
-    #                 "auto_refresh_token": True,
-    #                 "persist_session": True,
-    #                 "detect_session_in_url": True,
-    #                 "storage": None,
-    #             },
-    #         )
-
-    #         # Validate file ownership by id
-    #         file_obj = File.objects.filter(id=file_id, user=user).first()
-    #         if not file_obj:
-    #             return Response({"error": "File not found or you do not have permission."}, status=status.HTTP_404_NOT_FOUND)
-
-    #         file_path = file_obj.storage_key
-
-    #         # Remove file from Supabase storage
-    #         removed = supabase.storage.from_("user-uploads").remove([file_path])
-    #         if isinstance(removed, dict) and removed.get("error"):
-    #             return Response({"error": removed["error"]["message"]}, status=status.HTTP_400_BAD_REQUEST)
-
-    #         # Remove corresponding embeddings from ChromaDB
-    #         try:
-    #             collection = chroma_client.get_collection(name="user_files")  # Change to your collection name
-    #             collection.delete(where={"file_id": str(file_id)})
-    #         except Exception:
-    #             pass  # Log error if needed
-
-    #         # Remove DB record for the file
-    #         file_obj.delete()
-
-    #         return Response({"message": "File deleted."}, status=status.HTTP_200_OK)
-
-    #     except Exception as e:
-    #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # permission_classes = [IsAuthenticated]
-
-    def delete(self, request, file_name: str, *args, **kwargs):
-        # Server-side key (or a valid Supabase user JWT in another header if you insist)
-        supabase = create_client(
-            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
-        )
-
-        user = request.user
-        folder = f"user_{user.id}"
-        file_path = f"{folder}/{file_name}"
-
-        # (Optional) simple path traversal guard
-        if "/" in file_name or ".." in file_name:
-            return Response(
-                {"error": "Invalid file name."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            # (Optional) verify ownership before delete
-            # Cheap check using list; for large folders use your DB instead
-            files = supabase.storage.from_("user-uploads").list(folder)
-            if not any(f["name"] == file_name for f in files):
-                return Response(
-                    {"error": "File not found."}, status=status.HTTP_404_NOT_FOUND
-                )
-
-            # Remove from storage
-            removed = supabase.storage.from_("user-uploads").remove([file_path])
-            # v2: returns list of dicts; v1: dict with data/error
-            if isinstance(removed, dict) and removed.get("error"):
-                return Response(
-                    {"error": removed["error"]["message"]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Remove from DB (wrap to keep consistency)
-            with transaction.atomic():
-                from .models import File
-
-                file_obj = File.objects.filter(user=user, storage_key=file_path).first()
-                if file_obj:
-                    # Delete local file
-                    file_obj.file.delete(save=False)
-                    file_obj.delete()
-
-            return Response({"message": "File deleted."}, status=status.HTTP_200_OK)
-        except Exception as e:
-            # log.exception("Supabase delete failed")
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-# for below code, i think there is no use of it
-
-
-# class FileListView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         files = File.objects.filter(user=user)
-#         serializer = FileSerializer(files, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-# class FileDeleteView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def delete(self, request, pk):
-#         user = request.user
-#         try:
-#             file_instance = File.objects.get(pk=pk, user=user)
-#         except File.DoesNotExist:
-#             return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
-
-#         try:
-#             supabase.storage.from_('files').remove([file_instance.supabase_path])
-#             file_instance.delete()
-#             return Response({'message': 'File deleted successfully'}, status=status.HTTP_200_OK)
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)})
-#             'first_name','last_name',
-#             'phone_number','gender','date_of_birth'
-
-#         missing = [f for f in required if not data.get(f)]
-#         if missing:
-#             return Response(
-#                 {'error': f"Missing fields: {', '.join(missing)}"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         supabase = create_client(
-#             settings.SUPABASE_URL,
-#             settings.SUPABASE_SERVICE_ROLE_KEY
-#         )
-
-
-#         try:
-#             resp = supabase.auth.sign_up({
-#                 'email':    data['email'],
-#                 'password': data['password'],
-#                 'options': {
-#                     'redirect_to': settings.BASE_URL_SIGNIN
-#                 }
-#             })
-#         except AuthApiError as e:
-#             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # At this point, resp.user is guaranteed to exist
-#         supa_user = resp.user  # <— has .id and .email :contentReference[oaicite:0]{index=0}
-
-#         # Push metadata into Supabase
-#         metadata = {
-#             'first_name':   data['first_name'],
-#             'last_name':    data['last_name'],
-#             'phone_number': data['phone_number'],
-#             'gender':       data['gender'],
-#             'date_of_birth': data['date_of_birth']
-#         }
-#         try:
-#             supabase.auth.admin.update_user_by_id(
-#                 supa_user.id,
-#                 {'user_metadata': metadata}
-#             )
-#         except AuthApiError as e:
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#         # Mirror into Django
-#         try:
-#             dob = datetime.strptime(data['date_of_birth'], "%Y-%m-%d").date()
-#         except ValueError:
-#             dob = None
-
-#         User.objects.create_user(
-#             id=supa_user.id,
-#             email=supa_user.email,
-#             first_name=metadata['first_name'],
-#             last_name=metadata['last_name'],
-#             phone_number=metadata['phone_number'],
-#             gender=metadata['gender'],
-#             date_of_birth=dob
-#         )
-
-#         return Response(
-#             {'message': 'Registration successful. Please verify your email.'},
-#             status=status.HTTP_201_CREATED
-#         )
-
-
-# class SupabaseOptions:
-#     def __init__(self, token):
-#         self.headers = {"Authorization": f"Bearer {token}"}
-#         self.auto_refresh_token = False
-#         self.persist_session = False
-#         self.detect_session_in_url = False
-#         self.storage = None
-#         self.flow_type = None
-#         self.httpx_client = None
-
-# class FileDeleteView(DestroyAPIView):
-#     permission_classes = [IsAuthenticated]
-#     queryset = File.objects.all()
-#     serializer_class = FileSerializer
-
-#     def perform_destroy(self, instance):
-#         # Delete file from Supabase Storage
-#         try:
-#             if getattr(instance, 'storage_key', None):
-#                 supabase.storage.from_('user-uploads').remove([instance.storage_key])
-#         except Exception as e:
-#             pass  # Log error if needed
-#         # Delete from local storage and database
-#         instance.file.delete(save=False)
-#         instance.delete()
-
-
-# class FileListView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user_id = self.request.user.id
-#         files = File.objects.filter(user_id=user_id)
-#         serializer = FileSerializer(files, many=True)
-#         return Response(serializer.data)
-
-# class FileDeleteView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def delete(self, request, pk):
-#         user_id = self.request.user.id
-#         try:
-#             file_obj = File.objects.get(pk=pk, user_id=user_id)
-#         except File.DoesNotExist:
-#             return Response({'error': 'File not found.'}, status=404)
-#         # Remove from ChromaDB using LangChain Chroma vector store
-#         if file_obj.chroma_collection:
-#             from langchain_community.vectorstores import Chroma
-#             user_chroma_dir = get_user_chroma_dir(user_id)
-#             vs = Chroma(
-#                 collection_name=file_obj.chroma_collection,
-#                 embedding_function=text_emb,
-#                 persist_directory=user_chroma_dir,
-#             )
-#             vs.delete(where={"file_id": file_obj.id})
-#             vs.persist()
-#             vs.persist()  # Add this line to persist deletion
-#         # Delete file from storage and DB
-#         file_obj.file.delete(save=False)
-#         file_obj.delete()
-#         return Response({'message': 'File deleted.'}, status=204)
-
-# class ChatListCreateView(generics.ListCreateAPIView):
-#     serializer_class = ChatSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         user = self.request.user  # this is a Django User instance now
-#         user_id = user.id
-#         return Chat.objects.filter(user_id=user_id)
-
-#     def perform_create(self, serializer):
-#         user = self.request.user  # this is a Django User instance now
-#         user_id = user.id
-#         serializer.save(user_id=user_id)
-
-
-# def serialize_message(m: Message):
-#     return {
-#         "id": m.id,
-#         "chat_id": str(m.chat_id),
-#         "sender_id": str(m.sender_id) if m.sender_id else None,
-#         "sender_type": m.sender_type,
-#         "content": m.content,
-#         "timestamp": m.timestamp.isoformat(),
-#     }
-
-# class MessageListCreateView(generics.ListCreateAPIView):
-#     serializer_class = MessageSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         chat_id = self.kwargs["chat_id"]
-#         return (Message.objects
-#                 .filter(chat_id=chat_id, chat__user_id=self.request.user.id)
-#                 .order_by("timestamp"))
-
-#     def list(self, request, *args, **kwargs):
-#         msgs = self.get_queryset()
-#         data = [{
-#             "id": m.id,
-#             "chat_id": str(m.chat_id),
-#             "user_message": m.content if m.sender_type == "user" else None,
-#             "ai_response":  m.content if m.sender_type == "ai"   else None,
-#             "rag_sources":  m.sources  if m.sender_type == "ai"   else None,
-#         } for m in msgs]
-#         return Response({"messages": data}, status=status.HTTP_200_OK)
-
-#     def create(self, request, *args, **kwargs):
-#         user    = request.user
-#         chat_id = self.kwargs["chat_id"]
-#         chat    = get_object_or_404(Chat, id=chat_id, user_id=user.id)
-
-#         # 1) Save user message
-#         ser = self.get_serializer(data=request.data)
-#         ser.is_valid(raise_exception=True)
-#         user_msg = ser.save(sender=user, sender_type="user", chat=chat)
-
-#         # 2) RAG -> AI message
-#         rag = run_rag_pipeline(user, user_msg.content)
-#         ai_msg = Message.objects.create(
-#             chat=chat,
-#             sender=None,
-#             sender_type="ai",
-#             content=rag["answer"],
-#             sources=rag.get("sources", [])
-#         )
-
-#         # 3) Flat response
-#         return Response(
-#             {
-#                 "id": ai_msg.id,                     # or user_msg.id / chat_id — your choice
-#                 "chat_id": str(chat.id),
-#                 "user_message": user_msg.content,
-#                 "ai_response":  ai_msg.content,
-#                 "rag_sources": rag.get("sources", [])  # optional
-#             },
-#             status=status.HTTP_201_CREATED
-#         )
-
-
-#     def post(self, request):
-#         refresh_token = request.data.get("refresh_token")
-#         if not refresh_token:
-#             return Response({"error": "refresh_token is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         supabase_url = settings.SUPABASE_URL
-#         supabase_key = settings.SUPABASE_KEY
-#         supabase = create_client(supabase_url, supabase_key)
-
-#         try:
-#             data = supabase.auth.refresh_session(refresh_token)
-#             if data.session and data.session.access_token and data.session.refresh_token:
-#                 return Response({
-#                     "access_token": data.session.access_token,
-#                     "refresh_token": data.session.refresh_token
-#                 })
-#             else:
-#                 return Response({"error": "Failed to refresh token"}, status=status.HTTP_400_BAD_REQUEST)
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

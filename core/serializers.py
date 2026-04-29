@@ -156,3 +156,58 @@ class UserRegistrationSerializer(serializers.Serializer):
                     {"years_of_experience": "Years of experience is required for teachers"}
                 )
         return data
+
+
+# --- Google OAuth Serializers ---
+
+
+class GoogleOAuthInitiateSerializer(serializers.Serializer):
+    """Serializer for initiating Google OAuth flow"""
+
+    role = serializers.ChoiceField(
+        choices=User.Role.choices,
+        required=False,
+        help_text="Role for new user registration (optional for existing users)",
+    )
+    redirect_url = serializers.URLField(
+        required=False, help_text="Frontend URL to redirect after OAuth"
+    )
+
+
+class GoogleOAuthCallbackSerializer(serializers.Serializer):
+    """Serializer for handling Google OAuth callback"""
+
+    access_token = serializers.CharField(help_text="Access token from Supabase OAuth")
+    refresh_token = serializers.CharField(required=False)
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False)
+
+
+class GoogleOAuthUserSerializer(serializers.ModelSerializer):
+    """Serializer for OAuth user data"""
+
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "role",
+            "auth_provider",
+            "email_verified",
+            "is_oauth_user",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "auth_provider",
+            "email_verified",
+            "is_oauth_user",
+            "created_at",
+        ]
+
+    def get_full_name(self, obj):
+        return obj.get_full_name()
