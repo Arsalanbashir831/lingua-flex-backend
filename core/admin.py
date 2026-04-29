@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from rag_app.admin_site import admin_site
 from .models import (
     User,
     Student,
@@ -401,16 +400,3 @@ class FileAdmin(admin.ModelAdmin):
         return "No Key"
 
     storage_key_display.short_description = "Storage Key"
-
-
-# Register all models with the custom admin site
-admin_site.register(User, UserAdmin)
-admin_site.register(Student, StudentAdmin)
-admin_site.register(Teacher, TeacherAdmin)
-admin_site.register(TeacherCertificate, TeacherCertificateAdmin)
-admin_site.register(TimeSlot, TimeSlotAdmin)
-admin_site.register(TeacherGig, TeacherGigAdmin)
-admin_site.register(Session, SessionAdmin)
-admin_site.register(SessionBilling, SessionBillingAdmin)
-admin_site.register(AIConversation, AIConversationAdmin)
-admin_site.register(File, FileAdmin)

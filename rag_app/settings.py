@@ -9,12 +9,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-import os
-from datetime import timedelta
 
 # Zoom API settings (Server-to-Server OAuth)
 ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID", "")
@@ -45,29 +44,6 @@ AUTH_USER_MODEL = "core.User"
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-
-# Vedic Astrology API
-ASTROLOGY_API_KEY = os.getenv("ASTROLOGY_API_KEY", "")
-
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-
-# Frontend URL for payment returns
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-RESEND_AUDIENCE_ID = os.getenv("RESEND_AUDIENCE_ID", "")
-
-
-url = os.getenv("SUPABASE_DB_URL", "").strip()
-
-if not url:
-    raise RuntimeError("SUPABASE_DB_URL is not set. Put it in your .env")
-
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -231,11 +207,12 @@ AUTHENTICATION_BACKENDS = [
     "core.authentication.SupabaseBackend",  # For API token authentication
 ]
 
-SIMPLE_JWT = {
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=24),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
-}
+# Third-party API Keys
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+ASTROLOGY_API_KEY = os.getenv("ASTROLOGY_API_KEY", "")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_AUDIENCE_ID = os.getenv("RESEND_AUDIENCE_ID", "")
 
 
 # =============================================================================
@@ -246,6 +223,9 @@ SIMPLE_JWT = {
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+# Frontend URL for payment returns
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Stripe settings
 STRIPE_LIVE_MODE = False  # Set to True in production
@@ -285,11 +265,27 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Backend API for the LinguaFlex language tutoring platform.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": r"/api/",
     # Serve Swagger UI & ReDoc assets from the locally installed sidecar package
     # instead of fetching from a CDN — works offline and in production too.
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
+    # Authentication & Security
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "supabaseAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "Enter your Supabase access token (JWT)",
+            }
+        }
+    },
+    "SECURITY": [
+        {"supabaseAuth": []}
+    ],
+    "COMPONENT_SPLIT_PATCH": True,
 }
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")

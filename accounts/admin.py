@@ -1,5 +1,4 @@
 from django.contrib import admin
-from rag_app.admin_site import admin_site
 from .models import UserProfile, TeacherProfile, Language, Chat, Message, Gig
 
 
@@ -250,12 +249,3 @@ class GigAdmin(admin.ModelAdmin):
         )
 
     draft_gigs.short_description = "Move to draft"
-
-
-# Register all models with the custom admin site
-admin_site.register(UserProfile, UserProfileAdmin)
-admin_site.register(TeacherProfile, TeacherProfileAdmin)
-admin_site.register(Language, LanguageAdmin)
-admin_site.register(Chat, ChatAdmin)
-admin_site.register(Message, MessageAdmin)
-admin_site.register(Gig, GigAdmin)
