@@ -5,33 +5,28 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db import transaction, models
-from .models import (
-    UserProfile,
-    TeacherProfile,
-    Language,
-    Chat,
-    Message,
-    VoiceConversation,
-)
+from django.db.models import Q
+from .models import UserProfile, TeacherProfile, Chat, Message, VoiceConversation, Gig
 from .serializers import (
     UserProfileSerializer,
     TeacherProfileSerializer,
-    LanguageSerializer,
     TeacherProfileCreateSerializer,
-    ChatSerializer,
     MessageSerializer,
     ComprehensiveTeacherProfileSerializer,
     ComprehensiveUserProfileSerializer,
     VoiceConversationSerializer,
     VoiceConversationCreateSerializer,
     TeacherSearchSerializer,
+    GigSerializer,
 )
+
 from core.models import User, Teacher
 from django.conf import settings
 from django.utils import timezone
 from supabase import create_client
 import resend
 import logging
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +135,6 @@ def get_user_profile_details(user):
         # Get profile picture URL
         profile_picture = None
         if user.profile_picture:
-            from django.conf import settings
 
             supabase_url = settings.SUPABASE_URL
             bucket_name = "user-uploads"
@@ -166,19 +160,6 @@ def get_user_profile_details(user):
             "created_at": None,
             "error": f"Error getting profile details: {str(e)}",
         }
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def supabase_messages(request, chat_id):
-    result = (
-        supabase.table("messages")
-        .select("*")
-        .eq("chat_id", chat_id)
-        .order("timestamp")
-        .execute()
-    )
-    return Response(result.data)
 
 
 @api_view(["POST"])
@@ -324,12 +305,6 @@ def roles_status(request):
     )
 
 
-class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Language.objects.filter(is_active=True)
-    serializer_class = LanguageSerializer
-    permission_classes = [AllowAny]
-
-
 class RegisterWithProfileView(generics.CreateAPIView):
     serializer_class = UserRegistrationWithProfileSerializer
     permission_classes = [AllowAny]
@@ -391,7 +366,7 @@ class RegisterWithProfileView(generics.CreateAPIView):
                             status=status.HTTP_200_OK,
                         )
 
-                except Exception as supabase_error:
+                except Exception:
                     # If Supabase user doesn't exist but Django user does, create in Supabase
                     pass
 
@@ -449,37 +424,43 @@ class RegisterWithProfileView(generics.CreateAPIView):
             user.set_unusable_password()
             user.save()
 
-            # Create UserProfile
-            profile = UserProfile.objects.create(
+            # Create/Update UserProfile (Signal may have already created a default one)
+            profile, _ = UserProfile.objects.update_or_create(
                 user=user,
-                role=data["role"],
-                bio=data.get("bio", ""),
-                city=data.get("city", ""),
-                country=data.get("country", ""),
-                postal_code=data.get("postal_code", ""),
-                status=data.get("status", ""),
-                native_language=data.get("native_language", ""),
-                learning_language=data.get("learning_language", ""),
+                defaults={
+                    "role": data["role"],
+                    "bio": data.get("bio", ""),
+                    "city": data.get("city", ""),
+                    "country": data.get("country", ""),
+                    "postal_code": data.get("postal_code", ""),
+                    "status": data.get("status", ""),
+                    "native_language": data.get("native_language", ""),
+                    "learning_language": data.get("learning_language", ""),
+                },
             )
 
             # If role is teacher, create TeacherProfile and Teacher
             if data["role"].upper() == User.Role.TEACHER:
-                # Always create TeacherProfile, using defaults if fields are missing
-                TeacherProfile.objects.create(
+                # Create/Update TeacherProfile
+                TeacherProfile.objects.update_or_create(
                     user_profile=profile,
-                    qualification=data.get("qualification", ""),
-                    experience_years=data.get("experience_years", 0),
-                    certificates=data.get("certificates", []),
-                    about=data.get("about", ""),
+                    defaults={
+                        "qualification": data.get("qualification", ""),
+                        "experience_years": data.get("experience_years", 0),
+                        "certificates": data.get("certificates", []),
+                        "about": data.get("about", ""),
+                    },
                 )
 
-                # Optionally create Teacher model instance if needed
-                Teacher.objects.create(
+                # Create/Update core Teacher model
+                Teacher.objects.update_or_create(
                     user=user,
-                    bio=data.get("bio", ""),
-                    teaching_experience=data.get("experience_years", 0),
-                    teaching_languages=[],  # Can be updated later
-                    hourly_rate=0,  # Default value, can be updated later
+                    defaults={
+                        "bio": data.get("bio", ""),
+                        "teaching_experience": data.get("experience_years", 0),
+                        "teaching_languages": [],  # Can be updated later
+                        "hourly_rate": 0,  # Default value
+                    },
                 )
 
             # Add to Resend audience (non-blocking)
@@ -513,17 +494,6 @@ class RegisterWithProfileView(generics.CreateAPIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# class UserProfileViewSet(viewsets.ModelViewSet):
-#     serializer_class = UserProfileSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         return UserProfile.objects.filter(user=self.request.user)
-
-#     def get_object(self):
-#         return self.get_queryset().first()
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -598,16 +568,12 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
 
             gig_category = self.request.query_params.get("gig_category")
             if gig_category:
-                from .models import Gig
-
                 queryset = queryset.filter(
                     gigs__category=gig_category, gigs__status=Gig.Status.ACTIVE
                 ).distinct()
 
             search = self.request.query_params.get("search")
             if search:
-                from django.db.models import Q
-
                 queryset = queryset.filter(
                     Q(user_profile__user__first_name__icontains=search)
                     | Q(user_profile__user__last_name__icontains=search)
@@ -615,11 +581,8 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
                 )
 
             return queryset
-        elif self.action == "my_profile":
-            return TeacherProfile.objects.filter(
-                user_profile__user=self.request.user,
-                user_profile__role=User.Role.TEACHER,
-            )
+
+        # Default: Filtered for the current user
         return TeacherProfile.objects.filter(user_profile__user=self.request.user)
 
     @action(detail=False, methods=["get", "patch"], url_path="my-profile")
@@ -633,47 +596,14 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Ensure user has UserProfile
+        # The profile is now automatically created by signals on user creation.
+        # We just need to fetch it.
         try:
-            user_profile = user.profile
-        except UserProfile.DoesNotExist:
-            # Create UserProfile if it doesn't exist (for OAuth users)
-            user_profile = UserProfile.objects.create(
-                user=user,
-                role=user.role,
-                bio="",
-                city="",
-                country="",
-                postal_code="",
-                status="",
-                native_language="",
-                learning_language="",
-            )
-
-        # Ensure user has TeacherProfile
-        try:
-            teacher_profile = user_profile.teacherprofile
-        except TeacherProfile.DoesNotExist:
-            # Create TeacherProfile if it doesn't exist (for OAuth users)
-            teacher_profile = TeacherProfile.objects.create(
-                user_profile=user_profile,
-                qualification="",
-                experience_years=0,
-                certificates=[],
-                about="",
-            )
-
-        # Ensure user has Teacher model (for core functionality)
-        try:
-            teacher_model = user.teacher
-        except Teacher.DoesNotExist:
-            # Create Teacher if it doesn't exist (for OAuth users)
-            teacher_model = Teacher.objects.create(
-                user=user,
-                bio="",
-                teaching_experience=0,
-                teaching_languages=[],
-                hourly_rate=25.00,
+            teacher_profile = user.profile.teacherprofile
+        except (AttributeError, UserProfile.DoesNotExist, TeacherProfile.DoesNotExist):
+            return Response(
+                {"error": "Teacher profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         if request.method == "PATCH":
@@ -699,59 +629,28 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
         serializer = ComprehensiveTeacherProfileSerializer(teacher_profile)
         return Response(serializer.data)
 
-
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from .models import Gig
-from .serializers import GigSerializer
-
-
-class ChatViewSet(viewsets.ModelViewSet):
-    serializer_class = ChatSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        role = self.request.query_params.get("role")
-
-        if role == "student":
-            return Chat.objects.filter(participant1=user)
-        elif role == "teacher":
-            return Chat.objects.filter(participant2=user)
-
-        return Chat.objects.filter(
-            models.Q(participant1=user) | models.Q(participant2=user)
-        )
-
-    @action(detail=False, methods=["post"], url_path="start")
-    def start_chat(self, request):
-        user = request.user
-        other_user_id = request.data.get("user_id")
-        if not other_user_id:
-            return Response(
-                {"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST
+        if request.method == "PATCH":
+            # Use comprehensive serializer for updates
+            serializer = ComprehensiveTeacherProfileSerializer(
+                teacher_profile, data=request.data, partial=True
             )
-        try:
-            other_user = User.objects.get(id=other_user_id)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-        if other_user == user:
-            return Response(
-                {"error": "Cannot start chat with yourself"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        chat, created = Chat.objects.get_or_create(
-            participant1=min(user, other_user, key=lambda u: u.id),
-            participant2=max(user, other_user, key=lambda u: u.id),
-        )
-        serializer = self.get_serializer(chat)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
-        )
+            if serializer.is_valid():
+                updated_profile = serializer.save()
+                # Return comprehensive profile data after update
+                response_serializer = ComprehensiveTeacherProfileSerializer(
+                    updated_profile
+                )
+                return Response(
+                    {
+                        "message": "Profile updated successfully",
+                        "profile": response_serializer.data,
+                    }
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # For GET requests, return comprehensive data
+        serializer = ComprehensiveTeacherProfileSerializer(teacher_profile)
+        return Response(serializer.data)
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -790,7 +689,7 @@ class GigViewSet(viewsets.ModelViewSet):
         user = self.request.user
         try:
             teacher_profile = user.profile.teacherprofile
-        except AttributeError, TeacherProfile.DoesNotExist:
+        except (AttributeError, TeacherProfile.DoesNotExist):
             return Gig.objects.none()
         return Gig.objects.filter(teacher=teacher_profile)
 
@@ -798,7 +697,7 @@ class GigViewSet(viewsets.ModelViewSet):
         user = self.request.user
         try:
             teacher_profile = user.profile.teacherprofile
-        except AttributeError, TeacherProfile.DoesNotExist:
+        except (AttributeError, TeacherProfile.DoesNotExist):
             raise serializers.ValidationError("You must be a teacher to create a gig.")
 
         # Check if teacher already has a gig with the same category
@@ -822,7 +721,7 @@ class GigViewSet(viewsets.ModelViewSet):
         user = self.request.user
         try:
             teacher_profile = user.profile.teacherprofile
-        except AttributeError, TeacherProfile.DoesNotExist:
+        except (AttributeError, TeacherProfile.DoesNotExist):
             raise serializers.ValidationError("You must be a teacher to update a gig.")
 
         # Check if teacher is trying to change category to one they already have
@@ -914,7 +813,6 @@ class GigViewSet(viewsets.ModelViewSet):
         # Search in title and description if provided
         search = request.query_params.get("search")
         if search:
-            from django.db.models import Q
 
             gigs = gigs.filter(
                 Q(service_title__icontains=search)
@@ -1036,8 +934,6 @@ class GigViewSet(viewsets.ModelViewSet):
             status_counts[status_choice] = count
 
         # Get recent status changes (gigs updated in last 7 days)
-        from django.utils import timezone
-        from datetime import timedelta
 
         week_ago = timezone.now() - timedelta(days=7)
         recent_updates = queryset.filter(updated_at__gte=week_ago).order_by(
