@@ -25,11 +25,25 @@ class StripePaymentService:
     def create_or_get_customer(user) -> StripeCustomer:
         """
         Create or retrieve Stripe customer for a user
+        Ensures the customer exists in the current Stripe environment (Test vs Live)
         """
+        customer_obj = None
         try:
-            # Try to get existing customer
+            # Try to get existing customer from database
             customer_obj = StripeCustomer.objects.get(user=user)
-            return customer_obj
+            
+            # Verify the customer exists in the current Stripe environment
+            try:
+                stripe.Customer.retrieve(customer_obj.stripe_customer_id)
+                return customer_obj
+            except stripe.error.StripeError as e:
+                # If Stripe says it doesn't exist, it's likely an environment mismatch (Test vs Live)
+                logger.warning(f"Customer {customer_obj.stripe_customer_id} not found in Stripe (Mode mismatch?). Creating new one.")
+                # Clear invalid saved payment methods associated with the old customer ID
+                SavedPaymentMethod.objects.filter(student=user).delete()
+                # Delete the invalid local customer record
+                customer_obj.delete()
+                customer_obj = None
         except StripeCustomer.DoesNotExist:
             pass
         

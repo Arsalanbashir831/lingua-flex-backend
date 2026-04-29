@@ -4,7 +4,7 @@ URL configuration for stripe_payments app
 from django.urls import path
 from . import views
 from . import refund_views
-from .backend_views import AddPaymentMethodView, ProcessPaymentView, ProcessDirectPaymentView, ProcessBookingPaymentView
+from .backend_views import AddPaymentMethodView, ProcessBookingPaymentView
 from .payment_tracking_views import (
     UserPaymentHistoryView, AdminPaymentTrackingView, PaymentAnalyticsView,
     UserFinancialSummaryView, PlatformFinancialReportView
@@ -15,8 +15,6 @@ app_name = 'stripe_payments'
 urlpatterns = [
     # Backend-only payment endpoints (NEW)
     path('add-payment-method/', AddPaymentMethodView.as_view(), name='add_payment_method'),
-    path('process-payment/', ProcessPaymentView.as_view(), name='process_payment'),
-    path('process-direct-payment/', ProcessDirectPaymentView.as_view(), name='process_direct_payment'),
     path('process-booking-payment/', ProcessBookingPaymentView.as_view(), name='process_booking_payment'),
     
     # Payment Intent endpoints (existing)
