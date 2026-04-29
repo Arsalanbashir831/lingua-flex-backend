@@ -35,6 +35,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 SUPABASE_BLOG_IMAGE_BUCKET = os.getenv("SUPABASE_BLOG_IMAGE_BUCKET", "blog-images")
+SUPABASE_USER_UPLOADS_BUCKET = os.getenv("SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
 FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY", "")
 BASE_URL_RESET_PASSWORD = os.getenv("BASE_URL_RESET_PASSWORD", "")
 BASE_URL_SIGNIN = os.getenv("BASE_URL_SIGNIN", "")
@@ -282,9 +283,7 @@ SPECTACULAR_SETTINGS = {
             }
         }
     },
-    "SECURITY": [
-        {"supabaseAuth": []}
-    ],
+    "SECURITY": [{"supabaseAuth": []}],
     "COMPONENT_SPLIT_PATCH": True,
 }
 

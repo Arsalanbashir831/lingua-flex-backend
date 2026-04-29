@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from core.models import User
 
 from .models import (
     BirthProfile,
@@ -225,7 +226,7 @@ def _resolve_profile(request):
 
     Returns (profile, error_response) where exactly one of them is None.
     """
-    from core.models import User
+
 
     guest_id = request.query_params.get("guest_profile_id")
     if guest_id:
@@ -254,7 +255,7 @@ def _resolve_profile(request):
             )
 
     # Teacher-delegated access path
-    if request.user.role != "TEACHER":
+    if request.user.role != User.Role.TEACHER:
         return None, Response(
             {"detail": "Only teachers can view other users' dashboards."},
             status=status.HTTP_403_FORBIDDEN,
