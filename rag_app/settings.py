@@ -88,7 +88,6 @@ INSTALLED_APPS = [
     "bookings",
     "accounts",
     "blogs",
-    "campaigns",
     "stripe_payments",
     "astrology",
 ]

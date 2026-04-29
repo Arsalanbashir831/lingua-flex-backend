@@ -29,7 +29,6 @@ urlpatterns = [
     path("api/accounts/", include("accounts.urls")),
     path("api/bookings/", include("bookings.urls")),
     path("api/blogs/", include("blogs.urls")),  # Added blogs URLs
-    path("api/campaigns/", include("campaigns.urls")),  # Added campaigns URLs
     path(
         "api/payments/", include("stripe_payments.urls")
     ),  # Added Stripe payments URLs
