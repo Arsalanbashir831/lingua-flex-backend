@@ -16,149 +16,40 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class AddPaymentMethodSerializer(serializers.Serializer):
-    """Serializer for adding payment method using test card tokens"""
-    card_number = serializers.CharField(max_length=19, help_text="Test card number (will be converted to token)")
-    exp_month = serializers.IntegerField(min_value=1, max_value=12, help_text="Expiration month")
-    exp_year = serializers.IntegerField(min_value=2024, help_text="Expiration year")
-    cvc = serializers.CharField(max_length=4, help_text="CVC code")
-    cardholder_name = serializers.CharField(max_length=100, help_text="Cardholder name")
-    save_for_future = serializers.BooleanField(default=True, help_text="Save for future use")
-
-
-class ProcessPaymentSerializer(serializers.Serializer):
-    """Serializer for processing payment"""
-    gig_id = serializers.IntegerField()
-    
-    # Option 1: Use saved payment method
-    saved_payment_method_id = serializers.CharField(required=False, help_text="Stripe payment method ID")
-    
-    # Option 2: Use new card details
-    card_details = serializers.DictField(required=False)
-    save_card = serializers.BooleanField(default=False)
-    
-    def validate(self, attrs):
-        saved_method_id = attrs.get('saved_payment_method_id')
-        card_details = attrs.get('card_details')
-        
-        if not saved_method_id and not card_details:
-            raise serializers.ValidationError(
-                "Either saved_payment_method_id or card_details must be provided"
-            )
-        
-        if saved_method_id and card_details:
-            raise serializers.ValidationError(
-                "Provide either saved_payment_method_id OR card_details, not both"
-            )
-        
-        return attrs
+    """Serializer for adding payment method using a Stripe token"""
+    payment_method_id = serializers.CharField(help_text="Stripe payment method ID from Stripe Elements")
 
 
 class AddPaymentMethodView(APIView):
     """
-    Add a new payment method using pre-built Stripe test payment methods
-    This approach avoids the raw card data restriction entirely
+    Add a new payment method using Stripe Elements token
     """
     permission_classes = [permissions.IsAuthenticated]
-    
-    def get_test_payment_method_id(self, card_number):
-        """Map test card numbers to Stripe's pre-built test payment method IDs"""
-        # These are Stripe's official test payment method IDs that can be used directly
-        test_payment_methods = {
-            '4242424242424242': 'pm_card_visa',                    # Visa - succeeds
-            '4000000000000002': 'pm_card_chargeDeclined',          # Visa - declined
-            '4000000000009995': 'pm_card_chargeDeclinedInsufficientFunds',  # Insufficient funds
-            '4000000000009987': 'pm_card_chargeDeclinedLostCard',  # Lost card
-            '4000000000009979': 'pm_card_chargeDeclinedStolenCard',  # Stolen card
-            '5555555555554444': 'pm_card_mastercard',              # Mastercard - succeeds
-            '378282246310005': 'pm_card_amex',                     # Amex - succeeds
-            '4000000000000101': 'pm_card_chargeDeclinedProcessingError',  # Processing error
-        }
-        return test_payment_methods.get(card_number)
-    
-    def create_payment_method_from_test_card(self, card_number, exp_month, exp_year, cvc, cardholder_name, customer_id):
-        """Create a payment method by cloning a test payment method"""
-        
-        test_pm_id = self.get_test_payment_method_id(card_number)
-        
-        if not test_pm_id:
-            # If it's not a recognized test card, return an error
-            raise stripe.error.CardError(
-                message=f"Unsupported test card: {card_number}. Please use a supported Stripe test card.",
-                param="card_number",
-                code="card_not_supported"
-            )
-        
-        try:
-            # Retrieve the test payment method
-            test_pm = stripe.PaymentMethod.retrieve(test_pm_id)
-            
-            # Create a new customer-specific payment method by attaching the test one
-            # Note: In test mode, we can attach the same test PM to multiple customers
-            test_pm.attach(customer=customer_id)
-            
-            return test_pm
-            
-        except stripe.error.StripeError as e:
-            # If attaching fails (already attached), create a setup intent instead
-            try:
-                # Use SetupIntent to save a payment method without immediate charge
-                # Configure to avoid redirect payment methods
-                setup_intent = stripe.SetupIntent.create(
-                    customer=customer_id,
-                    payment_method=test_pm_id,
-                    confirm=True,
-                    usage='off_session',
-                    automatic_payment_methods={
-                        'enabled': True,
-                        'allow_redirects': 'never'  # Avoid redirect-based methods
-                    }
-                )
-                
-                if setup_intent.payment_method:
-                    return stripe.PaymentMethod.retrieve(setup_intent.payment_method)
-                else:
-                    raise stripe.error.StripeError("Failed to create payment method from setup intent")
-                    
-            except Exception as setup_error:
-                # Final fallback: Just return the test payment method directly
-                # This works for testing purposes
-                try:
-                    test_pm = stripe.PaymentMethod.retrieve(test_pm_id)
-                    # Try to create a clone by creating a new PM based on the same card
-                    return test_pm
-                except:
-                    raise stripe.error.CardError(
-                        message=f"Unable to process test card {card_number}: {str(setup_error)}",
-                        param="card_number",
-                        code="processing_error"
-                    )
     
     def post(self, request):
         serializer = AddPaymentMethodSerializer(data=request.data)
         
         if not serializer.is_valid():
             return Response(
-                {'success': False, 'error': 'Invalid card details', 'details': serializer.errors},
+                {'success': False, 'error': 'Invalid payment method', 'details': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
             user = request.user
-            card_data = serializer.validated_data
+            payment_method_id = serializer.validated_data['payment_method_id']
             
             # Get or create Stripe customer
             from .services import StripePaymentService
             customer = StripePaymentService.create_or_get_customer(user)
             
-            # Create payment method using test card mapping
-            payment_method = self.create_payment_method_from_test_card(
-                card_data['card_number'],
-                card_data['exp_month'],
-                card_data['exp_year'],
-                card_data['cvc'],
-                card_data['cardholder_name'],
-                customer.stripe_customer_id
-            )
+            # Retrieve the payment method and attach it to the customer
+            payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
+            if payment_method.customer != customer.stripe_customer_id:
+                payment_method = stripe.PaymentMethod.attach(
+                    payment_method_id,
+                    customer=customer.stripe_customer_id
+                )
             
             response_data = {
                 'success': True,
@@ -166,13 +57,13 @@ class AddPaymentMethodView(APIView):
                 'payment_method_id': payment_method.id,
                 'card_last4': payment_method.card.last4,
                 'card_brand': payment_method.card.brand,
-                'saved': False
+                'saved': True
             }
             
-            # Save to database if requested
-            if card_data.get('save_for_future', True):
-                from .models import SavedPaymentMethod
-                saved_method = SavedPaymentMethod.objects.create(
+            # Save to database
+            from .models import SavedPaymentMethod
+            if not SavedPaymentMethod.objects.filter(stripe_payment_method_id=payment_method.id).exists():
+                SavedPaymentMethod.objects.create(
                     student=user,
                     stripe_payment_method_id=payment_method.id,
                     stripe_customer_id=customer.stripe_customer_id,
@@ -181,25 +72,14 @@ class AddPaymentMethodView(APIView):
                     card_exp_month=payment_method.card.exp_month,
                     card_exp_year=payment_method.card.exp_year
                 )
-                response_data['saved'] = True
             
             return Response(response_data, status=status.HTTP_200_OK)
             
-        except stripe.error.CardError as e:
-            return Response({
-                'success': False,
-                'error': str(e.user_message or e.message),
-                'details': {
-                    'code': e.code,
-                    'decline_code': getattr(e, 'decline_code', None),
-                    'param': e.param
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
         except stripe.error.StripeError as e:
             logger.error(f"Stripe error: {e}")
             return Response({
                 'success': False,
-                'error': f"Payment processing error: {str(e)}"
+                'error': f"Failed to attach payment method: {str(e)}"
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Error adding payment method: {e}")
@@ -280,7 +160,6 @@ class ProcessBookingPaymentView(APIView):
     def post(self, request):
         # Input validation
         required_fields = ['booking_id']
-        card_fields = ['card_number', 'exp_month', 'exp_year', 'cvc', 'cardholder_name']
         
         missing_fields = [field for field in required_fields if not request.data.get(field)]
         
@@ -290,14 +169,14 @@ class ProcessBookingPaymentView(APIView):
                 'error': f'Missing required fields: {", ".join(missing_fields)}'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if using saved payment method or new card
-        if not request.data.get('saved_payment_method_id'):
-            missing_card_fields = [field for field in card_fields if not request.data.get(field)]
-            if missing_card_fields:
-                return Response({
-                    'success': False,
-                    'error': f'Missing card fields: {", ".join(missing_card_fields)}'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        # Check if using payment_method_id (Stripe Elements) or saved_payment_method_id
+        payment_method_id = request.data.get('payment_method_id') or request.data.get('saved_payment_method_id')
+        
+        if not payment_method_id:
+            return Response({
+                'success': False,
+                'error': 'Missing payment_method_id'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user = request.user
@@ -365,37 +244,26 @@ class ProcessBookingPaymentView(APIView):
             customer = StripePaymentService.create_or_get_customer(user)
             
             # 5. Create or get payment method
-            payment_method = None
-            
-            if data.get('saved_payment_method_id'):
-                # Use saved payment method
-                from .models import SavedPaymentMethod
-                try:
-                    saved_method = SavedPaymentMethod.objects.get(
-                        stripe_payment_method_id=data['saved_payment_method_id'],
-                        student=user
+            try:
+                payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
+                
+                # Attach to customer if not already attached
+                if payment_method.customer != customer.stripe_customer_id:
+                    payment_method = stripe.PaymentMethod.attach(
+                        payment_method_id,
+                        customer=customer.stripe_customer_id
                     )
-                    payment_method = stripe.PaymentMethod.retrieve(saved_method.stripe_payment_method_id)
-                except SavedPaymentMethod.DoesNotExist:
-                    return Response({
-                        'success': False,
-                        'error': 'Saved payment method not found'
-                    }, status=status.HTTP_404_NOT_FOUND)
-            else:
-                # Create payment method from card data
-                card_data = {
-                    'card_number': data['card_number'],
-                    'exp_month': int(data['exp_month']),
-                    'exp_year': int(data['exp_year']),
-                    'cvc': data['cvc'],
-                    'cardholder_name': data['cardholder_name']
-                }
-                
-                payment_method = self.create_payment_method_from_card(card_data, customer.stripe_customer_id)
-                
-                # Save payment method if requested
-                if data.get('save_payment_method', False):
-                    from .models import SavedPaymentMethod
+            except stripe.error.StripeError as e:
+                return Response({
+                    'success': False,
+                    'error': f'Invalid payment method: {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Save payment method to database if requested or if it was already saved
+            save_requested = request.data.get('save_payment_method', False) or request.data.get('saved_payment_method_id')
+            if save_requested:
+                from .models import SavedPaymentMethod
+                if not SavedPaymentMethod.objects.filter(stripe_payment_method_id=payment_method.id).exists():
                     SavedPaymentMethod.objects.create(
                         student=user,
                         stripe_payment_method_id=payment_method.id,
