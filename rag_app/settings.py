@@ -19,6 +19,7 @@ load_dotenv()
 ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID", "")
 ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID", "")
 ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET", "")
+ZOOM_HOST_EMAIL = os.getenv("ZOOM_HOST_EMAIL", "ammarmukhtar@lordevs.com")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'. Changes
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

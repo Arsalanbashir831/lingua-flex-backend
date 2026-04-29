@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import TeacherAvailability, SessionBooking, SessionFeedback
+from .models import TeacherAvailability, SessionBooking
 
 
 @admin.register(TeacherAvailability)
@@ -98,21 +98,23 @@ class SessionBookingAdmin(admin.ModelAdmin):
 
     def booking_actions(self, obj):
         now = timezone.now()
-        if obj.status == "SCHEDULED" and obj.start_time > now:
+        if obj.status == "PENDING" and obj.start_time > now:
             return format_html(
                 '<a href="/admin/bookings/sessionbooking/{}/change/" style="color: #007bff;">Edit</a>',
                 obj.id,
             )
+        elif obj.status == "CONFIRMED":
+            return format_html('<span style="color: #007bff;">✓ Confirmed</span>')
         elif obj.status == "COMPLETED":
             return format_html('<span style="color: #28a745;">✓ Completed</span>')
         elif obj.status == "CANCELLED":
             return format_html('<span style="color: #dc3545;">✗ Cancelled</span>')
         else:
-            return format_html('<span style="color: #ffc107;">⏳ In Progress</span>')
+            return format_html('<span style="color: #ffc107;">⏳ Unknown</span>')
 
     booking_actions.short_description = "Actions"
 
-    actions = ["mark_completed", "mark_cancelled", "mark_in_progress"]
+    actions = ["mark_completed", "mark_cancelled"]
 
     def mark_completed(self, request, queryset):
         queryset.update(status="COMPLETED")
@@ -130,52 +132,5 @@ class SessionBookingAdmin(admin.ModelAdmin):
 
     mark_cancelled.short_description = "Mark as cancelled"
 
-    def mark_in_progress(self, request, queryset):
-        queryset.update(status="IN_PROGRESS")
-        self.message_user(
-            request, f"Successfully marked {queryset.count()} sessions as in progress."
-        )
-
-    mark_in_progress.short_description = "Mark as in progress"
 
 
-@admin.register(SessionFeedback)
-class SessionFeedbackAdmin(admin.ModelAdmin):
-    list_display = (
-        "session_info",
-        "rating_display",
-        "is_from_student",
-        "comment_preview",
-        "created_at",
-    )
-    list_filter = ("rating", "is_from_student", "created_at")
-    search_fields = ("comment", "booking__student__email", "booking__teacher__email")
-    date_hierarchy = "created_at"
-
-    def session_info(self, obj):
-        return f"{obj.booking.student.get_full_name()} → {obj.booking.teacher.get_full_name()}"
-
-    session_info.short_description = "Session"
-
-    def rating_display(self, obj):
-        stars = "★" * obj.rating + "☆" * (5 - obj.rating)
-        color = (
-            "#28a745"
-            if obj.rating >= 4
-            else "#ffc107"
-            if obj.rating >= 3
-            else "#dc3545"
-        )
-        return format_html(
-            '<span style="color: {};">{} ({})</span>', color, stars, obj.rating
-        )
-
-    rating_display.short_description = "Rating"
-    rating_display.admin_order_field = "rating"
-
-    def comment_preview(self, obj):
-        if obj.comment:
-            return obj.comment[:100] + "..." if len(obj.comment) > 100 else obj.comment
-        return "No comment"
-
-    comment_preview.short_description = "Comment"

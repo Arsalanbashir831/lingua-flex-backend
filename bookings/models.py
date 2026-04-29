@@ -171,14 +171,4 @@ class SessionBooking(models.Model):
     def __str__(self):
         return f"{self.student.email} → {self.teacher.email} | {self.gig.service_title if self.gig else 'N/A'} | {self.scheduled_datetime}"
 
-class SessionFeedback(models.Model):
-    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
 
-    booking = models.OneToOneField(SessionBooking, on_delete=models.CASCADE, related_name='feedback')
-    rating = models.IntegerField(choices=RATING_CHOICES)
-    comment = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_from_student = models.BooleanField()  # True if feedback is from student, False if from teacher
-
-    class Meta:
-        verbose_name_plural = 'Session feedback'
