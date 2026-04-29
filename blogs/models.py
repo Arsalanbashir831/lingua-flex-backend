@@ -1,3 +1,4 @@
+import math
 from django.db import models
 from django.utils.text import slugify
 from django.utils import timezone
@@ -80,7 +81,7 @@ class Blog(models.Model):
         if self.content:
             word_count = len(self.content.split())
             # Assuming average reading speed of 200 words per minute
-            self.read_time = max(1, word_count // 200)
+            self.read_time = math.ceil(word_count / 200)
         
         super().save(*args, **kwargs)
     
