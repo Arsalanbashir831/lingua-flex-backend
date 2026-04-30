@@ -1,17 +1,5 @@
 from django.contrib import admin
-from .models import Blog, BlogCategory, BlogView
-
-
-@admin.register(BlogCategory)
-class BlogCategoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "description", "blog_count", "created_at"]
-    search_fields = ["name", "description"]
-    readonly_fields = ["created_at"]
-
-    def blog_count(self, obj):
-        return obj.blogs.count()
-
-    blog_count.short_description = "Number of Blogs"
+from .models import Blog, BlogView
 
 
 @admin.register(Blog)
@@ -19,14 +7,13 @@ class BlogAdmin(admin.ModelAdmin):
     list_display = [
         "title",
         "author_name",
-        "category",
         "status",
         "view_count",
         "read_time",
         "published_at",
         "created_at",
     ]
-    list_filter = ["status", "category", "created_at", "published_at"]
+    list_filter = ["status", "created_at", "published_at"]
     search_fields = ["title", "content", "author__user_profile__user__email"]
     readonly_fields = [
         "slug",
@@ -40,7 +27,7 @@ class BlogAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Basic Information", {"fields": ("title", "slug", "content", "thumbnail")}),
-        ("Categorization", {"fields": ("category", "tags")}),
+        ("Categorization", {"fields": ("tags",)}),
         ("Publication", {"fields": ("status", "author")}),
         ("SEO & Metadata", {"fields": ("meta_description", "read_time", "view_count")}),
         (
@@ -78,7 +65,7 @@ class BlogAdmin(admin.ModelAdmin):
 @admin.register(BlogView)
 class BlogViewAdmin(admin.ModelAdmin):
     list_display = ["blog_title", "viewer_ip", "viewed_at"]
-    list_filter = ["viewed_at", "blog__category"]
+    list_filter = ["viewed_at"]
     search_fields = ["blog__title", "viewer_ip"]
     readonly_fields = ["blog", "viewer_ip", "user_agent", "viewed_at"]
     date_hierarchy = "viewed_at"
@@ -93,5 +80,3 @@ class BlogViewAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False  # Don't allow editing views
-
-

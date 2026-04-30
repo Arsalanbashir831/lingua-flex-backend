@@ -31,15 +31,6 @@ class TeacherProfile(models.Model):
         return f"Teacher: {self.user_profile.user.email}"
 
 
-class Language(models.Model):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Chat(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     participant1 = models.ForeignKey(

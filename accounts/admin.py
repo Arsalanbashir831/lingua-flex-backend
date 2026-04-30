@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, TeacherProfile, Language, Chat, Message, Gig
+from .models import UserProfile, TeacherProfile, Chat, Message, Gig
 
 
 @admin.register(UserProfile)
@@ -89,36 +89,6 @@ class TeacherProfileAdmin(admin.ModelAdmin):
         return obj.gigs.count()
 
     gig_count.short_description = "Active Gigs"
-
-
-@admin.register(Language)
-class LanguageAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "is_active", "user_count")
-    list_filter = ("is_active",)
-    search_fields = ("name", "code")
-    actions = ["activate_languages", "deactivate_languages"]
-
-    def user_count(self, obj):
-        # This would need to be implemented based on your user-language relationships
-        return "N/A"  # Placeholder
-
-    user_count.short_description = "Users Learning"
-
-    def activate_languages(self, request, queryset):
-        queryset.update(is_active=True)
-        self.message_user(
-            request, f"Successfully activated {queryset.count()} languages."
-        )
-
-    activate_languages.short_description = "Activate selected languages"
-
-    def deactivate_languages(self, request, queryset):
-        queryset.update(is_active=False)
-        self.message_user(
-            request, f"Successfully deactivated {queryset.count()} languages."
-        )
-
-    deactivate_languages.short_description = "Deactivate selected languages"
 
 
 @admin.register(Chat)

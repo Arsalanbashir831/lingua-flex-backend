@@ -2,33 +2,11 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, BaseUserManager
+    AbstractBaseUser,
+    PermissionsMixin,
+    BaseUserManager,
 )
 
-class Student(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    learning_goals = models.TextField(blank=True)
-    proficiency_level = models.CharField(max_length=20, choices=[
-        ('BEGINNER', 'Beginner'),
-        ('INTERMEDIATE', 'Intermediate'),
-        ('ADVANCED', 'Advanced')
-    ])
-    target_languages = models.JSONField(default=list)
-
-class Teacher(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    bio = models.TextField()
-    teaching_experience = models.IntegerField()  # in years
-    teaching_languages = models.JSONField(default=list)
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    is_verified = models.BooleanField(default=False)
-
-class TeacherCertificate(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='certificates')
-    name = models.CharField(max_length=200)
-    issuing_organization = models.CharField(max_length=200)
-    issue_date = models.DateField()
-    certificate_file = models.FileField(upload_to='certificates/')
 
 class SupabaseUserManager(BaseUserManager):
     def create_user(self, id, email, username=None, **extra_fields):
@@ -43,12 +21,22 @@ class SupabaseUserManager(BaseUserManager):
             raise ValueError("Supabase user must have an email")
 
         email = self.normalize_email(email)
-        user = self.model(id=id, email=email, username=username or email.split("@")[0], **extra_fields)
+        user = self.model(
+            id=id, email=email, username=username or email.split("@")[0], **extra_fields
+        )
         user.set_unusable_password()
         user.save(using=self._db)
         return user
 
-    def create_oauth_user(self, id, email, first_name=None, last_name=None, auth_provider='GOOGLE', **extra_fields):
+    def create_oauth_user(
+        self,
+        id,
+        email,
+        first_name=None,
+        last_name=None,
+        auth_provider="GOOGLE",
+        **extra_fields,
+    ):
         """
         Create user from OAuth provider (Google, etc.)
         These users are automatically verified
@@ -60,19 +48,19 @@ class SupabaseUserManager(BaseUserManager):
 
         email = self.normalize_email(email)
         username = username = email.split("@")[0]
-        
+
         # Set OAuth-specific defaults
-        extra_fields.setdefault('is_oauth_user', True)
-        extra_fields.setdefault('email_verified', True)
-        extra_fields.setdefault('auth_provider', auth_provider)
-        
+        extra_fields.setdefault("is_oauth_user", True)
+        extra_fields.setdefault("email_verified", True)
+        extra_fields.setdefault("auth_provider", auth_provider)
+
         user = self.model(
-            id=id, 
-            email=email, 
+            id=id,
+            email=email,
             username=username,
             first_name=first_name,
             last_name=last_name,
-            **extra_fields
+            **extra_fields,
         )
         user.set_unusable_password()
         user.save(using=self._db)
@@ -86,7 +74,12 @@ class SupabaseUserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
 
         supa_id = uuid.uuid4().hex
-        user = self.model(id=supa_id, email=self.normalize_email(email), username=email.split("@")[0], **extra_fields)
+        user = self.model(
+            id=supa_id,
+            email=self.normalize_email(email),
+            username=email.split("@")[0],
+            **extra_fields,
+        )
         user.set_password(password or uuid.uuid4().hex)
         user.save(using=self._db)
         return user
@@ -94,13 +87,13 @@ class SupabaseUserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
-        STUDENT = 'STUDENT', 'Student'
-        TEACHER = 'TEACHER', 'Teacher'
-        ADMIN = 'ADMIN', 'Administrator'
-    
+        STUDENT = "STUDENT", "Student"
+        TEACHER = "TEACHER", "Teacher"
+        ADMIN = "ADMIN", "Administrator"
+
     class AuthProvider(models.TextChoices):
-        EMAIL = 'EMAIL', 'Email/Password'
-        GOOGLE = 'GOOGLE', 'Google OAuth'
+        EMAIL = "EMAIL", "Email/Password"
+        GOOGLE = "GOOGLE", "Google OAuth"
 
     id = models.CharField(primary_key=True, max_length=255)
     email = models.EmailField(unique=True)
@@ -110,17 +103,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     gender = models.CharField(max_length=20, blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
-    profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True, null=True)
+    profile_picture = models.ImageField(
+        upload_to="profile_pictures/", blank=True, null=True
+    )
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
 
     # OAuth fields
-    auth_provider = models.CharField(max_length=20, choices=AuthProvider.choices, default=AuthProvider.EMAIL)
+    auth_provider = models.CharField(
+        max_length=20, choices=AuthProvider.choices, default=AuthProvider.EMAIL
+    )
     google_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
     is_oauth_user = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
-    
+
     is_active = models.BooleanField(default=True)
-    is_staff  = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(blank=True, null=True)
@@ -132,7 +129,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email} ({self.id})"
-    
+
     def get_full_name(self):
         """Return the full name of the user"""
         if self.first_name and self.last_name:
@@ -142,21 +139,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         elif self.last_name:
             return self.last_name
         else:
-            return self.username or self.email.split('@')[0]
+            return self.username or self.email.split("@")[0]
 
     # Role helper methods to support having both student and teacher profiles
     def has_teacher(self):
         """Return True if the user has a teacher record in core or accounts apps."""
         # core.Teacher one-to-one
         try:
-            if hasattr(self, 'teacher') and self.teacher is not None:
+            if hasattr(self, "teacher") and self.teacher is not None:
                 return True
         except Exception:
             pass
 
         # accounts.TeacherProfile via user.profile.teacherprofile
         try:
-            if hasattr(self, 'profile') and hasattr(self.profile, 'teacherprofile'):
+            if hasattr(self, "profile") and hasattr(self.profile, "teacherprofile"):
                 return True
         except Exception:
             pass
@@ -166,7 +163,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     def has_student(self):
         """Return True if the user has a student record in core."""
         try:
-            if hasattr(self, 'student') and self.student is not None:
+            if hasattr(self, "student") and self.student is not None:
                 return True
         except Exception:
             pass
@@ -178,12 +175,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         Returns the TeacherProfile instance.
         """
         from django.db import transaction
-        from accounts.models import UserProfile, TeacherProfile as AccountsTeacherProfile
+        from accounts.models import (
+            UserProfile,
+            TeacherProfile as AccountsTeacherProfile,
+        )
         from core.models import Teacher as CoreTeacher
 
         with transaction.atomic():
             # Ensure UserProfile exists
-            user_profile = getattr(self, 'profile', None)
+            user_profile = getattr(self, "profile", None)
             if user_profile is None:
                 user_profile = UserProfile.objects.create(user=self, role=self.role)
 
@@ -194,10 +194,10 @@ class User(AbstractBaseUser, PermissionsMixin):
             except Exception:
                 tp = AccountsTeacherProfile.objects.create(
                     user_profile=user_profile,
-                    qualification='',
+                    qualification="",
                     experience_years=0,
                     certificates=[],
-                    about=''
+                    about="",
                 )
 
             # Optionally create core.Teacher
@@ -207,10 +207,10 @@ class User(AbstractBaseUser, PermissionsMixin):
                 except Exception:
                     CoreTeacher.objects.create(
                         user=self,
-                        bio='',
+                        bio="",
                         teaching_experience=0,
                         teaching_languages=[],
-                        hourly_rate=0
+                        hourly_rate=0,
                     )
 
         return tp
@@ -225,64 +225,19 @@ class User(AbstractBaseUser, PermissionsMixin):
                 s = self.student
                 return s
             except Exception:
-                s = CoreStudent.objects.create(user=self, learning_goals='', proficiency_level='BEGINNER', target_languages=[])
+                s = CoreStudent.objects.create(
+                    user=self,
+                    learning_goals="",
+                    proficiency_level="BEGINNER",
+                    target_languages=[],
+                )
                 return s
 
-class TimeSlot(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='time_slots')
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    is_available = models.BooleanField(default=True)
 
-class TeacherGig(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='gigs')
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    duration = models.DurationField()  # Duration of the gig session
-    is_active = models.BooleanField(default=True)
-
-class Session(models.Model):
-    STATUS_CHOICES = [
-        ('SCHEDULED', 'Scheduled'),
-        ('IN_PROGRESS', 'In Progress'),
-        ('COMPLETED', 'Completed'),
-        ('CANCELLED', 'Cancelled')
-    ]
-
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='student_sessions')
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='teacher_sessions')
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    zoom_link = models.URLField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
-    notes = models.TextField(blank=True)
-
-class SessionBilling(models.Model):
-    session = models.OneToOneField(Session, on_delete=models.CASCADE, related_name='billing')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default='USD')
-    is_paid = models.BooleanField(default=False)
-    payment_date = models.DateTimeField(null=True, blank=True)
-    stripe_payment_intent = models.CharField(max_length=100, blank=True, null=True)
-
-class AIConversation(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='ai_conversations')
-    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='ai_conversations', null=True)
-    prompt = models.TextField()
-    response = models.TextField()
-    audio_url = models.URLField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    sentiment_score = models.FloatField(null=True)  # For emotion analysis
-    feedback = models.TextField(blank=True)  # Teacher's feedback on the conversation
-
-class File(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="files")
-    file = models.FileField(upload_to="uploads/")
-    filename = models.CharField(max_length=255)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    storage_key = models.CharField(max_length=500, blank=True, null=True)  # Supabase Storage key for file
-    chroma_collection = models.CharField(max_length=255, blank=True, null=True)  # For ChromaDB collection name/ID
-
-    def __str__(self):
-        return self.filename
+class Teacher(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    bio = models.TextField()
+    teaching_experience = models.IntegerField()  # in years
+    teaching_languages = models.JSONField(default=list)
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
+    is_verified = models.BooleanField(default=False)
