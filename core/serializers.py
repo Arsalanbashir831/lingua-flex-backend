@@ -18,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
         
         from django.conf import settings
         supabase_url = settings.SUPABASE_URL
-        bucket_name = "user-uploads"
+        bucket_name = getattr(settings, "SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
         
         # Construct full Supabase URL
         return f"{supabase_url}/storage/v1/object/public/{bucket_name}/{obj.profile_picture}"

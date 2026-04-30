@@ -84,7 +84,7 @@ class TeacherSearchSerializer(serializers.ModelSerializer):
         from django.conf import settings
 
         supabase_url = settings.SUPABASE_URL
-        bucket_name = "user-uploads"
+        bucket_name = getattr(settings, "SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
         return f"{supabase_url}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
 
 
@@ -208,7 +208,7 @@ class ComprehensiveTeacherProfileSerializer(serializers.ModelSerializer):
         profile_picture_url = None
         if user.profile_picture:
             supabase_url = settings.SUPABASE_URL
-            bucket_name = "user-uploads"
+            bucket_name = getattr(settings, "SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
             profile_picture_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
 
         data.update(
@@ -343,7 +343,7 @@ class ComprehensiveUserProfileSerializer(serializers.ModelSerializer):
         profile_picture_url = None
         if user.profile_picture:
             supabase_url = settings.SUPABASE_URL
-            bucket_name = "user-uploads"
+            bucket_name = getattr(settings, "SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
             profile_picture_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
 
         data.update(
@@ -426,7 +426,7 @@ class GigTeacherSerializer(serializers.ModelSerializer):
         from django.conf import settings
 
         supabase_url = settings.SUPABASE_URL
-        bucket_name = "user-uploads"
+        bucket_name = getattr(settings, "SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
         return f"{supabase_url}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
 
     class Meta:

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()
 
@@ -19,9 +20,9 @@ load_dotenv()
 ZOOM_ACCOUNT_ID = os.getenv("ZOOM_ACCOUNT_ID", "")
 ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID", "")
 ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET", "")
-ZOOM_HOST_EMAIL = os.getenv("ZOOM_HOST_EMAIL", "ammarmukhtar@lordevs.com")
+ZOOM_HOST_EMAIL = os.getenv("ZOOM_HOST_EMAIL", "")
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'. Changes
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -29,26 +30,41 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-ye6#tdjmntfyt=+^&6hiy6xx@8j1n-v%x!$_sy3bz3qoaxd%yf"
+# Must be set in .env — never hardcode in source.
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY", "django-insecure-dev-key-replace-in-production"
+)
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv("DEBUG", "True") == "True"
+
+AUTH_USER_MODEL = "core.User"
+
+# ─── Supabase ─────────────────────────────────────────────────────────────────
+# SUPABASE_URL:         Your project URL (https://<ref>.supabase.co)
+# SUPABASE_SECRET_KEY:  New sb_secret_... key — server-side only, never in browser.
+#                       Replaces the legacy service_role key.
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "")  # sb_secret_...
+
+# ─── Supabase Storage Buckets ─────────────────────────────────────────────────
 SUPABASE_BLOG_IMAGE_BUCKET = os.getenv("SUPABASE_BLOG_IMAGE_BUCKET", "blog-images")
 SUPABASE_USER_UPLOADS_BUCKET = os.getenv("SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
-FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY", "")
+
+# ─── URLs for Supabase Auth email redirects ───────────────────────────────────
 BASE_URL_RESET_PASSWORD = os.getenv("BASE_URL_RESET_PASSWORD", "")
 BASE_URL_SIGNIN = os.getenv("BASE_URL_SIGNIN", "")
 BASE_URL = os.getenv("BASE_URL", "")
-AUTH_USER_MODEL = "core.User"
 
-# Google OAuth Configuration
+# ─── Encryption ───────────────────────────────────────────────────────────────
+FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY", "")
+
+# ─── Google OAuth ─────────────────────────────────────────────────────────────
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 ALLOWED_HOSTS = [
     "192.168.1.2",
@@ -129,16 +145,15 @@ WSGI_APPLICATION = "rag_app.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("SUPABASE_DBNAME"),
-        "USER": os.getenv("SUPABASE_USER"),
-        "PASSWORD": os.getenv("SUPABASE_PASSWORD"),
-        "HOST": os.getenv("SUPABASE_HOST"),
-        "PORT": os.getenv("SUPABASE_PORT"),
-        "OPTIONS": {"sslmode": "require"},
-    }
-    # "default": dj_database_url.parse(url, conn_max_age=600, ssl_require=True)
+    "default": dj_database_url.config(
+        # Look for DATABASE_URL in .env (This is the standard URI Supabase gives you)
+        default=os.getenv("DATABASE_URL"),
+        # Keep connections alive for 10 minutes to eliminate connection latency
+        conn_max_age=600,
+        # Use persistent connections for background workers and health checks
+        conn_health_checks=True,
+        ssl_require=True,
+    )
 }
 
 
@@ -209,7 +224,6 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Third-party API Keys
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ASTROLOGY_API_KEY = os.getenv("ASTROLOGY_API_KEY", "")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")

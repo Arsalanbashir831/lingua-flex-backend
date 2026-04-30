@@ -20,9 +20,6 @@ The most significant issue in the codebase is the split and duplication of core 
 *   **AI Conversations**:
     *   `core.AIConversation` and `accounts.VoiceConversation` appear to serve the exact same purpose (storing transcripts and AI feedback from voice interactions).
 
-## 2. Circumventing Django ORM (`accounts/views.py`)
-*   **Direct Supabase Queries**: In `accounts.views.supabase_chats`, the code uses `supabase.table("chats").select("*")` to fetch data directly from Supabase via REST API. 
-*   **The Flaw**: The application *already has* Django models (`accounts.models.Chat` and `Message`) mapped to those exact same tables (`db_table = "chats"`). By bypassing the ORM, the app loses Django's query building, caching, security permissions, and serialization capabilities. It also forces the view to manually loop through records to fetch related User data, which is highly inefficient compared to a simple `select_related()` ORM call.
 
 ## 3. Authentication Logic Coupling (`core/views.py`)
 *   **Registration Sprawl**: The logic for registering a user is duplicated. `core.views.RegisterView` handles basic signup, while `accounts.views.RegisterWithProfileView` duplicates the exact same Supabase signup logic but adds profile creation on top of it.
@@ -63,3 +60,88 @@ The model duplication problem extends beyond user profiles into the core busines
 
 ## 12. Inefficient Cache Invalidation (`astrology/views.py`)
 *   **On-Demand Expiration**: The `TransitView` and `NakshatraPredictionView` invalidate their caches "on the fly" by checking if the user's local date differs from the cached date. While functional, it means the first request of the day for any user will experience a 3-5 second delay as it synchronously calls the external API. This should be converted into a nightly cron job that pre-warms the cache for active users.
+
+## 13. Model Architecture Deep-Dive: `core/models.py` vs `accounts/models.py`
+
+### 13.1 Split Teacher Profile (The #1 Problem)
+
+The single most damaging issue: a "teacher" has **two separate, disconnected model rows** in the database.
+
+| Field | `core.Teacher` | `accounts.TeacherProfile` |
+|---|---|---|
+| Link | `user` (OneToOne → User) | `user_profile` (OneToOne → UserProfile) |
+| Bio/About | `bio` | `about` |
+| Experience | `teaching_experience` (int, years) | `experience_years` (PositiveInt) |
+| Languages | `teaching_languages` (JSON) | — |
+| Hourly Rate | `hourly_rate` (Decimal) | — |
+| Certs | via `TeacherCertificate` model | `certificates` (JSON field) |
+| Qualifications | — | `qualification` (TextField) |
+
+**Result**: The `create_teacher_profile()` method on `User` must create two rows simultaneously and keep them in sync forever. Any update to one must be manually mirrored to the other. This is a data integrity time bomb.
+
+### 13.2 Duplicate Gigs Models
+
+`core.TeacherGig` and `accounts.Gig` represent the exact same concept — a service a teacher offers — but with different field sets and different ForeignKey targets:
+
+- `core.TeacherGig.teacher` → `core.Teacher`
+- `accounts.Gig.teacher` → `accounts.TeacherProfile`
+
+The `accounts.Gig` model is more complete (has `category`, `status`, `tags`, `short_description`). `core.TeacherGig` is a stub that should be deleted and replaced entirely.
+
+### 13.3 Split AI/Voice Conversation Models
+
+`core.AIConversation` and `accounts.VoiceConversation` both store AI conversation transcripts, but with different schemas:
+
+- `core.AIConversation`: links to `core.Student`, stores `prompt`/`response` as flat text
+- `accounts.VoiceConversation`: links directly to `User`, stores `transcription` as structured JSON
+
+**Result**: There is no canonical place to look up a user's conversation history. Both models exist in the DB simultaneously.
+
+### 13.4 Exception-Driven Control Flow (Performance Anti-Pattern)
+
+In `core.User.has_teacher()` and `has_student()`, existence checks work by catching exceptions:
+
+```python
+# ❌ Bad — raises and catches a DoesNotExist exception on every miss
+try:
+    if hasattr(self, 'teacher') and self.teacher is not None:
+        return True
+except Exception:
+    pass
+```
+
+`hasattr(self, 'teacher')` will attempt to access the reverse relation, which **hits the database AND raises `RelatedObjectDoesNotExist`** if the object doesn't exist. The correct approach:
+
+```python
+# ✅ Correct — no exception, no extra query if prefetched
+return Teacher.objects.filter(user=self).exists()
+```
+
+### 13.5 `User.id` is `CharField(max_length=255)` — Should be `UUIDField`
+
+The `User` model uses `id = models.CharField(primary_key=True, max_length=255)` to store Supabase UUIDs. Since Supabase always provides standard UUIDs, this should be:
+
+```python
+# ✅ Correct
+id = models.UUIDField(primary_key=True, editable=False)
+```
+
+**Why**: Django's `UUIDField` validates UUID format, stores as native UUID type in PostgreSQL (not as a long varchar), and indexes more efficiently. `CharField(max_length=255)` wastes storage and allows any string to be stored as an ID.
+
+### 13.6 `File.file` Uses `FileField(upload_to="uploads/")` — Dead Code
+
+`core.File.file = models.FileField(upload_to="uploads/")` points to Django's local media storage. But the codebase uses Supabase Storage for all file uploads. The `file` field would write to the local filesystem, conflicting with the `storage_key` field on the same model. One of these must be removed.
+
+### 13.7 `Message.chat_id` Naming Convention Violation
+
+The field is named `chat_id` but it's a ForeignKey, not an integer ID:
+
+```python
+# ❌ Confusing — DRF will serialize this as "chat_id_id"
+chat_id = models.ForeignKey(Chat, ...)
+
+# ✅ Correct Django convention
+chat = models.ForeignKey(Chat, ...)
+```
+
+Django's ORM automatically appends `_id` to FK column names. Naming the field `chat_id` means the actual database column will be `chat_id_id`, and the Python attribute `message.chat_id` returns the Chat object (not an integer), which is counterintuitive.

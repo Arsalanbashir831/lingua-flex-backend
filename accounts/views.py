@@ -23,16 +23,12 @@ from .serializers import (
 from core.models import User, Teacher
 from django.conf import settings
 from django.utils import timezone
-from supabase import create_client
+from core.supabase_client import get_admin_client
 import resend
 import logging
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
-
-SUPABASE_URL = getattr(settings, "SUPABASE_URL", None)
-SUPABASE_SERVICE_ROLE_KEY = getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", None)
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
 class UserRegistrationWithProfileSerializer(serializers.Serializer):
@@ -55,76 +51,32 @@ class UserRegistrationWithProfileSerializer(serializers.Serializer):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def supabase_chats(request):
-    """Get all chats for the authenticated user with participant details"""
-    user_id = str(request.user.id)
+    """Get all chats for the authenticated user with participant details.
+    
+    Uses Django ORM (Chat model) instead of direct Supabase REST API calls.
+    This leverages select_related() to eliminate the N+1 query problem.
+    """
+    user = request.user
     role = request.query_params.get("role")
 
-    # Get chats from Supabase
-    query = supabase.table("chats").select("*")
+    # Build ORM query using the existing Chat model
+    # The Chat model is already mapped to the 'chats' table (db_table = "chats")
+    qs = Chat.objects.select_related("participant1", "participant2")
     if role == "student":
-        query = query.eq("participant1", user_id)
+        qs = qs.filter(participant1=user)
     elif role == "teacher":
-        query = query.eq("participant2", user_id)
+        qs = qs.filter(participant2=user)
     else:
-        query = query.or_(f"participant1.eq.{user_id},participant2.eq.{user_id}")
+        qs = qs.filter(models.Q(participant1=user) | models.Q(participant2=user))
 
-    result = query.execute()
-    chats = result.data
-
-    # Enhance chats with participant details
     enhanced_chats = []
-
-    for chat in chats:
-        try:
-            # Get participant UUIDs
-            participant1_id = chat.get("participant1")
-            participant2_id = chat.get("participant2")
-
-            # Initialize participant details
-            student_details = None
-            teacher_details = None
-
-            # Get participant1 details
-            if participant1_id:
-                try:
-                    participant1_user = User.objects.get(id=participant1_id)
-                    student_details = get_user_profile_details(participant1_user)
-                except User.DoesNotExist:
-                    student_details = {
-                        "id": participant1_id,
-                        "error": "User not found",
-                        "role": "UNKNOWN",
-                    }
-
-            # Get participant2 details
-            if participant2_id:
-                try:
-                    participant2_user = User.objects.get(id=participant2_id)
-                    teacher_details = get_user_profile_details(participant2_user)
-                except User.DoesNotExist:
-                    teacher_details = {
-                        "id": participant2_id,
-                        "error": "User not found",
-                        "role": "UNKNOWN",
-                    }
-
-            # Create enhanced chat object
-            enhanced_chat = {
-                "id": chat.get("id"),
-                # 'participant1': participant1_id,
-                # 'participant2': participant2_id,
-                "student_details": student_details,
-                "teacher_details": teacher_details,
-                "created_at": chat.get("created_at"),
-            }
-
-            enhanced_chats.append(enhanced_chat)
-
-        except Exception as e:
-            # If there's an error with this chat, include it with error info
-            enhanced_chat = chat.copy()
-            enhanced_chat["error"] = f"Error processing chat: {str(e)}"
-            enhanced_chats.append(enhanced_chat)
+    for chat in qs:
+        enhanced_chats.append({
+            "id": str(chat.id),
+            "student_details": get_user_profile_details(chat.participant1),
+            "teacher_details": get_user_profile_details(chat.participant2),
+            "created_at": chat.created_at,
+        })
 
     return Response(enhanced_chats)
 
@@ -331,7 +283,7 @@ class RegisterWithProfileView(generics.CreateAPIView):
 
                 # Check if user is verified in Supabase
                 try:
-                    supabase_user = supabase.auth.admin.get_user_by_id(
+                    supabase_user = get_admin_client().auth.admin.get_user_by_id(
                         str(existing_user.id)
                     )
 
@@ -348,7 +300,7 @@ class RegisterWithProfileView(generics.CreateAPIView):
                     # If user exists but not verified, resend verification
                     else:
                         # Resend verification email
-                        supabase.auth.resend(
+                        get_admin_client().auth.resend(
                             {
                                 "type": "signup",
                                 "email": email,
@@ -375,7 +327,7 @@ class RegisterWithProfileView(generics.CreateAPIView):
                 pass
 
             # Create Supabase user
-            response = supabase.auth.sign_up(
+            response = get_admin_client().auth.sign_up(
                 {
                     "email": data["email"],
                     "password": data["password"],
@@ -402,7 +354,7 @@ class RegisterWithProfileView(generics.CreateAPIView):
                 else None,
             }
 
-            supabase.auth.admin.update_user_by_id(
+            get_admin_client().auth.admin.update_user_by_id(
                 response.user.id, {"user_metadata": metadata}
             )
 

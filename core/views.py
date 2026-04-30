@@ -47,10 +47,9 @@ from .serializers import (
     GoogleOAuthUserSerializer,
 )
 from accounts.models import UserProfile, TeacherProfile
-from supabase import create_client
+from core.supabase_client import get_admin_client
 from gotrue.errors import AuthApiError
 
-supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 logger = logging.getLogger(__name__)
 
 
@@ -146,7 +145,7 @@ class GoogleOAuthCallbackView(APIView):
 
         try:
             # Get user data from Supabase using the access token
-            supabase_user = supabase.auth.get_user(access_token)
+            supabase_user = get_admin_client().auth.get_user(access_token)
 
             if not supabase_user.user:
                 return Response(
@@ -317,6 +316,7 @@ class RegisterView(APIView):
                     "role", "STUDENT"
                 )  # Default to STUDENT if not provided
 
+                supabase = get_admin_client()
                 response = supabase.auth.sign_up(
                     {
                         "email": email,
@@ -397,7 +397,7 @@ class LoginView(APIView):
             )
 
         try:
-            response = supabase.auth.sign_in_with_password(
+            response = get_admin_client().auth.sign_in_with_password(
                 {"email": email, "password": password}
             )
         except Exception as e:
@@ -448,7 +448,7 @@ class PasswordResetView(APIView):
 
         try:
             # Trigger password reset email through Supabase
-            supabase.auth.reset_password_for_email(
+            get_admin_client().auth.reset_password_for_email(
                 email, options={"redirect_to": settings.BASE_URL_RESET_PASSWORD}
             )
             return Response(
@@ -481,34 +481,22 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        import requests
-        from django.conf import settings
-
-        project_url = getattr(settings, "SUPABASE_URL", "").rstrip("/")
-        api_key = getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", "") or getattr(
-            settings, "SUPABASE_ANON_KEY", ""
-        )
-        if not project_url or not api_key:
-            return Response(
-                {"error": "Supabase configuration missing."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        url = f"{project_url}/auth/v1/user"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "apikey": api_key,
-            "Content-Type": "application/json",
-        }
-        payload = {"password": new_password}
-
         try:
-            resp = requests.put(url, json=payload, headers=headers)
-            if resp.status_code != 200:
+            # Use the admin client to update password by user ID.
+            # We first verify the token is valid via our JWKS-based local verification.
+            from .authentication import SupabaseTokenAuthentication
+            payload_data = SupabaseTokenAuthentication.verify_token_payload(token)
+            
+            if not payload_data:
                 return Response(
-                    {"error": resp.json().get("message", "Failed to update password")},
-                    status=resp.status_code,
+                    {"error": "Invalid or expired reset token."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
+
+            user_id = payload_data.get("sub")
+            get_admin_client().auth.admin.update_user_by_id(
+                user_id, {"password": new_password}
+            )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -547,7 +535,7 @@ class ChangePasswordView(APIView):
         # Step 1: Verify current password via Supabase sign-in
         # This ensures the user actually knows their current password
         try:
-            auth_response = supabase.auth.sign_in_with_password(
+            auth_response = get_admin_client().auth.sign_in_with_password(
                 {"email": user.email, "password": current_password}
             )
         except AuthApiError as e:
@@ -564,16 +552,11 @@ class ChangePasswordView(APIView):
         # Step 2: Update password using the access token returned from the sign-in
         # This is the most reliable way to update a password for the current user
         try:
-            # We create a temporary client with the bearer token from the verification sign-in
-            temp_supabase = create_client(
-                settings.SUPABASE_URL,
-                settings.SUPABASE_ANON_KEY,  # Use anon key but provide user's specific session
+            # Use admin client to update password directly by user ID.
+            # This avoids creating a temporary anon client and using the deprecated anon key.
+            get_admin_client().auth.admin.update_user_by_id(
+                str(user.id), {"password": new_password}
             )
-            temp_supabase.auth.set_session(
-                auth_response.session.access_token, auth_response.session.refresh_token
-            )
-
-            temp_supabase.auth.update_user({"password": new_password})
 
             return Response(
                 {"message": "Password updated successfully."},
@@ -614,7 +597,7 @@ class ResendVerificationView(APIView):
             # Try to resend verification email directly
             # Supabase will handle checking if user exists and is unverified
             try:
-                resend_response = supabase.auth.resend(
+                resend_response = get_admin_client().auth.resend(
                     {
                         "type": "signup",
                         "email": email,
@@ -682,7 +665,7 @@ class TokenRefreshView(APIView):
             )
 
         try:
-            data = supabase.auth.refresh_session(refresh_token)
+            data = get_admin_client().auth.refresh_session(refresh_token)
             if (
                 data.session
                 and data.session.access_token
@@ -723,9 +706,7 @@ class UserProfilePictureUploadView(APIView):
         filename = file_obj.name
         storage_key = f"{folder}/{filename}"
 
-        supabase = create_client(
-            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
-        )
+        supabase = get_admin_client()
 
         try:
             # Delete previous profile picture if exists

@@ -2,15 +2,7 @@ import uuid
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework import status
-from supabase import create_client
-
-def get_supabase_client():
-    """Initialize Supabase client from settings"""
-    url = getattr(settings, "SUPABASE_URL", "")
-    key = getattr(settings, "SUPABASE_ANON_KEY", "")
-    if not url or not key:
-        return None
-    return create_client(url, key)
+from core.supabase_client import get_admin_client
 
 def handle_blog_thumbnail_upload(thumbnail_file, teacher_id):
     """
@@ -34,12 +26,7 @@ def handle_blog_thumbnail_upload(thumbnail_file, teacher_id):
         )
 
     try:
-        supabase = get_supabase_client()
-        if not supabase:
-            return None, Response(
-                {"error": "Supabase configuration missing"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        supabase = get_admin_client()
 
         # Create unique filename
         file_extension = thumbnail_file.name.split(".")[-1].lower()
