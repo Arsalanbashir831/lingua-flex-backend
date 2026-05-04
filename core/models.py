@@ -95,7 +95,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         EMAIL = "EMAIL", "Email/Password"
         GOOGLE = "GOOGLE", "Google OAuth"
 
-    id = models.CharField(primary_key=True, max_length=255)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, blank=True, null=True)
     first_name = models.CharField(max_length=30, blank=True, null=True)
