@@ -22,10 +22,13 @@ class UserProfile(models.Model):
 
 class TeacherProfile(models.Model):
     user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
-    qualification = models.TextField()
-    experience_years = models.PositiveIntegerField()
+    qualification = models.TextField(blank=True)
+    experience_years = models.PositiveIntegerField(default=0)
     certificates = models.JSONField(default=list)  # Store certificate URLs
-    about = models.TextField()
+    about = models.TextField(blank=True)
+    teaching_languages = models.JSONField(default=list)
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    is_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Teacher: {self.user_profile.user.email}"

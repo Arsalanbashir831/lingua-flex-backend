@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db import transaction
-from core.models import User, Teacher
+from core.models import User
 from .models import UserProfile, TeacherProfile
 
 @receiver(post_save, sender=User)
@@ -39,13 +39,4 @@ def create_user_profiles(sender, instance, created, **kwargs):
                     }
                 )
                 
-                # Also ensure the core Teacher model exists
-                Teacher.objects.get_or_create(
-                    user=instance,
-                    defaults={
-                        "bio": "",
-                        "teaching_experience": 0,
-                        "teaching_languages": [],
-                        "hourly_rate": 25.00,
-                    }
-                )
+

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import User, Teacher
+from .models import User
 
 
 @admin.register(User)
@@ -82,51 +82,4 @@ class UserAdmin(admin.ModelAdmin):
     deactivate_users.short_description = "Deactivate selected users"
 
 
-@admin.register(Teacher)
-class TeacherAdmin(admin.ModelAdmin):
-    list_display = (
-        "user_email",
-        "user_name",
-        "teaching_experience",
-        "hourly_rate",
-        "is_verified",
-        "teaching_languages_display",
-    )
-    list_filter = ("is_verified", "teaching_experience")
-    search_fields = ("user__email", "user__first_name", "user__last_name", "bio")
-    actions = ["verify_teachers", "unverify_teachers"]
 
-    def user_email(self, obj):
-        return obj.user.email
-
-    user_email.short_description = "Email"
-    user_email.admin_order_field = "user__email"
-
-    def user_name(self, obj):
-        return obj.user.get_full_name()
-
-    user_name.short_description = "Name"
-    user_name.admin_order_field = "user__first_name"
-
-    def teaching_languages_display(self, obj):
-        if obj.teaching_languages:
-            return ", ".join(obj.teaching_languages[:3])
-        return "None"
-
-    teaching_languages_display.short_description = "Teaching Languages"
-
-    def verify_teachers(self, request, queryset):
-        queryset.update(is_verified=True)
-        self.message_user(
-            request, f"Successfully verified {queryset.count()} teachers."
-        )
-
-    verify_teachers.short_description = "Verify selected teachers"
-
-    def unverify_teachers(self, request, queryset):
-        queryset.update(is_verified=False)
-        self.message_user(
-            request, f"Successfully unverified {queryset.count()} teachers."
-        )
-
-    unverify_teachers.short_description = "Unverify selected teachers"

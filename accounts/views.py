@@ -20,7 +20,7 @@ from .serializers import (
     GigSerializer,
 )
 
-from core.models import User, Teacher
+from core.models import User
 from django.conf import settings
 from django.utils import timezone
 from core.supabase_client import get_admin_client
@@ -134,7 +134,15 @@ def become_teacher(request):
 
     # Create teacher profile (atomic)
     try:
-        tp = user.create_teacher_profile(create_core_teacher=True)
+        tp = user.create_teacher_profile()
+        
+        # Update roles to BOTH
+        user.role = User.Role.BOTH
+        user.save(update_fields=['role'])
+        if hasattr(user, 'profile'):
+            user.profile.role = User.Role.BOTH
+            user.profile.save(update_fields=['role'])
+            
         serializer = TeacherProfileSerializer(tp)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     except Exception as e:
@@ -146,22 +154,25 @@ def become_teacher(request):
 def become_student(request):
     """Create a student record for the authenticated user if one does not exist."""
     user = request.user
-    if user.has_student():
-        try:
-            s = user.student
-            # Return minimal info
-            return Response(
-                {"id": s.id, "user_id": str(user.id)}, status=status.HTTP_200_OK
-            )
-        except Exception:
-            return Response(
-                {"detail": "Student profile already exists."}, status=status.HTTP_200_OK
-            )
+    if user.role in [User.Role.STUDENT, User.Role.BOTH]:
+        return Response(
+            {"detail": "Student profile already exists."}, status=status.HTTP_200_OK
+        )
 
     try:
-        s = user.create_student_profile()
+        # Just creating a UserProfile implies student capabilities. 
+        # If they don't have one, create it.
+        if not hasattr(user, 'profile'):
+            UserProfile.objects.create(user=user, role=User.Role.BOTH)
+        else:
+            user.profile.role = User.Role.BOTH
+            user.profile.save(update_fields=['role'])
+            
+        user.role = User.Role.BOTH
+        user.save(update_fields=['role'])
+            
         return Response(
-            {"id": s.id, "user_id": str(user.id)}, status=status.HTTP_201_CREATED
+            {"user_id": str(user.id), "detail": "Student capabilities added successfully."}, status=status.HTTP_201_CREATED
         )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -214,36 +225,9 @@ def roles_status(request):
                 except Exception:
                     teacher_profile = None
 
-            if teacher_profile is not None:
                 teacher_data = ComprehensiveTeacherProfileSerializer(
                     teacher_profile
                 ).data
-            else:
-                # Fallback: if core.Teacher exists but no accounts TeacherProfile, build a minimal object
-                try:
-                    core_teacher = user.teacher
-                    # Build a minimal dict equivalent to ComprehensiveTeacherProfileSerializer output
-                    teacher_data = {
-                        "id": user.id,
-                        "email": user.email,
-                        "first_name": user.first_name,
-                        "last_name": user.last_name,
-                        "phone_number": user.phone_number,
-                        "gender": user.gender,
-                        "date_of_birth": user.date_of_birth,
-                        "role": user.role,
-                        "has_teacher": True,
-                        "has_student": has_student,
-                        "profile_picture": getattr(user, "profile_picture", None),
-                        "created_at": user.created_at,
-                        "bio": core_teacher.bio,
-                        "qualification": None,
-                        "experience_years": core_teacher.teaching_experience,
-                        "certificates": [],
-                        "about": None,
-                    }
-                except Exception:
-                    teacher_data = None
         except Exception:
             teacher_data = None
 
@@ -404,16 +388,7 @@ class RegisterWithProfileView(generics.CreateAPIView):
                     },
                 )
 
-                # Create/Update core Teacher model
-                Teacher.objects.update_or_create(
-                    user=user,
-                    defaults={
-                        "bio": data.get("bio", ""),
-                        "teaching_experience": data.get("experience_years", 0),
-                        "teaching_languages": [],  # Can be updated later
-                        "hourly_rate": 0,  # Default value
-                    },
-                )
+
 
             # Add to Resend audience (non-blocking)
             try:
@@ -581,28 +556,7 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
         serializer = ComprehensiveTeacherProfileSerializer(teacher_profile)
         return Response(serializer.data)
 
-        if request.method == "PATCH":
-            # Use comprehensive serializer for updates
-            serializer = ComprehensiveTeacherProfileSerializer(
-                teacher_profile, data=request.data, partial=True
-            )
-            if serializer.is_valid():
-                updated_profile = serializer.save()
-                # Return comprehensive profile data after update
-                response_serializer = ComprehensiveTeacherProfileSerializer(
-                    updated_profile
-                )
-                return Response(
-                    {
-                        "message": "Profile updated successfully",
-                        "profile": response_serializer.data,
-                    }
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # For GET requests, return comprehensive data
-        serializer = ComprehensiveTeacherProfileSerializer(teacher_profile)
-        return Response(serializer.data)
 
 
 class MessageViewSet(viewsets.ModelViewSet):

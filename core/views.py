@@ -7,38 +7,8 @@ from django.db import transaction, models
 from django.conf import settings
 import logging
 
-# Temporary fix for ZoomClient import issue
-try:
-    from zoomus import ZoomClient
 
-    # Initialize Zoom client only if credentials are configured
-    zoom_client = None
-    if (
-        hasattr(settings, "ZOOM_API_KEY")
-        and settings.ZOOM_API_KEY
-        and hasattr(settings, "ZOOM_API_SECRET")
-        and settings.ZOOM_API_SECRET
-        and hasattr(settings, "ZOOM_ACCOUNT_ID")
-        and settings.ZOOM_ACCOUNT_ID
-    ):
-        try:
-            zoom_client = ZoomClient(
-                settings.ZOOM_ACCOUNT_ID,
-                settings.ZOOM_API_KEY,
-                settings.ZOOM_API_SECRET,
-            )
-        except Exception as e:
-            print(f"Warning: Could not initialize ZoomClient: {e}")
-            zoom_client = None
-except ImportError:
-    print(
-        "Warning: zoomus library not installed or outdated. Zoom functionality will be disabled."
-    )
-    zoom_client = None
-from .models import (
-    User,
-    Teacher,
-)
+from .models import User
 from .serializers import (
     UserRegistrationSerializer,
     UserSerializer,
@@ -251,15 +221,8 @@ class GoogleOAuthCallbackView(APIView):
                             experience_years=0,
                             certificates=[],
                             about="",
-                        )
-
-                        # Create Teacher model (core model) - for booking system
-                        Teacher.objects.create(
-                            user=user,
-                            bio="",  # Will be filled in profile completion
-                            teaching_experience=0,
                             teaching_languages=[],
-                            hourly_rate=0,  # Default value, can be updated later
+                            hourly_rate=0,
                         )
 
                     # For STUDENTS: Only UserProfile is created (no Student model)
@@ -357,15 +320,7 @@ class RegisterView(APIView):
                         user_model.set_unusable_password()
                         user_model.save()
 
-                        # If role is teacher, create the teacher profile
-                        if role == "TEACHER":
-                            Teacher.objects.create(
-                                user=user_model,
-                                bio=user_data.get("bio", ""),
-                                teaching_experience=user_data["years_of_experience"],
-                                teaching_languages=[],  # Can be updated later
-                                hourly_rate=0,  # Default value, can be updated later
-                            )
+
 
                     return Response(
                         {"message": "User registered successfully"},

@@ -50,11 +50,11 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
 class TeacherProfileCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherProfile
-        fields = ["qualification", "experience_years", "certificates", "about"]
+        fields = ["qualification", "experience_years", "certificates", "about", "teaching_languages", "hourly_rate"]
 
 
 class TeacherSearchSerializer(serializers.ModelSerializer):
-    id = serializers.UUIDField(source="user_profile.user.id", read_only=True)
+    id = serializers.CharField(source="user_profile.user.id", read_only=True)
     first_name = serializers.CharField(
         source="user_profile.user.first_name", read_only=True
     )
@@ -75,6 +75,9 @@ class TeacherSearchSerializer(serializers.ModelSerializer):
             "about",
             "qualification",
             "experience_years",
+            "teaching_languages",
+            "hourly_rate",
+            "is_verified",
         ]
 
     def get_profile_picture(self, obj):
@@ -118,6 +121,8 @@ class ComprehensiveTeacherProfileSerializer(serializers.ModelSerializer):
     experience_years = serializers.IntegerField(required=False)
     certificates = serializers.JSONField(required=False)
     about = serializers.CharField(required=False, allow_blank=True)
+    teaching_languages = serializers.JSONField(required=False)
+    hourly_rate = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
 
     class Meta:
         model = TeacherProfile
@@ -141,6 +146,9 @@ class ComprehensiveTeacherProfileSerializer(serializers.ModelSerializer):
             "experience_years",
             "certificates",
             "about",
+            "teaching_languages",
+            "hourly_rate",
+            "is_verified",
         ]
 
     def update(self, instance, validated_data):
@@ -249,6 +257,9 @@ class ComprehensiveTeacherProfileSerializer(serializers.ModelSerializer):
                 "experience_years": instance.experience_years,
                 "certificates": instance.certificates,
                 "about": instance.about,
+                "teaching_languages": instance.teaching_languages,
+                "hourly_rate": instance.hourly_rate,
+                "is_verified": instance.is_verified,
             }
         )
 
@@ -441,6 +452,9 @@ class GigTeacherSerializer(serializers.ModelSerializer):
             "qualification",
             "experience_years",
             "about",
+            "teaching_languages",
+            "hourly_rate",
+            "is_verified",
             "bio",
             "city",
             "country",

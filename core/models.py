@@ -89,6 +89,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         STUDENT = "STUDENT", "Student"
         TEACHER = "TEACHER", "Teacher"
+        BOTH = "BOTH", "Both Student and Teacher"
         ADMIN = "ADMIN", "Administrator"
 
     class AuthProvider(models.TextChoices):
@@ -141,36 +142,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         else:
             return self.username or self.email.split("@")[0]
 
-    # Role helper methods to support having both student and teacher profiles
     def has_teacher(self):
-        """Return True if the user has a teacher record in core or accounts apps."""
-        # core.Teacher one-to-one
-        try:
-            if hasattr(self, "teacher") and self.teacher is not None:
-                return True
-        except Exception:
-            pass
-
-        # accounts.TeacherProfile via user.profile.teacherprofile
+        """Return True if the user has a TeacherProfile."""
         try:
             if hasattr(self, "profile") and hasattr(self.profile, "teacherprofile"):
                 return True
         except Exception:
             pass
-
         return False
 
     def has_student(self):
-        """Return True if the user has a student record in core."""
-        try:
-            if hasattr(self, "student") and self.student is not None:
-                return True
-        except Exception:
-            pass
-        return False
+        """Return True if the user registered as a student or opted into both."""
+        return self.role in [self.Role.STUDENT, self.Role.BOTH]
 
-    def create_teacher_profile(self, *, create_core_teacher=True):
-        """Create accounts.TeacherProfile and optionally core.Teacher for this user.
+    def create_teacher_profile(self):
+        """Create accounts.TeacherProfile for this user.
 
         Returns the TeacherProfile instance.
         """
@@ -179,7 +165,6 @@ class User(AbstractBaseUser, PermissionsMixin):
             UserProfile,
             TeacherProfile as AccountsTeacherProfile,
         )
-        from core.models import Teacher as CoreTeacher
 
         with transaction.atomic():
             # Ensure UserProfile exists
@@ -198,46 +183,11 @@ class User(AbstractBaseUser, PermissionsMixin):
                     experience_years=0,
                     certificates=[],
                     about="",
+                    teaching_languages=[],
+                    hourly_rate=0,
+                    is_verified=False,
                 )
-
-            # Optionally create core.Teacher
-            if create_core_teacher:
-                try:
-                    _ = self.teacher
-                except Exception:
-                    CoreTeacher.objects.create(
-                        user=self,
-                        bio="",
-                        teaching_experience=0,
-                        teaching_languages=[],
-                        hourly_rate=0,
-                    )
 
         return tp
 
-    def create_student_profile(self):
-        """Create core.Student for this user if missing and return it."""
-        from django.db import transaction
-        from core.models import Student as CoreStudent
 
-        with transaction.atomic():
-            try:
-                s = self.student
-                return s
-            except Exception:
-                s = CoreStudent.objects.create(
-                    user=self,
-                    learning_goals="",
-                    proficiency_level="BEGINNER",
-                    target_languages=[],
-                )
-                return s
-
-
-class Teacher(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    bio = models.TextField()
-    teaching_experience = models.IntegerField()  # in years
-    teaching_languages = models.JSONField(default=list)
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    is_verified = models.BooleanField(default=False)

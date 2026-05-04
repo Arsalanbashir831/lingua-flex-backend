@@ -1,6 +1,6 @@
 check
 venv
-.env
+.env*
 __pycache__
 # Ignore Python bytecode and caches
 __pycache__/
