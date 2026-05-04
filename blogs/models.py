@@ -55,7 +55,6 @@ class Blog(models.Model):
     read_time = models.PositiveIntegerField(
         default=0, help_text="Estimated read time in minutes"
     )
-    view_count = models.PositiveIntegerField(default=0, help_text="Number of views")
 
     class Meta:
         ordering = ["-created_at"]
@@ -113,17 +112,4 @@ class Blog(models.Model):
         return ", ".join(self.tags) if self.tags else ""
 
 
-class BlogView(models.Model):
-    """Model to track blog views"""
 
-    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name="views")
-    viewer_ip = models.GenericIPAddressField(help_text="IP address of the viewer")
-    user_agent = models.TextField(blank=True, help_text="Browser user agent")
-    viewed_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ["blog", "viewer_ip"]  # Prevent duplicate views from same IP
-        ordering = ["-viewed_at"]
-
-    def __str__(self):
-        return f"View of '{self.blog.title}' from {self.viewer_ip}"

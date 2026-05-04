@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Blog, BlogView
+from .models import Blog
 
 
 @admin.register(Blog)
@@ -8,7 +8,6 @@ class BlogAdmin(admin.ModelAdmin):
         "title",
         "author_name",
         "status",
-        "view_count",
         "read_time",
         "published_at",
         "created_at",
@@ -18,7 +17,6 @@ class BlogAdmin(admin.ModelAdmin):
     readonly_fields = [
         "slug",
         "read_time",
-        "view_count",
         "created_at",
         "updated_at",
         "published_at",
@@ -29,7 +27,7 @@ class BlogAdmin(admin.ModelAdmin):
         ("Basic Information", {"fields": ("title", "slug", "content", "thumbnail")}),
         ("Categorization", {"fields": ("tags",)}),
         ("Publication", {"fields": ("status", "author")}),
-        ("SEO & Metadata", {"fields": ("meta_description", "read_time", "view_count")}),
+        ("SEO & Metadata", {"fields": ("meta_description", "read_time")}),
         (
             "Timestamps",
             {
@@ -62,21 +60,4 @@ class BlogAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-@admin.register(BlogView)
-class BlogViewAdmin(admin.ModelAdmin):
-    list_display = ["blog_title", "viewer_ip", "viewed_at"]
-    list_filter = ["viewed_at"]
-    search_fields = ["blog__title", "viewer_ip"]
-    readonly_fields = ["blog", "viewer_ip", "user_agent", "viewed_at"]
-    date_hierarchy = "viewed_at"
 
-    def blog_title(self, obj):
-        return obj.blog.title
-
-    blog_title.short_description = "Blog Title"
-
-    def has_add_permission(self, request):
-        return False  # Don't allow manual creation of views
-
-    def has_change_permission(self, request, obj=None):
-        return False  # Don't allow editing views

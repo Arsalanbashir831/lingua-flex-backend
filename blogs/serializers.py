@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Blog, BlogView
+from .models import Blog
 from accounts.models import TeacherProfile
 
 
@@ -29,7 +29,6 @@ class BlogListSerializer(serializers.ModelSerializer):
             "published_at",
             "meta_description",
             "read_time",
-            "view_count",
             "is_published",
         ]
         read_only_fields = [
@@ -40,7 +39,6 @@ class BlogListSerializer(serializers.ModelSerializer):
             "updated_at",
             "published_at",
             "read_time",
-            "view_count",
             "is_published",
         ]
 
@@ -124,10 +122,4 @@ class BlogCreateUpdateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class BlogViewSerializer(serializers.ModelSerializer):
-    """Serializer for blog views"""
 
-    class Meta:
-        model = BlogView
-        fields = ["id", "blog", "viewer_ip", "user_agent", "viewed_at"]
-        read_only_fields = ["id", "viewed_at"]

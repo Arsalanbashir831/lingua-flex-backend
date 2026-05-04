@@ -1,5 +1,6 @@
 from cryptography.fernet import Fernet
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,8 +11,12 @@ class EncryptionError(Exception):
 def get_encryptor():
     key = getattr(settings, "FIELD_ENCRYPTION_KEY", None)
     if not key:
-        # Fallback to local default for development if not set, 
-        # but in production this should ideally raise an error.
+        if not settings.DEBUG:
+            raise ImproperlyConfigured(
+                "FIELD_ENCRYPTION_KEY must be set in production to ensure data security. "
+                "Data will NOT be saved in plaintext for sensitive fields."
+            )
+        # Fallback to local default for development if not set
         logger.warning("FIELD_ENCRYPTION_KEY is not set. Data will not be encrypted properly.")
         return None
     try:

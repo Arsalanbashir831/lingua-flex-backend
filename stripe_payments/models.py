@@ -28,7 +28,7 @@ class Payment(models.Model):
         "core.User", on_delete=models.CASCADE, related_name="payments_received"
     )
     gig = models.ForeignKey(
-        "accounts.Gig", on_delete=models.CASCADE, related_name="payments"
+        "accounts.Gig", on_delete=models.SET_NULL, null=True, related_name="payments"
     )
 
     # Stripe Details

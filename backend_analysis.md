@@ -59,6 +59,15 @@ _Last Updated: 2026-05-04_
 ### ~~#19 — Gemini Rate Limit via Fixed Sleep (H6 partial)~~
 **RESOLVED (rate-limit strategy).** Replaced the fixed `time.sleep(4.5)` between every Gemini call in `astrology/tasks.py` with an exponential backoff retry helper (`_generate_insight_with_backoff`). Calls now proceed at full speed and only back off (5s → 10s → 20s → 40s) when a `429 / resource_exhausted` error is actually received. The background thread execution model is retained (Celery migration deferred to future infrastructure work).
 
+### ~~#20 — Payment Cascade Delete Risk (M2)~~
+**RESOLVED.** Changed `Payment.gig` from `CASCADE` to `SET_NULL` in `stripe_payments/models.py`. This ensures that deleting a Gig will no longer destroy the associated financial history.
+
+### ~~#21 — Blog View Tracking DoS Risk (M3)~~
+**RESOLVED (Feature Removed).** Per user request, the entire blog view tracking system—including the `BlogView` model, the `view_count` field on the `Blog` model, and all associated logic/admin panels—has been removed from the codebase. This completely eliminates the DoS risk associated with synchronous view tracking.
+
+### ~~#22 — Silent Plaintext Encryption Fallback (M4)~~
+**RESOLVED.** Updated `core/encryption.py` to raise a hard `ImproperlyConfigured` exception in production (when `DEBUG=False`) if the `FIELD_ENCRYPTION_KEY` is missing. This prevents sensitive data from being accidentally saved in plaintext.
+
 ---
 
 ## 🔴 HIGH PRIORITY — Fix Immediately
@@ -101,33 +110,6 @@ chat = models.ForeignKey(Chat, related_name="messages", ..., db_column="chat_id"
 
 ---
 
-### #M2 — `Payment.gig` CASCADE Delete Destroys Financial History
-**File:** `stripe_payments/models.py` line 30
-
-If a `Gig` is deleted, the `Payment` record cascades and is deleted — destroying billing history.
-
-**Fix:** Change to `on_delete=models.SET_NULL, null=True` and snapshot gig metadata into `Payment.metadata`.
-
----
-
-### #M3 — `blogs/views.py` — Synchronous View Tracking on Every GET (DoS Risk)
-Every public blog GET triggers synchronous DB writes (`get_or_create` + `update`). A write bottleneck and DoS vector.
-
-**Fix:** Rate-limit with `django-ratelimit` short-term. Move analytics to Celery long-term.
-
----
-
-### #M4 — `core/encryption.py` — Silent Plaintext Fallback in Production
-If `FIELD_ENCRYPTION_KEY` is missing, `encrypt_value()` silently returns plaintext with only a log warning.
-
-**Fix:**
-```python
-if not settings.DEBUG and not settings.FIELD_ENCRYPTION_KEY:
-    raise ImproperlyConfigured("FIELD_ENCRYPTION_KEY must be set in production.")
-```
-
----
-
 ## 🔵 NEW Issues (Introduced by Recent Refactoring)
 
 
@@ -145,10 +127,7 @@ This file is intentionally run as a **separate process** for the real-time chat 
 
 | Priority | ID | Description |
 |---|---|---|
-| 🟡 1 | M2 | Payment cascade delete risk |
-| 🟡 2 | M3 | Blog view tracking DoS risk |
-| 🟡 3 | M4 | Silent plaintext encryption fallback |
-| ⬜ 4 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
-| ⬜ 5 | H3 | `Message.chat_id` naming violation |
-| ⬜ 6 | M1 | Hardcoded IP in CORS settings |
-| ⬜ 7 | N4 | FastAPI chat service ORM coupling |
+| ⬜ 1 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
+| ⬜ 2 | H3 | `Message.chat_id` naming violation |
+| ⬜ 3 | M1 | Hardcoded IP in CORS settings |
+| ⬜ 4 | N4 | FastAPI chat service ORM coupling |

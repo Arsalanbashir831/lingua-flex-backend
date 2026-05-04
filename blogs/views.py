@@ -1,10 +1,10 @@
-from django.db.models import Q, F
+from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from .models import Blog, BlogView
+from .models import Blog
 from .serializers import (
     BlogListSerializer,
     BlogDetailSerializer,
@@ -238,36 +238,7 @@ class PublicBlogDetailView(generics.RetrieveAPIView):
         )
 
     def retrieve(self, request, *args, **kwargs):
-        """Retrieve blog and track view"""
+        """Retrieve blog"""
         blog = self.get_object()
-
-        # Track view (avoid duplicate views from same IP)
-        self.track_blog_view(blog, request)
-
         serializer = self.get_serializer(blog)
         return Response(serializer.data)
-
-    def track_blog_view(self, blog, request):
-        """Track blog view for analytics"""
-        try:
-            # Get client IP
-            x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(",")[0]
-            else:
-                ip = request.META.get("REMOTE_ADDR")
-
-            # Get user agent
-            user_agent = request.META.get("HTTP_USER_AGENT", "")
-
-            # Create or update view record
-            blog_view, created = BlogView.objects.get_or_create(
-                blog=blog, viewer_ip=ip, defaults={"user_agent": user_agent}
-            )
-
-            if created:
-                # Increment view count on blog
-                Blog.objects.filter(id=blog.id).update(view_count=F("view_count") + 1)
-        except Exception:
-            # Don't fail the request if view tracking fails
-            pass
