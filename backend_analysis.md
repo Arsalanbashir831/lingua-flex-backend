@@ -77,23 +77,15 @@ _Last Updated: 2026-05-04_
 ### ~~#25 — FastAPI Chat Service ORM Coupling (N4)~~
 **RESOLVED.** Refactored `fastapi_chat.py` to remove direct Django ORM imports (`core.models.User`, `accounts.models.UserProfile`). The standalone chat service now uses the Supabase client (`get_admin_client()`) to fetch user data directly from the shared database schema, decoupling it from Django model changes.
 
+### ~~#26 — User.id CharField → UUIDField (H2)~~
+**RESOLVED.** Successfully reset the migrations and converted `User.id` to a native `UUIDField`. This improves storage efficiency and indexing performance in PostgreSQL. All foreign keys referencing the user model are now also using UUIDs.
+
 ---
 
 ## 🔴 HIGH PRIORITY — Fix Immediately
 
 
-### #H2 — `User.id` is `CharField` Instead of `UUIDField`
-**File:** `core/models.py` line 99
 
-`CharField(max_length=255)` wastes storage, allows any string as a PK, and indexes less efficiently than PostgreSQL's native UUID type.
-
-```python
-# ✅ Fix
-id = models.UUIDField(primary_key=True, editable=False)
-```
-> Requires a careful migration with `USING id::uuid`. Test on staging first.
-
----
 
 
 
@@ -103,12 +95,3 @@ id = models.UUIDField(primary_key=True, editable=False)
 
 ## 🔵 NEW Issues (Introduced by Recent Refactoring)
 
-
-
-
-
-## Priority Order for Fixes
-
-| Priority | ID | Description |
-|---|---|---|
-| ⬜ 1 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
