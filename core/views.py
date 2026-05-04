@@ -10,7 +10,6 @@ import logging
 
 from .models import User
 from .serializers import (
-    UserRegistrationSerializer,
     UserSerializer,
     GoogleOAuthInitiateSerializer,
     GoogleOAuthCallbackSerializer,
@@ -259,84 +258,6 @@ class GoogleOAuthCallbackView(APIView):
             )
 
 
-class RegisterView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                user_data = serializer.validated_data
-                email = user_data["email"]
-                password = user_data["password"]
-                username = user_data.get("username", "")
-                first_name = user_data.get("first_name", "")
-                last_name = user_data.get("last_name", "")
-                phone_number = user_data.get("phone_number", "")
-                gender = user_data.get("gender", "")
-                date_of_birth = user_data.get("date_of_birth", None)
-                role = user_data.get(
-                    "role", "STUDENT"
-                )  # Default to STUDENT if not provided
-
-                supabase = get_admin_client()
-                response = supabase.auth.sign_up(
-                    {
-                        "email": email,
-                        "password": password,
-                        "options": {"redirect_to": settings.BASE_URL_SIGNIN},
-                    }
-                )
-                if response.user:
-                    supabase.auth.admin.update_user_by_id(
-                        response.user.id,
-                        {
-                            "user_metadata": {
-                                "username": username,
-                                "first_name": first_name,
-                                "last_name": last_name,
-                                "phone_number": phone_number,
-                                "gender": gender,
-                                "date_of_birth": date_of_birth.isoformat()
-                                if date_of_birth
-                                else None,
-                            }
-                        },
-                    )
-                    # Create the user
-                    with transaction.atomic():
-                        user_model = User(
-                            id=response.user.id,
-                            email=email,
-                            username=username,
-                            first_name=first_name,
-                            last_name=last_name,
-                            phone_number=phone_number,
-                            gender=gender,
-                            date_of_birth=date_of_birth,
-                            role=role,
-                            is_active=True,
-                        )
-                        user_model.set_unusable_password()
-                        user_model.save()
-
-
-
-                    return Response(
-                        {"message": "User registered successfully"},
-                        status=status.HTTP_201_CREATED,
-                    )
-                else:
-                    return Response(
-                        {"error": "Registration failed"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -440,8 +361,9 @@ class PasswordResetConfirmView(APIView):
             # Use the admin client to update password by user ID.
             # We first verify the token is valid via our JWKS-based local verification.
             from .authentication import SupabaseTokenAuthentication
+
             payload_data = SupabaseTokenAuthentication.verify_token_payload(token)
-            
+
             if not payload_data:
                 return Response(
                     {"error": "Invalid or expired reset token."},

@@ -139,9 +139,7 @@ def become_teacher(request):
         # Update roles to BOTH
         user.role = User.Role.BOTH
         user.save(update_fields=['role'])
-        if hasattr(user, 'profile'):
-            user.profile.role = User.Role.BOTH
-            user.profile.save(update_fields=['role'])
+
             
         serializer = TeacherProfileSerializer(tp)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -163,10 +161,7 @@ def become_student(request):
         # Just creating a UserProfile implies student capabilities. 
         # If they don't have one, create it.
         if not hasattr(user, 'profile'):
-            UserProfile.objects.create(user=user, role=User.Role.BOTH)
-        else:
-            user.profile.role = User.Role.BOTH
-            user.profile.save(update_fields=['role'])
+            UserProfile.objects.create(user=user)
             
         user.role = User.Role.BOTH
         user.save(update_fields=['role'])

@@ -40,45 +40,6 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "email", "created_at", "full_name"]
 
 
-class UserRegistrationSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, style={"input_type": "password"})
-    full_name = serializers.CharField(max_length=255)
-    role = serializers.ChoiceField(choices=User.Role.choices)
-
-    # Optional fields
-    bio = serializers.CharField(required=False, allow_blank=True)
-    city = serializers.CharField(required=False, allow_blank=True)
-    country = serializers.CharField(required=False, allow_blank=True)
-    postal_code = serializers.CharField(required=False, allow_blank=True)
-    native_language = serializers.CharField(required=False, allow_blank=True)
-    learning_language = serializers.CharField(required=False, allow_blank=True)
-
-    # Teacher specific fields
-    qualifications = serializers.CharField(required=False, allow_blank=True)
-    years_of_experience = serializers.IntegerField(required=False)
-
-    def get_name_parts(self, full_name):
-        parts = full_name.strip().split(" ", 1)
-        if len(parts) == 2:
-            return parts[0], parts[1]
-        return parts[0], ""
-
-    def validate(self, data):
-        if data.get("role") == User.Role.TEACHER:
-            if not data.get("qualifications"):
-                raise serializers.ValidationError(
-                    {"qualifications": "Qualifications are required for teachers"}
-                )
-            if not data.get("years_of_experience"):
-                raise serializers.ValidationError(
-                    {
-                        "years_of_experience": "Years of experience is required for teachers"
-                    }
-                )
-        return data
-
-
 # --- Google OAuth Serializers ---
 
 

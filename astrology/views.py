@@ -255,7 +255,7 @@ def _resolve_profile(request):
             )
 
     # Teacher-delegated access path
-    if request.user.role != User.Role.TEACHER:
+    if request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
         return None, Response(
             {"detail": "Only teachers can view other users' dashboards."},
             status=status.HTTP_403_FORBIDDEN,

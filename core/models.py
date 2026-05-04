@@ -1,6 +1,5 @@
 import uuid
 from django.db import models
-from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
@@ -144,12 +143,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def has_teacher(self):
         """Return True if the user has a TeacherProfile."""
-        try:
-            if hasattr(self, "profile") and hasattr(self.profile, "teacherprofile"):
-                return True
-        except Exception:
-            pass
-        return False
+        from accounts.models import TeacherProfile
+
+        return TeacherProfile.objects.filter(user_profile__user=self).exists()
 
     def has_student(self):
         """Return True if the user registered as a student or opted into both."""
@@ -170,7 +166,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             # Ensure UserProfile exists
             user_profile = getattr(self, "profile", None)
             if user_profile is None:
-                user_profile = UserProfile.objects.create(user=self, role=self.role)
+                user_profile = UserProfile.objects.create(user=self)
 
             # Create accounts.TeacherProfile if missing
             tp = None
@@ -189,5 +185,3 @@ class User(AbstractBaseUser, PermissionsMixin):
                 )
 
         return tp
-
-

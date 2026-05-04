@@ -7,13 +7,12 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = (
         "user_email",
         "user_name",
-        "role",
         "city",
         "country",
         "status",
         "created_at",
     )
-    list_filter = ("role", "status", "country", "created_at")
+    list_filter = ("status", "country", "created_at")
     search_fields = (
         "user__email",
         "user__first_name",
@@ -24,7 +23,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
 
     fieldsets = (
-        ("User Information", {"fields": ("user", "role")}),
+        ("User Information", {"fields": ("user",)}),
         ("Profile Details", {"fields": ("bio", "status")}),
         ("Location", {"fields": ("city", "country", "postal_code")}),
         ("Language Preferences", {"fields": ("native_language", "learning_language")}),

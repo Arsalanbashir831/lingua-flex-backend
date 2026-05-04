@@ -29,7 +29,7 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Only teachers can create availability slots"""
-        if self.request.user.role != User.Role.TEACHER:
+        if self.request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             raise permissions.PermissionDenied(
                 "Only teachers can create availability slots"
             )
@@ -37,7 +37,7 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """Only teachers can update their own availability slots"""
-        if self.request.user.role != User.Role.TEACHER:
+        if self.request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             raise permissions.PermissionDenied(
                 "Only teachers can update availability slots"
             )
@@ -53,7 +53,7 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """Only teachers can delete their own availability slots"""
-        if self.request.user.role != User.Role.TEACHER:
+        if self.request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             raise permissions.PermissionDenied(
                 "Only teachers can delete availability slots"
             )
@@ -78,7 +78,7 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
 
         # Verify teacher exists
         try:
-            teacher = User.objects.get(id=teacher_id, role=User.Role.TEACHER)
+            teacher = User.objects.get(id=teacher_id, role__in=[User.Role.TEACHER, User.Role.BOTH])
         except User.DoesNotExist:
             return Response(
                 {"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND
@@ -138,8 +138,8 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
         try:
             from accounts.models import TeacherProfile
 
-            teacher_profile = TeacherProfile.objects.select_related("user").get(
-                user_id=teacher_id
+            teacher_profile = TeacherProfile.objects.select_related("user_profile__user").get(
+                user_profile__user_id=teacher_id
             )
             teacher_info.update(
                 {
@@ -183,7 +183,7 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def bulk_create(self, request):
         """Create multiple availability slots at once for the week"""
-        if request.user.role != User.Role.TEACHER:
+        if request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             return Response(
                 {"error": "Only teachers can create availability slots"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -288,7 +288,7 @@ class TeacherAvailabilityViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["put"])
     def replace_weekly_schedule(self, request):
         """Replace entire weekly schedule for teacher"""
-        if request.user.role != User.Role.TEACHER:
+        if request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             return Response(
                 {"error": "Only teachers can replace availability schedule"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -428,27 +428,21 @@ class SessionBookingViewSet(viewsets.ModelViewSet):
 
                     return Response(response_data, status=status.HTTP_201_CREATED)
                 else:
-                    # If Zoom creation fails, still create the booking but without Zoom
+                    transaction.set_rollback(True)
                     return Response(
                         {
-                            **SessionBookingSerializer(
-                                booking, context={"request": request}
-                            ).data,
-                            "warning": f"Booking created but Zoom meeting failed: {zoom_result.get('error', 'Unknown error')}",
+                            "error": f"Failed to create Zoom meeting: {zoom_result.get('error', 'Unknown error')}",
                         },
-                        status=status.HTTP_201_CREATED,
+                        status=status.HTTP_502_BAD_GATEWAY,
                     )
 
             except Exception as e:
-                # If Zoom creation fails, still create the booking but without Zoom
+                transaction.set_rollback(True)
                 return Response(
                     {
-                        **SessionBookingSerializer(
-                            booking, context={"request": request}
-                        ).data,
-                        "warning": f"Booking created but Zoom meeting failed: {str(e)}",
+                        "error": f"Failed to create Zoom meeting: {str(e)}",
                     },
-                    status=status.HTTP_201_CREATED,
+                    status=status.HTTP_502_BAD_GATEWAY,
                 )
 
         # For non-video sessions, just return the booking

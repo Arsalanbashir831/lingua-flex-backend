@@ -5,7 +5,6 @@ from core.models import User
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    role = models.CharField(max_length=20, choices=User.Role.choices)
     bio = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
@@ -17,7 +16,7 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.email} - {self.role}"
+        return f"{self.user.email} - {self.user.role}"
 
 
 class TeacherProfile(models.Model):

@@ -16,7 +16,7 @@ def create_user_profiles(sender, instance, created, **kwargs):
             profile, _ = UserProfile.objects.get_or_create(
                 user=instance,
                 defaults={
-                    "role": instance.role or User.Role.STUDENT, # Default to student if role not set
+
                     "bio": "",
                     "city": "",
                     "country": "",
@@ -28,7 +28,7 @@ def create_user_profiles(sender, instance, created, **kwargs):
             )
             
             # If the user is registered as a teacher, ensure teacher-specific records exist
-            if instance.role == User.Role.TEACHER:
+            if instance.role in [User.Role.TEACHER, User.Role.BOTH]:
                 TeacherProfile.objects.get_or_create(
                     user_profile=profile,
                     defaults={

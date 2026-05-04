@@ -53,7 +53,7 @@ class TeacherBlogListCreateView(generics.ListCreateAPIView):
             return Blog.objects.none()
 
         queryset = Blog.objects.filter(author=teacher_profile).select_related(
-            "category", "author__user_profile__user"
+            "author__user_profile__user"
         )
 
         # Filter by status
@@ -61,10 +61,6 @@ class TeacherBlogListCreateView(generics.ListCreateAPIView):
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
-        # Filter by category
-        category_filter = self.request.query_params.get("category")
-        if category_filter:
-            queryset = queryset.filter(category_id=category_filter)
 
         # Search in title and content
         search = self.request.query_params.get("search")
@@ -149,7 +145,7 @@ class TeacherBlogDetailView(generics.RetrieveUpdateDestroyAPIView):
                 user_profile__user=self.request.user
             )
             return Blog.objects.filter(author=teacher_profile).select_related(
-                "category", "author__user_profile__user"
+                "author__user_profile__user"
             )
         except TeacherProfile.DoesNotExist:
             return Blog.objects.none()
@@ -203,12 +199,8 @@ class PublicBlogListView(generics.ListAPIView):
         """Get only published blogs for public viewing"""
         queryset = Blog.objects.filter(
             status=Blog.StatusChoices.PUBLISHED
-        ).select_related("category", "author__user_profile__user")
+        ).select_related("author__user_profile__user")
 
-        # Filter by category
-        category_filter = self.request.query_params.get("category")
-        if category_filter:
-            queryset = queryset.filter(category_id=category_filter)
 
         # Search in title and content
         search = self.request.query_params.get("search")
@@ -242,7 +234,7 @@ class PublicBlogDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         """Get only published blogs"""
         return Blog.objects.filter(status=Blog.StatusChoices.PUBLISHED).select_related(
-            "category", "author__user_profile__user"
+            "author__user_profile__user"
         )
 
     def retrieve(self, request, *args, **kwargs):
