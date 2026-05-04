@@ -110,46 +110,46 @@ def send_teacher_notification_email(
 
 
 def get_user_details(user_id: str) -> dict:
-    """Fetch user details from Django database via Django ORM"""
+    """Fetch user details from database via Supabase client"""
     try:
-        from core.models import User
-        from accounts.models import UserProfile
-
-        user = User.objects.filter(id=user_id).first()
-        if not user:
+        user_response = get_admin_client().table("users").select("*").eq("id", user_id).execute()
+        if not user_response.data:
             return {}
 
+        user = user_response.data[0]
+
         user_data = {
-            "id": str(user.id),
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "phone_number": user.phone_number,
-            "role": user.role,
-            "gender": user.gender,
-            "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
-            "created_at": str(user.created_at),
+            "id": str(user.get("id")),
+            "email": user.get("email"),
+            "first_name": user.get("first_name"),
+            "last_name": user.get("last_name"),
+            "phone_number": user.get("phone_number"),
+            "role": user.get("role"),
+            "gender": user.get("gender"),
+            "date_of_birth": str(user.get("date_of_birth")) if user.get("date_of_birth") else None,
+            "created_at": str(user.get("created_at")),
         }
 
-        if user.profile_picture:
+        if user.get("profile_picture"):
             bucket_name = getattr(
                 settings, "SUPABASE_USER_UPLOADS_BUCKET", "user-uploads"
             )
             user_data["profile_picture"] = (
-                f"{settings.SUPABASE_URL}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
+                f"{settings.SUPABASE_URL}/storage/v1/object/public/{bucket_name}/{user.get('profile_picture')}"
             )
 
-        profile = UserProfile.objects.filter(user=user).first()
-        if profile:
+        profile_response = get_admin_client().table("accounts_userprofile").select("*").eq("user_id", user_id).execute()
+        if profile_response.data:
+            profile = profile_response.data[0]
             user_data.update(
                 {
-                    "bio": profile.bio,
-                    "city": profile.city,
-                    "country": profile.country,
-                    "postal_code": profile.postal_code,
-                    "status": profile.status,
-                    "native_language": profile.native_language,
-                    "learning_language": profile.learning_language,
+                    "bio": profile.get("bio"),
+                    "city": profile.get("city"),
+                    "country": profile.get("country"),
+                    "postal_code": profile.get("postal_code"),
+                    "status": profile.get("status"),
+                    "native_language": profile.get("native_language"),
+                    "learning_language": profile.get("learning_language"),
                 }
             )
 

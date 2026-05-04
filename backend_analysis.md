@@ -71,6 +71,12 @@ _Last Updated: 2026-05-04_
 ### ~~#23 — Message.chat_id Naming Violation (H3)~~
 **RESOLVED.** Renamed `chat_id` and `sender_id` to `chat` and `sender` in the `Message` model and associated serializers/views. Used `db_column` to preserve the existing database schema while fixing the Django-level naming confusion.
 
+### ~~#24 — Hardcoded IP in CORS_ALLOWED_ORIGINS (M1)~~
+**RESOLVED.** Removed the hardcoded `192.168.10.9:3000` IP from `rag_app/settings.py` and implemented support for a `CORS_EXTRA_ORIGINS` environment variable to securely handle varying local dev environments.
+
+### ~~#25 — FastAPI Chat Service ORM Coupling (N4)~~
+**RESOLVED.** Refactored `fastapi_chat.py` to remove direct Django ORM imports (`core.models.User`, `accounts.models.UserProfile`). The standalone chat service now uses the Supabase client (`get_admin_client()`) to fetch user data directly from the shared database schema, decoupling it from Django model changes.
+
 ---
 
 ## 🔴 HIGH PRIORITY — Fix Immediately
@@ -93,32 +99,16 @@ id = models.UUIDField(primary_key=True, editable=False)
 
 
 
-## 🟡 MEDIUM PRIORITY
 
-### #M1 — Hardcoded IP in `CORS_ALLOWED_ORIGINS`
-**File:** `rag_app/settings.py` line 80
-
-`"http://192.168.10.9:3000"` is a hardcoded dev machine IP. Should be loaded from an env variable like `CORS_EXTRA_ORIGINS`.
-
----
 
 ## 🔵 NEW Issues (Introduced by Recent Refactoring)
 
 
 
-### #N4 — `fastapi_chat.py` — Standalone Chat Service (Intentional, but Tightly Coupled)
-This file is intentionally run as a **separate process** for the real-time chat feature. Architecturally fine.
 
-**However:** It imports `accounts.models` and `core.models` directly via the Django ORM. If Django models change, the FastAPI service breaks silently.
-
-**Fix:** The FastAPI service should communicate with Django via an internal REST API or shared database schema queries — not direct Django model imports.
-
----
 
 ## Priority Order for Fixes
 
 | Priority | ID | Description |
 |---|---|---|
 | ⬜ 1 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
-| ⬜ 2 | M1 | Hardcoded IP in CORS settings |
-| ⬜ 3 | N4 | FastAPI chat service ORM coupling |

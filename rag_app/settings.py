@@ -66,27 +66,14 @@ GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-ALLOWED_HOSTS = [
-    "192.168.1.2",
-    "localhost",
-    "127.0.0.1",
-    "api.shaktiwheel.in",
-    "parlezhub.com",
-]
-# CSRF_TRUSTED_ORIGINS = ["http://192.168.10.9:8000"]
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS if origin.strip()]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://192.168.10.9:3000",  # client laptop origin (React/Vite/etc)
-    "https://api.shaktiwheel.in",
-    "http://localhost:3000",
-    "https://linguaflex-eight.vercel.app",
-    "https://lingua-flex-landing.vercel.app",
-    "https://app.parlezhub.com",
-    "https://parlezhub.com",
-    "https://shaktiwheel.in",
-    "https://www.parlezhub.com",
-]
+CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000").split(",")
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS if origin.strip()]
 
 
 # Application definition
