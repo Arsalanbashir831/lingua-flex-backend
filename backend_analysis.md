@@ -53,6 +53,12 @@ _Last Updated: 2026-05-04_
 ### ~~#17 — Non-Atomic Zoom Failure (H8)~~
 **RESOLVED.** Updated the `bookings/views.py` `create` method to explicitly set `transaction.set_rollback(True)` and return an `HTTP 502 Bad Gateway` if the Zoom API call fails, preventing corrupted video bookings from being saved.
 
+### ~~#18 — Astrology Polling Loop Blocks Workers (H7)~~
+**RESOLVED.** Replaced the 30-second `time.sleep(1)` worker-blocking polling loop in `astrology/views.py` with an immediate `HTTP 202 Accepted` response. The frontend is expected to poll back after a short delay.
+
+### ~~#19 — Gemini Rate Limit via Fixed Sleep (H6 partial)~~
+**RESOLVED (rate-limit strategy).** Replaced the fixed `time.sleep(4.5)` between every Gemini call in `astrology/tasks.py` with an exponential backoff retry helper (`_generate_insight_with_backoff`). Calls now proceed at full speed and only back off (5s → 10s → 20s → 40s) when a `429 / resource_exhausted` error is actually received. The background thread execution model is retained (Celery migration deferred to future infrastructure work).
+
 ---
 
 ## 🔴 HIGH PRIORITY — Fix Immediately
@@ -83,25 +89,6 @@ chat = models.ForeignKey(Chat, related_name="messages", ..., db_column="chat_id"
 
 ---
 
-
-
-### #H6 — Astrology — `threading.Thread` Causes Silent Data Loss in Production
-**File:** `astrology/views.py` lines 319–322, 347–350
-
-Unmanaged threads are killed when Gunicorn recycles workers → insights silently never written to DB.
-
-**Fix:** Replace with Celery: `generate_all_insights_async.delay(profile.id)`
-
----
-
-### #H7 — Astrology — `time.sleep(1)` Polling Loop Blocks Workers (DoS Risk)
-**File:** `astrology/views.py` lines 631–650
-
-Holds a Django worker for up to 30 seconds per request. 10 concurrent users = all workers blocked.
-
-**Fix:** Return `HTTP 202 Accepted` immediately. Client polls a `/insights/status/{task_id}/` endpoint.
-
----
 
 
 
@@ -158,12 +145,10 @@ This file is intentionally run as a **separate process** for the real-time chat 
 
 | Priority | ID | Description |
 |---|---|---|
-| 🟡 1 | H6 | Unsafe threading in astrology |
-| 🟡 2 | H7 | Synchronous polling loop DoS risk |
-| 🟡 3 | M2 | Payment cascade delete risk |
-| 🟡 4 | M3 | Blog view tracking DoS risk |
-| 🟡 5 | M4 | Silent plaintext encryption fallback |
-| ⬜ 6 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
-| ⬜ 7 | H3 | `Message.chat_id` naming violation |
-| ⬜ 8 | M1 | Hardcoded IP in CORS settings |
-| ⬜ 9 | N4 | FastAPI chat service ORM coupling |
+| 🟡 1 | M2 | Payment cascade delete risk |
+| 🟡 2 | M3 | Blog view tracking DoS risk |
+| 🟡 3 | M4 | Silent plaintext encryption fallback |
+| ⬜ 4 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
+| ⬜ 5 | H3 | `Message.chat_id` naming violation |
+| ⬜ 6 | M1 | Hardcoded IP in CORS settings |
+| ⬜ 7 | N4 | FastAPI chat service ORM coupling |

@@ -227,7 +227,6 @@ def _resolve_profile(request):
     Returns (profile, error_response) where exactly one of them is None.
     """
 
-
     guest_id = request.query_params.get("guest_profile_id")
     if guest_id:
         try:
@@ -627,27 +626,20 @@ class AstrologyInsightView(APIView):
 
         # Check if the background task is currently generating this insight
         from django.core.cache import cache
-        import time
 
         lock_key = f"generating_insight_{profile.id}_{category}"
         if cache.get(lock_key):
             logger.info(
-                f"Insight ({category}) for user {profile.display_name} is currently being generated in the background. Waiting..."
+                f"Insight ({category}) for user {profile.display_name} is currently being generated. in the background. Waiting..."
             )
-            # Poll for up to 30 seconds
-            for _ in range(30):
-                time.sleep(1)
-                insight = AstrologyInsight.objects.filter(
-                    birth_profile=profile, category=category
-                ).first()
-                if insight:
-                    return Response(
-                        {"category": category, "insight_text": insight.insight_text}
-                    )
-
-                # If the lock disappears but no insight exists, the background task might have failed.
-                if not cache.get(lock_key):
-                    break
+            return Response(
+                {
+                    "detail": "This insight is currently being generated. Please retry in a few seconds.",
+                    "status": "generating",
+                    "category": category,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
         # 2. Cache Miss - Need to Generate
         cache.set(
