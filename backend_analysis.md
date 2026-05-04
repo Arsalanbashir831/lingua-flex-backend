@@ -68,6 +68,9 @@ _Last Updated: 2026-05-04_
 ### ~~#22 — Silent Plaintext Encryption Fallback (M4)~~
 **RESOLVED.** Updated `core/encryption.py` to raise a hard `ImproperlyConfigured` exception in production (when `DEBUG=False`) if the `FIELD_ENCRYPTION_KEY` is missing. This prevents sensitive data from being accidentally saved in plaintext.
 
+### ~~#23 — Message.chat_id Naming Violation (H3)~~
+**RESOLVED.** Renamed `chat_id` and `sender_id` to `chat` and `sender` in the `Message` model and associated serializers/views. Used `db_column` to preserve the existing database schema while fixing the Django-level naming confusion.
+
 ---
 
 ## 🔴 HIGH PRIORITY — Fix Immediately
@@ -86,17 +89,6 @@ id = models.UUIDField(primary_key=True, editable=False)
 
 ---
 
-### #H3 — `Message.chat_id` Naming Violation — Creates `chat_id_id` DB Column
-**File:** `accounts/models.py` line 63
-
-`chat_id = models.ForeignKey(Chat, ...)` causes Django to internally create a DB column named `chat_id_id` (masked by `db_column="chat_id"`). `message.chat_id` returns the `Chat` *object*, not an ID — deeply confusing.
-
-```python
-# ✅ Fix
-chat = models.ForeignKey(Chat, related_name="messages", ..., db_column="chat_id")
-```
-
----
 
 
 
@@ -128,6 +120,5 @@ This file is intentionally run as a **separate process** for the real-time chat 
 | Priority | ID | Description |
 |---|---|---|
 | ⬜ 1 | H2 | `User.id` CharField → UUIDField (requires staging migration) |
-| ⬜ 2 | H3 | `Message.chat_id` naming violation |
-| ⬜ 3 | M1 | Hardcoded IP in CORS settings |
-| ⬜ 4 | N4 | FastAPI chat service ORM coupling |
+| ⬜ 2 | M1 | Hardcoded IP in CORS settings |
+| ⬜ 3 | N4 | FastAPI chat service ORM coupling |

@@ -59,10 +59,10 @@ class Chat(models.Model):
 
 class Message(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    chat_id = models.ForeignKey(
+    chat = models.ForeignKey(
         Chat, related_name="messages", on_delete=models.CASCADE, db_column="chat_id"
     )
-    sender_id = models.ForeignKey(User, on_delete=models.CASCADE, db_column="sender_id")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, db_column="sender_id")
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -70,7 +70,7 @@ class Message(models.Model):
         db_table = "messages"  # Explicitly set table name to match Supabase
 
     def __str__(self):
-        return f"Message from {self.sender_id.email} at {self.timestamp}"
+        return f"Message from {self.sender.email} at {self.timestamp}"
 
 
 class Gig(models.Model):

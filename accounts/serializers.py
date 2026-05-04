@@ -389,12 +389,12 @@ class ComprehensiveUserProfileSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender_id = UserSerializer(read_only=True)
+    sender = UserSerializer(read_only=True)
 
     class Meta:
         model = Message
-        fields = ["id", "chat_id", "sender_id", "content", "timestamp"]
-        read_only_fields = ["id", "timestamp", "sender_id"]
+        fields = ["id", "chat", "sender", "content", "timestamp"]
+        read_only_fields = ["id", "timestamp", "sender"]
 
 
 class GigTeacherSerializer(serializers.ModelSerializer):

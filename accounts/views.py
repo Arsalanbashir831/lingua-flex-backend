@@ -563,8 +563,8 @@ class MessageViewSet(viewsets.ModelViewSet):
         chat_id = self.request.query_params.get("chat_id")
         if chat_id:
             return Message.objects.filter(
-                chat_id=chat_id, chat__participant1=user
-            ) | Message.objects.filter(chat_id=chat_id, chat__participant2=user)
+                chat=chat_id, chat__participant1=user
+            ) | Message.objects.filter(chat=chat_id, chat__participant2=user)
         # Return all messages user is part of (not recommended for prod)
         return Message.objects.filter(
             models.Q(chat__participant1=user) | models.Q(chat__participant2=user)
