@@ -2,21 +2,27 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db import transaction
 from core.models import User
-from .models import UserProfile, TeacherProfile
+from .models import UserProfile
+
 
 @receiver(post_save, sender=User)
-def create_user_profiles(sender, instance, created, **kwargs):
+def create_user_profile(sender, instance, created, **kwargs):
     """
-    Automatically create UserProfile and TeacherProfile when a new User is created.
-    This is especially useful for OAuth/Supabase users.
+    Safety-net: Ensure a UserProfile exists whenever a new User is created.
+
+    The primary profile creation path is SyncSupabaseUserView + SetUserRoleView.
+    This signal handles edge cases like admin panel user creation or management
+    commands that bypass the API layer.
+
+    Note: We do NOT auto-create TeacherProfile here because:
+    1. User.role is now nullable (set post-signup for Google/One-Tap users)
+    2. TeacherProfile creation is handled explicitly in SetUserRoleView
     """
     if created:
         with transaction.atomic():
-            # Create UserProfile for all new users
-            profile, _ = UserProfile.objects.get_or_create(
+            UserProfile.objects.get_or_create(
                 user=instance,
                 defaults={
-
                     "bio": "",
                     "city": "",
                     "country": "",
@@ -24,19 +30,5 @@ def create_user_profiles(sender, instance, created, **kwargs):
                     "status": "",
                     "native_language": "",
                     "learning_language": "",
-                }
+                },
             )
-            
-            # If the user is registered as a teacher, ensure teacher-specific records exist
-            if instance.role in [User.Role.TEACHER, User.Role.BOTH]:
-                TeacherProfile.objects.get_or_create(
-                    user_profile=profile,
-                    defaults={
-                        "qualification": "",
-                        "experience_years": 0,
-                        "certificates": [],
-                        "about": "",
-                    }
-                )
-                
-

@@ -11,8 +11,8 @@ import logging
 from .models import User
 from .serializers import (
     UserSerializer,
-    GoogleOAuthInitiateSerializer,
-    GoogleOAuthCallbackSerializer,
+    SyncSupabaseUserSerializer,
+    SetUserRoleSerializer,
     GoogleOAuthUserSerializer,
 )
 from accounts.models import UserProfile, TeacherProfile
@@ -22,86 +22,28 @@ from gotrue.errors import AuthApiError
 logger = logging.getLogger(__name__)
 
 
-class GoogleOAuthInitiateView(APIView):
+class SyncSupabaseUserView(APIView):
     """
-    Initiate Google OAuth flow with optional role selection
+    Sync Supabase authenticated user to Django database.
 
-    POST /api/auth/google/initiate/
-    {
-        "role": "STUDENT" | "TEACHER",  # optional - required for new users, optional for existing users
-        "redirect_url": "https://yourfrontend.com/auth/callback"  # optional
-    }
-    """
-
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = GoogleOAuthInitiateSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {
-                    "success": False,
-                    "error": "Invalid data",
-                    "details": serializer.errors,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        data = serializer.validated_data
-        role = data.get("role")  # Optional now
-        redirect_url = data.get("redirect_url", settings.BASE_URL_SIGNIN)
-
-        try:
-            # Generate OAuth URL through Supabase
-            # The frontend will redirect user to this URL
-            oauth_url = f"{settings.SUPABASE_URL}/auth/v1/authorize"
-            params = {
-                "provider": "google",
-                "redirect_to": redirect_url,
-                "scopes": "openid email profile",
-            }
-
-            # Build full OAuth URL
-            param_string = "&".join([f"{k}={v}" for k, v in params.items()])
-            full_oauth_url = f"{oauth_url}?{param_string}"
-
-            response_data = {
-                "success": True,
-                "oauth_url": full_oauth_url,
-                "message": "Redirect user to oauth_url to complete Google authentication",
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            logger.error(f"Error initiating Google OAuth: {e}")
-            return Response(
-                {"success": False, "error": f"Failed to initiate OAuth: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
-class GoogleOAuthCallbackView(APIView):
-    """
-    Handle Google OAuth callback and create/login user
-
-    POST /api/auth/google/callback/
+    POST /api/auth/sync/
     {
         "access_token": "supabase_access_token",
-        "refresh_token": "supabase_refresh_token",
-        "role": "STUDENT" | "TEACHER"  # optional - only needed for new user registration
+        "role": "STUDENT" | "TEACHER"  # optional
     }
     """
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request):
-        serializer = GoogleOAuthCallbackSerializer(data=request.data)
+        serializer = SyncSupabaseUserSerializer(data=request.data)
         if not serializer.is_valid():
+            logger.error(f"[sync] Invalid request data: {serializer.errors}")
             return Response(
                 {
                     "success": False,
-                    "error": "Invalid callback data",
+                    "error": "Invalid sync data",
                     "details": serializer.errors,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -109,14 +51,17 @@ class GoogleOAuthCallbackView(APIView):
 
         data = serializer.validated_data
         access_token = data["access_token"]
-        refresh_token = data.get("refresh_token")
-        provided_role = data.get("role")  # May be None for existing users
+        provided_role = data.get("role")
+        logger.info(f"[sync] Starting sync. provided_role={provided_role}")
 
         try:
-            # Get user data from Supabase using the access token
+            # Step 1: Validate token with Supabase
+            logger.info("[sync] Calling get_admin_client().auth.get_user()")
             supabase_user = get_admin_client().auth.get_user(access_token)
+            logger.info(f"[sync] Supabase response: user={supabase_user.user}")
 
             if not supabase_user.user:
+                logger.error("[sync] Supabase returned no user for this token")
                 return Response(
                     {"success": False, "error": "Invalid access token"},
                     status=status.HTTP_401_UNAUTHORIZED,
@@ -124,192 +69,161 @@ class GoogleOAuthCallbackView(APIView):
 
             user_data = supabase_user.user
             email = user_data.email
-            supabase_id = user_data.id
+            supabase_id = str(user_data.id)
+            logger.info(f"[sync] Supabase user: email={email}, id={supabase_id}")
 
-            # Extract name from user metadata or app_metadata
+            # Step 2: Extract name from user metadata
             user_metadata = user_data.user_metadata or {}
-            first_name = user_metadata.get("first_name") or user_metadata.get(
-                "given_name", ""
-            )
-            last_name = user_metadata.get("last_name") or user_metadata.get(
-                "family_name", ""
-            )
+            first_name = user_metadata.get("first_name") or user_metadata.get("given_name", "")
+            last_name = user_metadata.get("last_name") or user_metadata.get("family_name", "")
             full_name = user_metadata.get("full_name") or user_metadata.get("name", "")
 
-            # If we don't have separate first/last names, try to split full name
             if not first_name and not last_name and full_name:
                 name_parts = full_name.strip().split(" ", 1)
                 first_name = name_parts[0]
                 last_name = name_parts[1] if len(name_parts) > 1 else ""
 
-            # Get Google ID from provider data
+            logger.info(f"[sync] Extracted name: first={first_name!r}, last={last_name!r}")
+
+            # Step 3: Determine auth provider
             google_id = None
+            is_google_login = False
             for identity in user_data.identities or []:
                 if identity.provider == "google":
                     google_id = identity.id
+                    is_google_login = True
                     break
 
+            logger.info(f"[sync] is_google_login={is_google_login}, google_id={google_id}")
+
             with transaction.atomic():
-                # Check if user already exists
                 user = None
                 created = False
-                is_existing_user_login = False
 
                 try:
-                    # Try to find existing user by email or Supabase ID
                     user = User.objects.get(
                         models.Q(email=email) | models.Q(id=supabase_id)
                     )
-                    is_existing_user_login = True
+                    logger.info(f"[sync] Found existing user: id={user.id}")
 
-                    # Update OAuth information if this is first OAuth login
-                    if not user.is_oauth_user:
+                    if is_google_login and not user.is_oauth_user:
                         user.is_oauth_user = True
                         user.auth_provider = User.AuthProvider.GOOGLE
                         user.google_id = google_id
                         user.email_verified = True
                         user.save()
+                        logger.info("[sync] Updated existing user with Google OAuth info")
 
                 except User.DoesNotExist:
-                    # Create new OAuth user - REQUIRES role for new users
-                    if not provided_role:
-                        return Response(
-                            {
-                                "success": False,
-                                "error": "Role is required for new user registration",
-                                "requires_role_selection": True,
-                            },
-                            status=status.HTTP_400_BAD_REQUEST,
+                    logger.info(f"[sync] User not found, creating new. google_id={google_id!r}")
+                    try:
+                        user = User.objects.create_oauth_user(
+                            id=supabase_id,
+                            email=email,
+                            first_name=first_name,
+                            last_name=last_name,
+                            role=provided_role,
+                            auth_provider=User.AuthProvider.GOOGLE if is_google_login else User.AuthProvider.EMAIL,
+                            google_id=google_id,
                         )
+                        created = True
+                        logger.info(f"[sync] Created new user: id={user.id}, email={user.email}")
+                    except Exception as create_err:
+                        logger.error(f"[sync] Failed to create user: {create_err}", exc_info=True)
+                        raise
 
-                    user = User.objects.create_oauth_user(
-                        id=supabase_id,
-                        email=email,
-                        first_name=first_name,
-                        last_name=last_name,
-                        role=provided_role,
-                        auth_provider=User.AuthProvider.GOOGLE,
-                        google_id=google_id,
-                    )
-                    created = True
+                # Step 4: Create profiles if role is already known
+                if user.role and not hasattr(user, "profile"):
+                    try:
+                        user_profile = UserProfile.objects.create(user=user, bio="")
+                        if user.role == User.Role.TEACHER:
+                            TeacherProfile.objects.create(user_profile=user_profile)
+                        logger.info(f"[sync] Created profiles for role={user.role}")
+                    except Exception as profile_err:
+                        logger.error(f"[sync] Profile creation failed: {profile_err}", exc_info=True)
 
-                # Create role-specific profiles if user was just created - MATCH REGISTRATION EXACTLY
-                if created:
-                    # Use the provided role for new users
-                    user_role = provided_role
+            requires_role_selection = user.role is None
+            logger.info(f"[sync] Done. created={created}, requires_role_selection={requires_role_selection}")
 
-                    # Create UserProfile first (accounts model) - this is created for ALL users
-                    user_profile = UserProfile.objects.create(
-                        user=user,
-                        role=user_role,
-                        bio="",
-                        city="",
-                        country="",
-                        postal_code="",
-                        status="",
-                        native_language="",
-                        learning_language="",
-                    )
-
-                    # Only create additional models for TEACHERS (same as RegisterWithProfileView)
-                    if user_role == User.Role.TEACHER:
-                        # Create TeacherProfile model (accounts model)
-                        TeacherProfile.objects.create(
-                            user_profile=user_profile,
-                            qualification="",
-                            experience_years=0,
-                            certificates=[],
-                            about="",
-                            teaching_languages=[],
-                            hourly_rate=0,
-                        )
-
-                    # For STUDENTS: Only UserProfile is created (no Student model)
-
-            # Serialize user data for response
             user_serializer = GoogleOAuthUserSerializer(user)
-
             return Response(
                 {
                     "success": True,
-                    "message": f"User {'registered' if created else 'logged in'} successfully via Google",
+                    "message": f"User {'registered' if created else 'synced'} successfully",
                     "user": user_serializer.data,
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "created": created,
-                    "is_existing_user_login": is_existing_user_login,
-                    "requires_profile_completion": created,  # New users need to complete profile
-                    "flow_type": "registration" if created else "login",
+                    "requires_role_selection": requires_role_selection,
                 },
                 status=status.HTTP_200_OK,
             )
 
         except AuthApiError as e:
-            logger.error(f"Supabase auth error: {e}")
+            logger.error(f"[sync] Supabase auth error: {e}", exc_info=True)
             return Response(
                 {"success": False, "error": f"Authentication error: {str(e)}"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         except Exception as e:
-            logger.error(f"Error in Google OAuth callback: {e}")
+            logger.error(f"[sync] Unexpected error: {e}", exc_info=True)
             return Response(
-                {"success": False, "error": f"OAuth callback failed: {str(e)}"},
+                {"success": False, "error": f"Sync failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
-class LoginView(APIView):
-    permission_classes = [AllowAny]
+
+class SetUserRoleView(APIView):
+    """
+    Set user role post-signup and initialize profiles.
+
+    POST /api/auth/set-role/
+    {
+        "role": "STUDENT" | "TEACHER"
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        data = request.data
-        email = data.get("email")
-        password = data.get("password")
+        serializer = SetUserRoleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not email or not password:
+        user = request.user
+        role = serializer.validated_data["role"]
+
+        if user.role:
             return Response(
-                {"error": "Email and password are required."},
+                {"error": f"User already has a role assigned: {user.role}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            response = get_admin_client().auth.sign_in_with_password(
-                {"email": email, "password": password}
+            with transaction.atomic():
+                user.role = role
+                user.save()
+
+                # Create profiles minimally
+                user_profile, created = UserProfile.objects.get_or_create(
+                    user=user, defaults={"bio": ""}
+                )
+
+                if role == User.Role.TEACHER:
+                    TeacherProfile.objects.get_or_create(user_profile=user_profile)
+
+            return Response(
+                {
+                    "success": True,
+                    "message": f"Role set to {role} and profiles initialized.",
+                    "user": GoogleOAuthUserSerializer(user).data,
+                },
+                status=status.HTTP_200_OK,
             )
         except Exception as e:
+            logger.error(f"Error in SetUserRoleView: {e}")
             return Response(
-                {"error": "Failed to login. " + str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": f"Failed to set role: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        if hasattr(response, "error") and response.error:
-            return Response(
-                {"error": str(response.error)}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        user = response.user
-        if not user:
-            return Response(
-                {"error": "Invalid login credentials."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        # Get the user from Django database to fetch the role
-        try:
-            django_user = User.objects.get(id=user.id)
-            user_role = django_user.role
-        except User.DoesNotExist:
-            # If user doesn't exist in Django database, default to STUDENT
-            user_role = User.Role.STUDENT
-
-        return Response(
-            {
-                "access_token": response.session.access_token,
-                "refresh_token": response.session.refresh_token,
-                "user": {"email": user.email, "id": user.id, "role": user_role},
-            },
-            status=status.HTTP_200_OK,
-        )
 
 
 class PasswordResetView(APIView):
@@ -383,68 +297,6 @@ class PasswordResetConfirmView(APIView):
         )
 
 
-class ChangePasswordView(APIView):
-    """
-    Allows an authenticated user (student or teacher) to update their password.
-    Requires the current password for verification before applying the new one.
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        current_password = request.data.get("current_password")
-        new_password = request.data.get("new_password")
-
-        if not current_password or not new_password:
-            return Response(
-                {"error": "current_password and new_password are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if current_password == new_password:
-            return Response(
-                {"error": "New password must be different from the current password."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user = request.user
-
-        # Step 1: Verify current password via Supabase sign-in
-        # This ensures the user actually knows their current password
-        try:
-            auth_response = get_admin_client().auth.sign_in_with_password(
-                {"email": user.email, "password": current_password}
-            )
-        except AuthApiError as e:
-            return Response(
-                {"error": "Current password is incorrect."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except Exception as e:
-            return Response(
-                {"error": f"Authentication failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # Step 2: Update password using the access token returned from the sign-in
-        # This is the most reliable way to update a password for the current user
-        try:
-            # Use admin client to update password directly by user ID.
-            # This avoids creating a temporary anon client and using the deprecated anon key.
-            get_admin_client().auth.admin.update_user_by_id(
-                str(user.id), {"password": new_password}
-            )
-
-            return Response(
-                {"message": "Password updated successfully."},
-                status=status.HTTP_200_OK,
-            )
-        except Exception as e:
-            return Response(
-                {"error": f"Failed to update password: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
 
 class ResendVerificationView(APIView):
     """
@@ -462,15 +314,6 @@ class ResendVerificationView(APIView):
             )
 
         try:
-            # Check if user exists in Django database
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response(
-                    {"error": "User with this email does not exist"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
             # Try to resend verification email directly
             # Supabase will handle checking if user exists and is unverified
             try:
@@ -488,6 +331,7 @@ class ResendVerificationView(APIView):
                     {
                         "message": "Verification email has been resent successfully, if user is not verified.",
                         "email": email,
+                        "resend_response": resend_response,
                         #'instructions': 'Please check your email and click the verification link to activate your account.'
                     },
                     status=status.HTTP_200_OK,
@@ -527,42 +371,6 @@ class ResendVerificationView(APIView):
             return Response(
                 {"error": f"Unexpected error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
-class TokenRefreshView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        refresh_token = request.data.get("refresh_token")
-        if not refresh_token:
-            return Response(
-                {"error": "refresh_token is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            data = get_admin_client().auth.refresh_session(refresh_token)
-            if (
-                data.session
-                and data.session.access_token
-                and data.session.refresh_token
-            ):
-                return Response(
-                    {
-                        "access_token": data.session.access_token,
-                        "refresh_token": data.session.refresh_token,
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(
-                    {"error": "Failed to refresh token"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 

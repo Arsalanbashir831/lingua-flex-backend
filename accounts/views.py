@@ -176,53 +176,43 @@ def become_student(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def roles_status(request):
-    """Return whether the authenticated user has teacher and/or student profiles."""
+    """Return whether the authenticated user has teacher and/or student profiles.
+    
+    Source of truth is User.role — not the presence of a UserProfile record.
+    A UserProfile is created as a safety net for all users, but it does NOT mean
+    the user has the STUDENT role unless User.role is explicitly set to STUDENT or BOTH.
+    """
     user = request.user
-    # Determine presence flags (tolerant: consider accounts.UserProfile as student presence)
-    try:
-        has_teacher = bool(getattr(user, "has_teacher", lambda: False)())
-    except Exception:
-        has_teacher = False
 
-    # Consider a user to be a student if they have a core.Student or an accounts.UserProfile
-    try:
-        has_student_core = bool(getattr(user, "has_student", lambda: False)())
-    except Exception:
-        has_student_core = False
+    # Use User.role as the single source of truth
+    has_student = user.role in [User.Role.STUDENT, User.Role.BOTH] if user.role else False
+    has_teacher = user.role in [User.Role.TEACHER, User.Role.BOTH] if user.role else False
 
-    try:
-        has_userprofile = hasattr(user, "profile") and user.profile is not None
-    except Exception:
-        has_userprofile = False
+    # Also check TeacherProfile existence (covers edge cases from older data)
+    if not has_teacher:
+        try:
+            from accounts.models import TeacherProfile
+            has_teacher = TeacherProfile.objects.filter(user_profile__user=user).exists()
+        except Exception:
+            pass
 
-    has_student = has_student_core or has_userprofile
-
-    # Prepare serialized payloads if available
     teacher_data = None
     student_data = None
 
-    # Student profile: use ComprehensiveUserProfileSerializer if UserProfile exists
-    if has_userprofile:
+    # Serialize student profile if applicable
+    if has_student:
         try:
-            student_profile = user.profile
-            student_data = ComprehensiveUserProfileSerializer(student_profile).data
+            if hasattr(user, "profile") and user.profile is not None:
+                student_data = ComprehensiveUserProfileSerializer(user.profile).data
         except Exception:
             student_data = None
 
-    # Teacher profile: prefer accounts.TeacherProfile (ComprehensiveTeacherProfileSerializer)
+    # Serialize teacher profile if applicable
     if has_teacher:
         try:
-            teacher_profile = None
-            # Prefer accounts TeacherProfile if present
-            if hasattr(user, "profile"):
-                try:
-                    teacher_profile = user.profile.teacherprofile
-                except Exception:
-                    teacher_profile = None
-
-                teacher_data = ComprehensiveTeacherProfileSerializer(
-                    teacher_profile
-                ).data
+            if hasattr(user, "profile") and user.profile is not None:
+                teacher_profile = user.profile.teacherprofile
+                teacher_data = ComprehensiveTeacherProfileSerializer(teacher_profile).data
         except Exception:
             teacher_data = None
 
@@ -234,6 +224,7 @@ def roles_status(request):
             "student_profile": student_data,
         }
     )
+
 
 
 class RegisterWithProfileView(generics.CreateAPIView):

@@ -1,33 +1,28 @@
 from django.urls import path
 from .views import (
-    LoginView,
     PasswordResetView,
     PasswordResetConfirmView,
-    ChangePasswordView,
-    TokenRefreshView,
     ResendVerificationView,
     UserProfilePictureUploadView,
     UserProfilePictureGetView,
-    GoogleOAuthInitiateView,
-    GoogleOAuthCallbackView,
+    SyncSupabaseUserView,
+    SetUserRoleView,
 )
 
 urlpatterns = [
-    # User Management
-    path("login/", LoginView.as_view(), name="login"),
+    # Password management (server-side Supabase operations)
     path("password-reset/", PasswordResetView.as_view(), name="password_reset"),
     path(
         "password-reset/confirm/",
         PasswordResetConfirmView.as_view(),
         name="password_reset_confirm",
     ),
-    path("change-password/", ChangePasswordView.as_view(), name="change_password"),
     path(
         "resend-verification/",
         ResendVerificationView.as_view(),
         name="resend_verification",
     ),
-    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # Profile picture management
     path(
         "user/profile-picture/",
         UserProfilePictureUploadView.as_view(),
@@ -38,15 +33,16 @@ urlpatterns = [
         UserProfilePictureGetView.as_view(),
         name="user_profile_picture_get",
     ),
-    # Google OAuth Authentication
+    # Supabase User Sync — called by Next.js after any successful Supabase auth
     path(
-        "auth/google/initiate/",
-        GoogleOAuthInitiateView.as_view(),
-        name="google_oauth_initiate",
+        "auth/sync/",
+        SyncSupabaseUserView.as_view(),
+        name="supabase_user_sync",
     ),
+    # Role finalization — called after Google/One-Tap signup when role is unknown
     path(
-        "auth/google/callback/",
-        GoogleOAuthCallbackView.as_view(),
-        name="google_oauth_callback",
+        "auth/set-role/",
+        SetUserRoleView.as_view(),
+        name="set_user_role",
     ),
 ]

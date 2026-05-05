@@ -106,7 +106,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", blank=True, null=True
     )
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
+    role = models.CharField(max_length=20, choices=Role.choices, null=True, blank=True)
 
     # OAuth fields
     auth_provider = models.CharField(

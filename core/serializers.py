@@ -43,25 +43,17 @@ class UserSerializer(serializers.ModelSerializer):
 # --- Google OAuth Serializers ---
 
 
-class GoogleOAuthInitiateSerializer(serializers.Serializer):
-    """Serializer for initiating Google OAuth flow"""
+class SyncSupabaseUserSerializer(serializers.Serializer):
+    """Serializer for syncing Supabase user to local database"""
 
-    role = serializers.ChoiceField(
-        choices=User.Role.choices,
-        required=False,
-        help_text="Role for new user registration (optional for existing users)",
-    )
-    redirect_url = serializers.URLField(
-        required=False, help_text="Frontend URL to redirect after OAuth"
-    )
+    access_token = serializers.CharField(help_text="Access token from Supabase OAuth (JWT)")
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False, help_text="Role for new user registration (optional)")
 
 
-class GoogleOAuthCallbackSerializer(serializers.Serializer):
-    """Serializer for handling Google OAuth callback"""
+class SetUserRoleSerializer(serializers.Serializer):
+    """Serializer for setting user role post-signup"""
 
-    access_token = serializers.CharField(help_text="Access token from Supabase OAuth")
-    refresh_token = serializers.CharField(required=False)
-    role = serializers.ChoiceField(choices=User.Role.choices, required=False)
+    role = serializers.ChoiceField(choices=User.Role.choices, help_text="Role to assign to the user")
 
 
 class GoogleOAuthUserSerializer(serializers.ModelSerializer):
