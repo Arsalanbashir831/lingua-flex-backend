@@ -1,8 +1,5 @@
 from django.urls import path
 from .views import (
-    PasswordResetView,
-    PasswordResetConfirmView,
-    ResendVerificationView,
     UserProfilePictureUploadView,
     UserProfilePictureGetView,
     SyncSupabaseUserView,
@@ -10,18 +7,6 @@ from .views import (
 )
 
 urlpatterns = [
-    # Password management (server-side Supabase operations)
-    path("password-reset/", PasswordResetView.as_view(), name="password_reset"),
-    path(
-        "password-reset/confirm/",
-        PasswordResetConfirmView.as_view(),
-        name="password_reset_confirm",
-    ),
-    path(
-        "resend-verification/",
-        ResendVerificationView.as_view(),
-        name="resend_verification",
-    ),
     # Profile picture management
     path(
         "user/profile-picture/",

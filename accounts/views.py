@@ -1,10 +1,10 @@
-from rest_framework import generics, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.db import transaction, models
+from django.db import models
 from django.db.models import Q
 from .models import UserProfile, TeacherProfile, Chat, Message, VoiceConversation, Gig
 from .serializers import (
@@ -23,36 +23,17 @@ from .serializers import (
 from core.models import User
 from django.conf import settings
 from django.utils import timezone
-from core.supabase_client import get_admin_client
-import resend
 import logging
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
 
-class UserRegistrationWithProfileSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
-    full_name = serializers.CharField()
-    role = serializers.CharField()
-    bio = serializers.CharField(required=False, allow_blank=True)
-    qualification = serializers.CharField(required=False, allow_blank=True)
-    experience_years = serializers.IntegerField(required=False)
-    certificates = serializers.JSONField(required=False)
-    about = serializers.CharField(required=False, allow_blank=True)
-    native_language = serializers.CharField(required=False, allow_blank=True)
-    learning_language = serializers.CharField(required=False, allow_blank=True)
-    city = serializers.CharField(required=False, allow_blank=True)
-    country = serializers.CharField(required=False, allow_blank=True)
-    postal_code = serializers.CharField(required=False, allow_blank=True)
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def supabase_chats(request):
     """Get all chats for the authenticated user with participant details.
-    
+
     Uses Django ORM (Chat model) instead of direct Supabase REST API calls.
     This leverages select_related() to eliminate the N+1 query problem.
     """
@@ -71,12 +52,14 @@ def supabase_chats(request):
 
     enhanced_chats = []
     for chat in qs:
-        enhanced_chats.append({
-            "id": str(chat.id),
-            "student_details": get_user_profile_details(chat.participant1),
-            "teacher_details": get_user_profile_details(chat.participant2),
-            "created_at": chat.created_at,
-        })
+        enhanced_chats.append(
+            {
+                "id": str(chat.id),
+                "student_details": get_user_profile_details(chat.participant1),
+                "teacher_details": get_user_profile_details(chat.participant2),
+                "created_at": chat.created_at,
+            }
+        )
 
     return Response(enhanced_chats)
 
@@ -87,7 +70,6 @@ def get_user_profile_details(user):
         # Get profile picture URL
         profile_picture = None
         if user.profile_picture:
-
             supabase_url = settings.SUPABASE_URL
             bucket_name = "user-uploads"
             profile_picture = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{user.profile_picture}"
@@ -135,12 +117,11 @@ def become_teacher(request):
     # Create teacher profile (atomic)
     try:
         tp = user.create_teacher_profile()
-        
+
         # Update roles to BOTH
         user.role = User.Role.BOTH
-        user.save(update_fields=['role'])
+        user.save(update_fields=["role"])
 
-            
         serializer = TeacherProfileSerializer(tp)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     except Exception as e:
@@ -158,16 +139,20 @@ def become_student(request):
         )
 
     try:
-        # Just creating a UserProfile implies student capabilities. 
+        # Just creating a UserProfile implies student capabilities.
         # If they don't have one, create it.
-        if not hasattr(user, 'profile'):
+        if not hasattr(user, "profile"):
             UserProfile.objects.create(user=user)
-            
+
         user.role = User.Role.BOTH
-        user.save(update_fields=['role'])
-            
+        user.save(update_fields=["role"])
+
         return Response(
-            {"user_id": str(user.id), "detail": "Student capabilities added successfully."}, status=status.HTTP_201_CREATED
+            {
+                "user_id": str(user.id),
+                "detail": "Student capabilities added successfully.",
+            },
+            status=status.HTTP_201_CREATED,
         )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -177,7 +162,7 @@ def become_student(request):
 @permission_classes([IsAuthenticated])
 def roles_status(request):
     """Return whether the authenticated user has teacher and/or student profiles.
-    
+
     Source of truth is User.role — not the presence of a UserProfile record.
     A UserProfile is created as a safety net for all users, but it does NOT mean
     the user has the STUDENT role unless User.role is explicitly set to STUDENT or BOTH.
@@ -185,14 +170,21 @@ def roles_status(request):
     user = request.user
 
     # Use User.role as the single source of truth
-    has_student = user.role in [User.Role.STUDENT, User.Role.BOTH] if user.role else False
-    has_teacher = user.role in [User.Role.TEACHER, User.Role.BOTH] if user.role else False
+    has_student = (
+        user.role in [User.Role.STUDENT, User.Role.BOTH] if user.role else False
+    )
+    has_teacher = (
+        user.role in [User.Role.TEACHER, User.Role.BOTH] if user.role else False
+    )
 
     # Also check TeacherProfile existence (covers edge cases from older data)
     if not has_teacher:
         try:
             from accounts.models import TeacherProfile
-            has_teacher = TeacherProfile.objects.filter(user_profile__user=user).exists()
+
+            has_teacher = TeacherProfile.objects.filter(
+                user_profile__user=user
+            ).exists()
         except Exception:
             pass
 
@@ -212,7 +204,9 @@ def roles_status(request):
         try:
             if hasattr(user, "profile") and user.profile is not None:
                 teacher_profile = user.profile.teacherprofile
-                teacher_data = ComprehensiveTeacherProfileSerializer(teacher_profile).data
+                teacher_data = ComprehensiveTeacherProfileSerializer(
+                    teacher_profile
+                ).data
         except Exception:
             teacher_data = None
 
@@ -224,189 +218,6 @@ def roles_status(request):
             "student_profile": student_data,
         }
     )
-
-
-
-class RegisterWithProfileView(generics.CreateAPIView):
-    serializer_class = UserRegistrationWithProfileSerializer
-    permission_classes = [AllowAny]
-
-    @staticmethod
-    def get_name_parts(full_name):
-        parts = full_name.strip().split(" ", 1)
-        if len(parts) == 2:
-            return parts[0], parts[1]
-        return parts[0], ""
-
-    @transaction.atomic
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        try:
-            # Check if user already exists in Django
-            email = data["email"]
-
-            try:
-                existing_user = User.objects.get(email=email)
-
-                # Check if user is verified in Supabase
-                try:
-                    supabase_user = get_admin_client().auth.admin.get_user_by_id(
-                        str(existing_user.id)
-                    )
-
-                    # If user exists and is verified
-                    if supabase_user.user and supabase_user.user.email_confirmed_at:
-                        return Response(
-                            {
-                                "error": "User already exists and is verified. Please login instead.",
-                                "action": "login",
-                            },
-                            status=status.HTTP_409_CONFLICT,
-                        )
-
-                    # If user exists but not verified, resend verification
-                    else:
-                        # Resend verification email
-                        get_admin_client().auth.resend(
-                            {
-                                "type": "signup",
-                                "email": email,
-                                "options": {
-                                    "email_redirect_to": settings.BASE_URL_SIGNIN
-                                },
-                            }
-                        )
-
-                        return Response(
-                            {
-                                "message": "User exists but not verified. Verification email resent.",
-                                "action": "verify_email",
-                            },
-                            status=status.HTTP_200_OK,
-                        )
-
-                except Exception:
-                    # If Supabase user doesn't exist but Django user does, create in Supabase
-                    pass
-
-            except User.DoesNotExist:
-                # User doesn't exist in Django, continue with registration
-                pass
-
-            # Create Supabase user
-            response = get_admin_client().auth.sign_up(
-                {
-                    "email": data["email"],
-                    "password": data["password"],
-                    "options": {"redirect_to": settings.BASE_URL_SIGNIN},
-                }
-            )
-
-            if not response.user:
-                return Response(
-                    {"error": "Registration failed"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Split full name into first and last name
-            first_name, last_name = self.get_name_parts(data["full_name"])
-
-            # Update Supabase user metadata
-            metadata = {
-                "first_name": first_name,
-                "last_name": last_name,
-                "phone_number": data.get("phone_number"),
-                "gender": data.get("gender"),
-                "date_of_birth": data["date_of_birth"].isoformat()
-                if data.get("date_of_birth")
-                else None,
-            }
-
-            get_admin_client().auth.admin.update_user_by_id(
-                response.user.id, {"user_metadata": metadata}
-            )
-
-            # Create Django User with role
-            user = User(
-                id=response.user.id,
-                email=data["email"],
-                first_name=first_name,
-                last_name=last_name,
-                phone_number=data.get("phone_number"),
-                gender=data.get("gender"),
-                date_of_birth=data.get("date_of_birth"),
-                role=data[
-                    "role"
-                ].upper(),  # Convert to uppercase to match User.Role choices
-                is_active=True,
-                created_at=timezone.now(),
-            )
-            user.set_unusable_password()
-            user.save()
-
-            # Create/Update UserProfile (Signal may have already created a default one)
-            profile, _ = UserProfile.objects.update_or_create(
-                user=user,
-                defaults={
-                    "role": data["role"],
-                    "bio": data.get("bio", ""),
-                    "city": data.get("city", ""),
-                    "country": data.get("country", ""),
-                    "postal_code": data.get("postal_code", ""),
-                    "status": data.get("status", ""),
-                    "native_language": data.get("native_language", ""),
-                    "learning_language": data.get("learning_language", ""),
-                },
-            )
-
-            # If role is teacher, create TeacherProfile and Teacher
-            if data["role"].upper() == User.Role.TEACHER:
-                # Create/Update TeacherProfile
-                TeacherProfile.objects.update_or_create(
-                    user_profile=profile,
-                    defaults={
-                        "qualification": data.get("qualification", ""),
-                        "experience_years": data.get("experience_years", 0),
-                        "certificates": data.get("certificates", []),
-                        "about": data.get("about", ""),
-                    },
-                )
-
-
-
-            # Add to Resend audience (non-blocking)
-            try:
-                api_key = getattr(settings, "RESEND_API_KEY", "")
-                audience_id = getattr(settings, "RESEND_AUDIENCE_ID", "")
-                if api_key and audience_id:
-                    resend.api_key = api_key
-                    params = {
-                        "email": data["email"],
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "unsubscribed": False,
-                        "audience_id": audience_id,
-                    }
-                    try:
-                        resend.Contacts.create(params)
-                    except Exception as re_err:
-                        logger.warning("Resend contact create failed: %s", re_err)
-
-            except Exception as e_resend:
-                # Ensure any resend errors do not break registration
-                logger.exception(
-                    "Unexpected error while adding contact to Resend: %s", e_resend
-                )
-
-            return Response(
-                {"message": "Registration successful. Please verify your email."},
-                status=status.HTTP_201_CREATED,
-            )
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -541,8 +352,6 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
         # For GET requests, return comprehensive data
         serializer = ComprehensiveTeacherProfileSerializer(teacher_profile)
         return Response(serializer.data)
-
-
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -705,7 +514,6 @@ class GigViewSet(viewsets.ModelViewSet):
         # Search in title and description if provided
         search = request.query_params.get("search")
         if search:
-
             gigs = gigs.filter(
                 Q(service_title__icontains=search)
                 | Q(short_description__icontains=search)

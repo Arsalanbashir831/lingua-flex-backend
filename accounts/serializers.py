@@ -17,7 +17,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "user",
-            "role",
             "bio",
             "city",
             "country",

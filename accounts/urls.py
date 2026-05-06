@@ -1,7 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    RegisterWithProfileView,
     UserProfileViewSet,
     TeacherProfileViewSet,
     GigViewSet,
@@ -22,7 +21,6 @@ router.register(
 
 urlpatterns = [
     path("", include(router.urls)),
-    path("register/", RegisterWithProfileView.as_view(), name="register-with-profile"),
     # New role management endpoints
     path("become-teacher/", become_teacher, name="become-teacher"),
     path("become-student/", become_student, name="become-student"),
