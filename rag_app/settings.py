@@ -69,11 +69,19 @@ GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS if origin.strip()]
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(
+    ","
+)
+CORS_ALLOWED_ORIGINS = [
+    origin.strip() for origin in CORS_ALLOWED_ORIGINS if origin.strip()
+]
 
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000").split(",")
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS if origin.strip()]
+CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000").split(
+    ","
+)
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in CSRF_TRUSTED_ORIGINS if origin.strip()
+]
 
 
 # Application definition
@@ -214,7 +222,6 @@ AUTHENTICATION_BACKENDS = [
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ASTROLOGY_API_KEY = os.getenv("ASTROLOGY_API_KEY", "")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-RESEND_AUDIENCE_ID = os.getenv("RESEND_AUDIENCE_ID", "")
 
 
 # =============================================================================
