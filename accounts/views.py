@@ -314,7 +314,7 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
         user = request.user
 
         # Ensure user is a teacher
-        if user.role != User.Role.TEACHER:
+        if user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             return Response(
                 {"error": "This endpoint is only for teachers."},
                 status=status.HTTP_403_FORBIDDEN,
