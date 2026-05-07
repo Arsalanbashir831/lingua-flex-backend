@@ -2,6 +2,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict
 import os
+import uuid
+from datetime import datetime, timezone
 from pydantic import BaseModel
 import resend
 from django.conf import settings
@@ -112,7 +114,7 @@ def send_teacher_notification_email(
 def get_user_details(user_id: str) -> dict:
     """Fetch user details from database via Supabase client"""
     try:
-        user_response = get_admin_client().table("users").select("*").eq("id", user_id).execute()
+        user_response = get_admin_client().table("core_user").select("*").eq("id", user_id).execute()
         if not user_response.data:
             return {}
 
@@ -181,7 +183,13 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str, token: str):
             message = data.get("content")
             # Save message to database via admin client
             get_admin_client().table("messages").insert(
-                {"chat_id": chat_id, "sender_id": user_id, "content": message}
+                {
+                    "id": str(uuid.uuid4()),
+                    "chat_id": chat_id,
+                    "sender_id": user_id,
+                    "content": message,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
             ).execute()
             # Broadcast to other participant
             for k, ws in active_connections.items():
@@ -240,7 +248,14 @@ def start_chat(payload: ChatCreateRequest):
     chat = (
         get_admin_client()
         .table("chats")
-        .insert({"participant1": student_id, "participant2": teacher_id})
+        .insert(
+            {
+                "id": str(uuid.uuid4()),
+                "participant1": student_id,
+                "participant2": teacher_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         .execute()
     )
 

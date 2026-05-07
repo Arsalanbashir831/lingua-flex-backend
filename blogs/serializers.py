@@ -7,7 +7,6 @@ class BlogListSerializer(serializers.ModelSerializer):
     """Serializer for listing blogs (minimal fields)"""
 
     author_name = serializers.ReadOnlyField()
-    category_name = serializers.CharField(source="category.name", read_only=True)
     tag_list = serializers.ReadOnlyField()
     is_published = serializers.ReadOnlyField()
 
@@ -18,8 +17,6 @@ class BlogListSerializer(serializers.ModelSerializer):
             "title",
             "slug",
             "thumbnail",
-            "category",
-            "category_name",
             "tags",
             "tag_list",
             "status",
@@ -60,7 +57,6 @@ class BlogCreateUpdateSerializer(serializers.ModelSerializer):
             "title",
             "content",
             "thumbnail",
-            "category",
             "tags",
             "status",
             "meta_description",
