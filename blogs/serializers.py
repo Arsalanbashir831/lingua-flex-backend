@@ -26,6 +26,7 @@ class BlogListSerializer(serializers.ModelSerializer):
             "published_at",
             "meta_description",
             "read_time",
+            "view_count",
             "is_published",
         ]
         read_only_fields = [
@@ -36,6 +37,7 @@ class BlogListSerializer(serializers.ModelSerializer):
             "updated_at",
             "published_at",
             "read_time",
+            "view_count",
             "is_published",
         ]
 

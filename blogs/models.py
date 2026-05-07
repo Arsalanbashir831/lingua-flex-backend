@@ -55,6 +55,9 @@ class Blog(models.Model):
     read_time = models.PositiveIntegerField(
         default=0, help_text="Estimated read time in minutes"
     )
+    view_count = models.PositiveIntegerField(
+        default=0, help_text="Total number of views"
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -65,15 +68,21 @@ class Blog(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # Auto-generate slug if not provided
+        # Auto-generate or update slug if title changes
+        if self.pk:
+            old_blog = Blog.objects.filter(pk=self.pk).first()
+            if old_blog and old_blog.title != self.title:
+                self.slug = slugify(self.title)
+        
         if not self.slug:
             self.slug = slugify(self.title)
-            # Ensure slug is unique
-            original_slug = self.slug
-            counter = 1
-            while Blog.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
-                self.slug = f"{original_slug}-{counter}"
-                counter += 1
+
+        # Ensure slug is unique
+        original_slug = self.slug
+        counter = 1
+        while Blog.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+            self.slug = f"{original_slug}-{counter}"
+            counter += 1
 
         # Set published_at when status changes to published
         if self.status == self.StatusChoices.PUBLISHED and not self.published_at:

@@ -9,14 +9,15 @@ class BlogAdmin(admin.ModelAdmin):
         "author_name",
         "status",
         "read_time",
+        "view_count",
         "published_at",
         "created_at",
     ]
     list_filter = ["status", "created_at", "published_at"]
     search_fields = ["title", "content", "author__user_profile__user__email"]
     readonly_fields = [
-        "slug",
         "read_time",
+        "view_count",
         "created_at",
         "updated_at",
         "published_at",
@@ -27,7 +28,7 @@ class BlogAdmin(admin.ModelAdmin):
         ("Basic Information", {"fields": ("title", "slug", "content", "thumbnail")}),
         ("Categorization", {"fields": ("tags",)}),
         ("Publication", {"fields": ("status", "author")}),
-        ("SEO & Metadata", {"fields": ("meta_description", "read_time")}),
+        ("SEO & Metadata", {"fields": ("meta_description", "read_time", "view_count")}),
         (
             "Timestamps",
             {

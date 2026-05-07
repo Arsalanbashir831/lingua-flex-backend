@@ -238,7 +238,12 @@ class PublicBlogDetailView(generics.RetrieveAPIView):
         )
 
     def retrieve(self, request, *args, **kwargs):
-        """Retrieve blog"""
-        blog = self.get_object()
-        serializer = self.get_serializer(blog)
+        """Retrieve blog and increment view count"""
+        instance = self.get_object()
+        # Use F() expression to avoid race conditions and atomicity
+        from django.db.models import F
+        Blog.objects.filter(pk=instance.pk).update(view_count=F('view_count') + 1)
+        # Refresh instance from DB to get the new view_count for the serializer
+        instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
         return Response(serializer.data)
