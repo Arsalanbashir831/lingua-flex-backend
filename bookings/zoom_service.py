@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 class ZoomService:
     def __init__(self):
-        self.account_id = getattr(settings, "ZOOM_ACCOUNT_ID", "")
-        self.client_id = getattr(settings, "ZOOM_CLIENT_ID", "")
-        self.client_secret = getattr(settings, "ZOOM_CLIENT_SECRET", "")
+        self.account_id = getattr(settings, "ZOOM_ACCOUNT_ID", "").strip()
+        self.client_id = getattr(settings, "ZOOM_CLIENT_ID", "").strip()
+        self.client_secret = getattr(settings, "ZOOM_CLIENT_SECRET", "").strip()
         self.base_url = "https://api.zoom.us/v2"
         self.token_url = "https://zoom.us/oauth/token"
         self._access_token = None
@@ -90,7 +90,7 @@ class ZoomService:
             access_token = self.get_access_token()
 
             # Use host email from settings
-            host_email = getattr(settings, "ZOOM_HOST_EMAIL", "ammarmukhtar@lordevs.com")
+            host_email = getattr(settings, "ZOOM_HOST_EMAIL", "ammarmukhtar@lordevs.com").strip()
 
             headers = {
                 "Authorization": f"Bearer {access_token}",
@@ -116,6 +116,7 @@ class ZoomService:
 
             # Create meeting using HTTP request
             url = f"{self.base_url}/users/{host_email}/meetings"
+            logger.info(f"Calling Zoom API: {url}")
             response = requests.post(
                 url, json=meeting_data, headers=headers, timeout=30
             )
@@ -132,7 +133,7 @@ class ZoomService:
                 }
             else:
                 error_msg = f"{response.status_code} - {response.text}"
-                logger.error(f"Failed to create Zoom meeting: {error_msg}")
+                logger.error(f"Failed to create Zoom meeting at {url}: {error_msg}")
                 return {"success": False, "error": error_msg}
 
         except Exception as e:
