@@ -215,7 +215,6 @@ REST_FRAMEWORK = {
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",  # For Django admin login
-    "core.authentication.SupabaseBackend",  # For API token authentication
 ]
 
 # Third-party API Keys

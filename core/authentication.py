@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # This prevents a network request on every single API call.
 _jwks_client = None
 
+
 def get_jwks_client():
     global _jwks_client
     if _jwks_client is None:
@@ -22,12 +23,13 @@ def get_jwks_client():
         _jwks_client = PyJWKClient(jwks_url)
     return _jwks_client
 
+
 class SupabaseTokenAuthentication(BaseAuthentication):
     """
     Authenticates requests by locally verifying the Supabase JWT signature
     using JWKS (JSON Web Key Set).
-    
-    This is the "Future-Proof" approach that works with Supabase's new 
+
+    This is the "Future-Proof" approach that works with Supabase's new
     Asymmetric keys (ECC P-256) and handles key rotation automatically.
     """
 
@@ -51,7 +53,7 @@ class SupabaseTokenAuthentication(BaseAuthentication):
                 signing_key.key,
                 algorithms=["RS256", "ES256", "HS256"],
                 # Supabase uses 'authenticated' audience for login tokens
-                options={"verify_aud": False}, 
+                options={"verify_aud": False},
             )
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed("Token has expired.")
@@ -61,7 +63,9 @@ class SupabaseTokenAuthentication(BaseAuthentication):
 
         user_id = payload.get("sub")
         if not user_id:
-            raise exceptions.AuthenticationFailed("Token payload missing user ID (sub).")
+            raise exceptions.AuthenticationFailed(
+                "Token payload missing user ID (sub)."
+            )
 
         User = get_user_model()
         try:
