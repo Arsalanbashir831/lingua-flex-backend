@@ -539,6 +539,68 @@ class TransitView(APIView):
         }
 
 
+class DashaView(APIView):
+    """
+    GET — Returns Vimshottari Dasha timing data for the user.
+
+    Supports ?student_id=X for teachers with delegated access.
+    Data is computed lazily (on first request) and cached permanently in
+    NatalChartCache.dasha_data. Subsequent calls are DB-only.
+    Invalidated when the birth profile's core details change.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, err = _resolve_profile(request)
+        if err:
+            return err
+
+        # Ensure natal cache exists (natal chart must be fetched first)
+        try:
+            natal_cache = profile.natal_cache
+        except NatalChartCache.DoesNotExist:
+            return Response(
+                {"detail": "Natal chart not yet computed. Please fetch the natal chart first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if natal_cache.dasha_data:
+            logger.info(f"Dasha data retrieved from DATABASE cache for user: {profile.display_name}")
+            return Response(self._shape_response(natal_cache.dasha_data))
+
+        # Cache miss — fetch from API
+        logger.info(f"Dasha data CACHE MISS for user: {profile.display_name}. Calling Astrology.io API...")
+
+        client = AstrologyAPIClient()
+        try:
+            dasha_data = client.get_vimshottari_dasha(profile)
+        except AstrologyAPIError as e:
+            return Response(
+                {"detail": f"Astrology API error: {str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        natal_cache.dasha_data = dasha_data
+        natal_cache.save(update_fields=["dasha_data"])
+
+        return Response(self._shape_response(dasha_data))
+
+    def _shape_response(self, raw: dict) -> dict:
+        data = raw.get("data", {})
+        current = data.get("current_period", {})
+        return {
+            "current_period": {
+                "mahadasha": current.get("mahadasha"),
+                "mahadasha_end": current.get("mahadasha_end"),
+                "antardasha": current.get("antardasha"),
+                "antardasha_end": current.get("antardasha_end"),
+            },
+            "current_antardashas": data.get("current_antardashas", []),
+            "mahadasha_sequence": data.get("mahadasha_sequence", []),
+        }
+
+
 class NakshatraPredictionView(APIView):
     """
     GET — Returns today's nakshatra predictions (tara bala, etc.) for the user.

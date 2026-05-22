@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    BirthProfileView, NatalChartView, TransitView, NakshatraPredictionView,
+    BirthProfileView, NatalChartView, TransitView, DashaView, NakshatraPredictionView,
     AstrologyInsightView, AstrologyInsightChatView,
     AstrologyAccessView, AstrologyAccessRevokeView, TeacherStudentDashboardsView,
     GuestProfileListView, GuestProfileDetailView
@@ -10,6 +10,7 @@ urlpatterns = [
     path('birth-profile/', BirthProfileView.as_view(), name='astrology-birth-profile'),
     path('natal-chart/', NatalChartView.as_view(), name='astrology-natal-chart'),
     path('transits/', TransitView.as_view(), name='astrology-transits'),
+    path('dasha/', DashaView.as_view(), name='astrology-dasha'),
     path('nakshatra-predictions/', NakshatraPredictionView.as_view(), name='astrology-nakshatra-predictions'),
     path('insights/<str:category>/', AstrologyInsightView.as_view(), name='astrology-insight'),
     path('insights/<str:category>/chat/', AstrologyInsightChatView.as_view(), name='astrology-insight-chat'),
