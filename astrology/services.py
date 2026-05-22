@@ -90,11 +90,11 @@ class AstrologyAPIClient:
     def get_divisional_chart(self, profile) -> dict:
         """
         Calls POST /vedic/divisional-chart.
-        Returns D1, D3, D9, D12, and D30 charts for advanced AI diagnostics.
+        Returns all 16 divisional charts for advanced calculations.
         """
         payload = {
             "subject": self._subject_payload(profile),
-            "charts": ["D1", "D3", "D9", "D12", "D30"],
+            "charts": ["D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12", "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"],
         }
         return self._post("divisional-chart", payload)
 

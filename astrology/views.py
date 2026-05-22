@@ -169,18 +169,9 @@ def _build_natal_response(
     """
     bd_data = birth_details.get("data", {})
     div_data = divisional.get("data", {})
-
-    # Extract D1 and D9 positions from the divisional chart response
-    charts = {c["chart"]: c for c in div_data.get("charts", [])}
-    d1_chart = charts.get("D1", {})
-    d9_chart = charts.get("D9", {})
-
     planets_list = bd_data.get("planets", [])
 
-    d1_tables = _build_ui_tables(d1_chart.get("positions", []), planets_list)
-    d9_tables = _build_ui_tables(d9_chart.get("positions", []), planets_list)
-
-    return {
+    response_dict = {
         "birth_profile": BirthProfileSerializer(profile).data,
         "planets": planets_list,
         "ascendant": bd_data.get("ascendant"),
@@ -190,22 +181,29 @@ def _build_natal_response(
         "ayanamsa": bd_data.get("ayanamsa"),
         "ayanamsa_value": bd_data.get("ayanamsa_value"),
         "calculation_info": bd_data.get("calculation_info"),
-        "d1_chart": {
-            "name": d1_chart.get("name", "Rashi"),
-            "purpose": d1_chart.get("purpose", "Overall life and personality"),
-            "positions": d1_chart.get("positions", []),
-            "graha_details": d1_tables["graha_details"],
-            "bhava_details": d1_tables["bhava_details"],
-        },
-        "d9_chart": {
-            "name": d9_chart.get("name", "Navamsa"),
-            "purpose": d9_chart.get("purpose", "Marriage and dharma"),
-            "positions": d9_chart.get("positions", []),
-            "graha_details": d9_tables["graha_details"],
-            "bhava_details": d9_tables["bhava_details"],
-        },
         "vargottama_planets": div_data.get("vargottama_planets", []),
     }
+
+    # Dynamic divisional charts extraction
+    requested_div_charts = [
+        "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12", "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"
+    ]
+    charts = {c["chart"]: c for c in div_data.get("charts", [])}
+
+    for chart_code in requested_div_charts:
+        chart_obj = charts.get(chart_code, {})
+        chart_tables = _build_ui_tables(chart_obj.get("positions", []), planets_list)
+        
+        key_name = f"{chart_code.lower()}_chart"
+        response_dict[key_name] = {
+            "name": chart_obj.get("name", chart_code),
+            "purpose": chart_obj.get("purpose", ""),
+            "positions": chart_obj.get("positions", []),
+            "graha_details": chart_tables["graha_details"],
+            "bhava_details": chart_tables["bhava_details"],
+        }
+
+    return response_dict
 
 
 # ---------------------------------------------------------------------------
@@ -403,6 +401,17 @@ class NatalChartView(APIView):
         # Return from cache if available
         try:
             cache = profile.natal_cache
+            
+            # Verify if the cache has all the required divisional charts (e.g. check for 'D60')
+            div_data = cache.divisional_data.get("data", {})
+            cached_charts = {c["chart"] for c in div_data.get("charts", [])}
+            required_charts = {
+                "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12", "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"
+            }
+            if not required_charts.issubset(cached_charts):
+                logger.info(f"Cached charts list is incomplete for user {profile.display_name}. Triggering cache miss...")
+                raise NatalChartCache.DoesNotExist
+
             msg = f"Natal chart retrieved from DATABASE cache for user: {profile.display_name}"
             logger.info(msg)
             return Response(
