@@ -82,19 +82,21 @@ class NatalChartCache(models.Model):
 
 class TransitCache(models.Model):
     """
-    Caches today's transit data for a user.
-    Invalidated when the current local date (in the user's timezone)
-    differs from cached_for_date — checked on every page load (no cron).
+    Caches transit data for a user on specific dates.
+    Invalidated/deleted when the birth profile changes.
     """
 
-    birth_profile = models.OneToOneField(
-        BirthProfile, on_delete=models.CASCADE, related_name="transit_cache"
+    birth_profile = models.ForeignKey(
+        BirthProfile, on_delete=models.CASCADE, related_name="transit_caches"
     )
     # Raw JSON from POST /vedic/transit
     transit_data = models.JSONField()
     # The local calendar date (in user's timezone) this transit data is valid for
     cached_for_date = models.DateField()
     cached_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("birth_profile", "cached_for_date")
 
     def __str__(self):
         return f"Transit Cache: {self.birth_profile.display_name} for {self.cached_for_date}"

@@ -468,45 +468,54 @@ class TransitView(APIView):
         if err:
             return err
 
-        tz = pytz.timezone(profile.timezone_str) if profile.timezone_str else pytz.utc
-        today_local = datetime.now(tz).date()
+        # Check if a specific transit date was requested
+        transit_date_str = request.query_params.get("transit_date")
+        
+        if transit_date_str:
+            try:
+                # Parse to validate format YYYY-MM-DD
+                target_date = datetime.strptime(transit_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid transit_date format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            tz = pytz.timezone(profile.timezone_str) if profile.timezone_str else pytz.utc
+            target_date = datetime.now(tz).date()
+            transit_date_str = None  # defaults to today in API
 
-        # Try cache
-        try:
-            cache = profile.transit_cache
-            if not _is_transit_stale(cache, profile.timezone_str):
-                msg = f"Transit data retrieved from DATABASE cache for user: {profile.display_name}"
-                logger.info(msg)
-                return Response(self._shape_response(cache.transit_data))
-        except TransitCache.DoesNotExist:
-            cache = None
+        # Try to retrieve from DB cache
+        cache = TransitCache.objects.filter(
+            birth_profile=profile, cached_for_date=target_date
+        ).first()
 
-        # Cache miss or stale — call the API
-        msg = f"Transit data CACHE MISS (or stale) for user: {profile.display_name}. Calling Astrology.io API..."
+        if cache:
+            msg = f"Transit data retrieved from DATABASE cache for user: {profile.display_name} for date: {target_date}"
+            logger.info(msg)
+            return Response(self._shape_response(cache.transit_data))
+
+        # Cache miss — call the Astrology.io API
+        msg = f"Transit data CACHE MISS for user: {profile.display_name} for date: {target_date}. Calling Astrology.io API..."
         logger.info(msg)
 
         client = AstrologyAPIClient()
         try:
-            transit = client.get_transit(profile)
+            transit = client.get_transit(profile, transit_date=transit_date_str)
         except AstrologyAPIError as e:
             return Response(
                 {"detail": f"Astrology API error: {str(e)}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # Upsert cache
-        if cache is None:
-            TransitCache.objects.update_or_create(
-                birth_profile=profile,
-                defaults={
-                    "transit_data": transit,
-                    "cached_for_date": today_local,
-                },
-            )
-        else:
-            cache.transit_data = transit
-            cache.cached_for_date = today_local
-            cache.save()
+        # Upsert/save to DB cache
+        TransitCache.objects.update_or_create(
+            birth_profile=profile,
+            cached_for_date=target_date,
+            defaults={
+                "transit_data": transit,
+            },
+        )
 
         return Response(self._shape_response(transit))
 
@@ -733,9 +742,9 @@ class AstrologyInsightView(APIView):
                         transit_data = client.get_transit(profile)
                         TransitCache.objects.update_or_create(
                             birth_profile=profile,
+                            cached_for_date=today_local,
                             defaults={
                                 "transit_data": transit_data,
-                                "cached_for_date": today_local,
                             },
                         )
                         data_to_pass["transits"] = transit_data
@@ -874,11 +883,13 @@ class AstrologyInsightChatView(APIView):
         if natal_cache.kp_data:
             structured_data["kp_system"] = natal_cache.kp_data
 
-        try:
-            transit_cache = profile.transit_cache
+        from django.utils.timezone import localtime, now
+        today_local = localtime(now()).date()
+        transit_cache = TransitCache.objects.filter(
+            birth_profile=profile, cached_for_date=today_local
+        ).first()
+        if transit_cache:
             structured_data["transits"] = transit_cache.transit_data
-        except TransitCache.DoesNotExist:
-            pass
 
         try:
             nakshatra_cache = profile.nakshatra_prediction_cache

@@ -98,15 +98,17 @@ class AstrologyAPIClient:
         }
         return self._post("divisional-chart", payload)
 
-    def get_transit(self, profile) -> dict:
+    def get_transit(self, profile, transit_date: str = None) -> dict:
         """
         Calls POST /vedic/transit.
-        Returns current planetary transits relative to the natal Moon.
+        Returns planetary transits relative to the natal Moon for a specific date (or today).
         """
         payload = {
             "subject": self._subject_payload(profile),
             "options": {"language": "en"},
         }
+        if transit_date:
+            payload["transit_date"] = transit_date
         return self._post("transit", payload)
 
     def get_nakshatra_predictions(self, profile) -> dict:
