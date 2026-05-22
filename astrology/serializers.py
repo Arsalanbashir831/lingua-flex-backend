@@ -14,7 +14,8 @@ class BirthProfileSerializer(serializers.ModelSerializer):
             'birth_hour', 'birth_minute',
             'city', 'country_code',
             'timezone_str', 'created_at', 'updated_at',
-            'guest_name', 'created_by'
+            'guest_name', 'created_by',
+            'marriage_date', 'kids', 'comments'
         ]
         read_only_fields = ['id', 'user_name', 'timezone_str', 'created_at', 'updated_at', 'created_by']
 

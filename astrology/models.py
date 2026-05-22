@@ -36,6 +36,11 @@ class BirthProfile(models.Model):
     # Derived from calculation_info.location.timezone in the API response.
     timezone_str = EncryptedCharField(max_length=500, blank=True)
 
+    # Optional Marriage/Family/Personal Details (not passed to the astrology API)
+    marriage_date = EncryptedCharField(max_length=100, blank=True, null=True)
+    kids = EncryptedIntegerField(blank=True, null=True)
+    comments = EncryptedCharField(max_length=5000, blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

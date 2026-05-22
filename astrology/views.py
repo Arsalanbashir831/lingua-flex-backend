@@ -335,18 +335,50 @@ class BirthProfileView(APIView):
         serializer = BirthProfileSerializer(profile, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # Clear caches — birth data changed so charts must be recomputed
-        NatalChartCache.objects.filter(birth_profile=profile).delete()
-        TransitCache.objects.filter(birth_profile=profile).delete()
-        AstrologyInsight.objects.filter(birth_profile=profile).delete()
-        AstrologyChat.objects.filter(birth_profile=profile).delete()
-        profile = serializer.save(timezone_str="")  # reset timezone too
 
-        # Trigger background insight generation
-        import threading
-        from .tasks import generate_all_insights_async
+        # Check if any of the core birth fields are actually changing
+        birth_fields = [
+            "birth_year",
+            "birth_month",
+            "birth_day",
+            "birth_hour",
+            "birth_minute",
+            "city",
+            "country_code",
+        ]
+        birth_details_changed = False
+        for field in birth_fields:
+            if field in request.data:
+                old_val = getattr(profile, field)
+                new_val = request.data[field]
+                # Coerce integers for proper comparison
+                if field in ["birth_year", "birth_month", "birth_day", "birth_hour", "birth_minute"]:
+                    try:
+                        if old_val is None or new_val is None or int(old_val) != int(new_val):
+                            birth_details_changed = True
+                            break
+                    except (ValueError, TypeError):
+                        birth_details_changed = True
+                        break
+                else:
+                    if old_val != new_val:
+                        birth_details_changed = True
+                        break
 
-        threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+        if birth_details_changed:
+            # Clear caches — birth data changed so charts must be recomputed
+            NatalChartCache.objects.filter(birth_profile=profile).delete()
+            TransitCache.objects.filter(birth_profile=profile).delete()
+            AstrologyInsight.objects.filter(birth_profile=profile).delete()
+            AstrologyChat.objects.filter(birth_profile=profile).delete()
+            profile = serializer.save(timezone_str="")  # reset timezone too
+
+            # Trigger background insight generation
+            import threading
+            from .tasks import generate_all_insights_async
+            threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+        else:
+            profile = serializer.save()
 
         return Response(BirthProfileSerializer(profile).data)
 
@@ -1140,18 +1172,49 @@ class GuestProfileDetailView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Clear caches because birth data might have changed
-        NatalChartCache.objects.filter(birth_profile=profile).delete()
-        TransitCache.objects.filter(birth_profile=profile).delete()
-        AstrologyInsight.objects.filter(birth_profile=profile).delete()
-        AstrologyChat.objects.filter(birth_profile=profile).delete()
-        profile = serializer.save(timezone_str="")  # reset timezone too
+        # Check if any of the core birth fields are actually changing
+        birth_fields = [
+            "birth_year",
+            "birth_month",
+            "birth_day",
+            "birth_hour",
+            "birth_minute",
+            "city",
+            "country_code",
+        ]
+        birth_details_changed = False
+        for field in birth_fields:
+            if field in request.data:
+                old_val = getattr(profile, field)
+                new_val = request.data[field]
+                # Coerce integers for proper comparison
+                if field in ["birth_year", "birth_month", "birth_day", "birth_hour", "birth_minute"]:
+                    try:
+                        if old_val is None or new_val is None or int(old_val) != int(new_val):
+                            birth_details_changed = True
+                            break
+                    except (ValueError, TypeError):
+                        birth_details_changed = True
+                        break
+                else:
+                    if old_val != new_val:
+                        birth_details_changed = True
+                        break
 
-        # Trigger background insight generation
-        import threading
-        from .tasks import generate_all_insights_async
+        if birth_details_changed:
+            # Clear caches because birth data might have changed
+            NatalChartCache.objects.filter(birth_profile=profile).delete()
+            TransitCache.objects.filter(birth_profile=profile).delete()
+            AstrologyInsight.objects.filter(birth_profile=profile).delete()
+            AstrologyChat.objects.filter(birth_profile=profile).delete()
+            profile = serializer.save(timezone_str="")  # reset timezone too
 
-        threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+            # Trigger background insight generation
+            import threading
+            from .tasks import generate_all_insights_async
+            threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+        else:
+            profile = serializer.save()
 
         return Response(BirthProfileSerializer(profile).data)
 
