@@ -38,7 +38,7 @@ class Blog(models.Model):
         max_length=20, choices=StatusChoices.choices, default=StatusChoices.DRAFT
     )
     author = models.ForeignKey(
-        TeacherProfile, on_delete=models.CASCADE, related_name="blogs"
+        TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name="blogs"
     )
 
     # Timestamps
@@ -99,13 +99,16 @@ class Blog(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.title} - {self.author.user_profile.user.email}"
+        email = self.author.user_profile.user.email if self.author else "Administrator"
+        return f"{self.title} - {email}"
 
     @property
     def author_name(self):
         """Get the author's full name"""
-        user = self.author.user_profile.user
-        return f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
+        if self.author:
+            user = self.author.user_profile.user
+            return f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
+        return "ParlezHub"
 
     @property
     def is_published(self):

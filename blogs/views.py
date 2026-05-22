@@ -43,18 +43,25 @@ class TeacherBlogListCreateView(generics.ListCreateAPIView):
         return BlogListSerializer
 
     def get_queryset(self):
-        """Get blogs for the authenticated teacher with filtering"""
-        # Ensure user is a teacher
-        try:
-            teacher_profile = TeacherProfile.objects.get(
-                user_profile__user=self.request.user
-            )
-        except TeacherProfile.DoesNotExist:
-            return Blog.objects.none()
+        """Get blogs for the authenticated teacher or admin with filtering"""
+        user = self.request.user
+        is_admin = user.is_superuser or user.is_staff or getattr(user, "role", None) == "ADMIN"
 
-        queryset = Blog.objects.filter(author=teacher_profile).select_related(
-            "author__user_profile__user"
-        )
+        if is_admin:
+            queryset = Blog.objects.all().select_related(
+                "author__user_profile__user"
+            )
+        else:
+            try:
+                teacher_profile = TeacherProfile.objects.get(
+                    user_profile__user=user
+                )
+            except TeacherProfile.DoesNotExist:
+                return Blog.objects.none()
+
+            queryset = Blog.objects.filter(author=teacher_profile).select_related(
+                "author__user_profile__user"
+            )
 
         # Filter by status
         status_filter = self.request.query_params.get("status")
@@ -83,16 +90,20 @@ class TeacherBlogListCreateView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         """Custom create method to handle thumbnail file upload"""
-        # Ensure user is a teacher
-        try:
-            teacher_profile = TeacherProfile.objects.get(
-                user_profile__user=request.user
-            )
-        except TeacherProfile.DoesNotExist:
-            return Response(
-                {"error": "Only teachers can create blogs"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        user = request.user
+        is_admin = user.is_superuser or user.is_staff or getattr(user, "role", None) == "ADMIN"
+
+        if not is_admin:
+            # Ensure user is a teacher
+            try:
+                TeacherProfile.objects.get(
+                    user_profile__user=user
+                )
+            except TeacherProfile.DoesNotExist:
+                return Response(
+                    {"error": "Only teachers or administrators can create blogs"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         # Prepare data for serializer
         blog_data = request.data.copy()
@@ -100,7 +111,7 @@ class TeacherBlogListCreateView(generics.ListCreateAPIView):
         # Handle thumbnail file upload if provided
         if "thumbnail" in request.FILES:
             thumbnail_url, error_res = handle_blog_thumbnail_upload(
-                request.FILES["thumbnail"], teacher_profile.user_profile.user.id
+                request.FILES["thumbnail"], user.id
             )
             if error_res:
                 return error_res
@@ -109,7 +120,7 @@ class TeacherBlogListCreateView(generics.ListCreateAPIView):
         # Create the blog using the serializer
         serializer = self.get_serializer(data=blog_data)
         if serializer.is_valid():
-            serializer.save(author=teacher_profile)
+            serializer.save()
             headers = self.get_success_headers(serializer.data)
             return Response(
                 serializer.data, status=status.HTTP_201_CREATED, headers=headers
@@ -139,16 +150,24 @@ class TeacherBlogDetailView(generics.RetrieveUpdateDestroyAPIView):
         return BlogDetailSerializer
 
     def get_queryset(self):
-        """Get blogs for the authenticated teacher only"""
-        try:
-            teacher_profile = TeacherProfile.objects.get(
-                user_profile__user=self.request.user
-            )
-            return Blog.objects.filter(author=teacher_profile).select_related(
+        """Get blogs for the authenticated teacher or admin"""
+        user = self.request.user
+        is_admin = user.is_superuser or user.is_staff or getattr(user, "role", None) == "ADMIN"
+
+        if is_admin:
+            return Blog.objects.all().select_related(
                 "author__user_profile__user"
             )
-        except TeacherProfile.DoesNotExist:
-            return Blog.objects.none()
+        else:
+            try:
+                teacher_profile = TeacherProfile.objects.get(
+                    user_profile__user=user
+                )
+                return Blog.objects.filter(author=teacher_profile).select_related(
+                    "author__user_profile__user"
+                )
+            except TeacherProfile.DoesNotExist:
+                return Blog.objects.none()
 
     def update(self, request, *args, **kwargs):
         """Custom update method to handle thumbnail file upload"""
@@ -161,7 +180,7 @@ class TeacherBlogDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Handle thumbnail file upload if provided
         if "thumbnail" in request.FILES:
             thumbnail_url, error_res = handle_blog_thumbnail_upload(
-                request.FILES["thumbnail"], instance.author.user_profile.user.id
+                request.FILES["thumbnail"], request.user.id
             )
             if error_res:
                 return error_res

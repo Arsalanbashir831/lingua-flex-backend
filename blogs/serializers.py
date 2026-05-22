@@ -53,6 +53,12 @@ class BlogDetailSerializer(BlogListSerializer):
 class BlogCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating blogs"""
 
+    author = serializers.PrimaryKeyRelatedField(
+        queryset=TeacherProfile.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
     class Meta:
         model = Blog
         fields = [
@@ -62,6 +68,7 @@ class BlogCreateUpdateSerializer(serializers.ModelSerializer):
             "tags",
             "status",
             "meta_description",
+            "author",
         ]
 
     def validate_title(self, value):
@@ -103,21 +110,41 @@ class BlogCreateUpdateSerializer(serializers.ModelSerializer):
         return cleaned_tags
 
     def create(self, validated_data):
-        """Create blog with authenticated teacher as author"""
+        """Create blog with authenticated teacher or admin as author"""
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             raise serializers.ValidationError("Authentication required.")
 
-        # Get teacher profile
-        try:
-            teacher_profile = TeacherProfile.objects.get(
-                user_profile__user=request.user
-            )
-        except TeacherProfile.DoesNotExist:
-            raise serializers.ValidationError("Only teachers can create blogs.")
+        user = request.user
+        is_admin = user.is_superuser or user.is_staff or user.role == "ADMIN"
 
-        validated_data["author"] = teacher_profile
+        if is_admin:
+            # Admin can set author explicitly, or default to None (Administrator)
+            if "author" not in validated_data:
+                validated_data["author"] = None
+        else:
+            try:
+                teacher_profile = TeacherProfile.objects.get(
+                    user_profile__user=user
+                )
+            except TeacherProfile.DoesNotExist:
+                raise serializers.ValidationError("Only teachers or administrators can create blogs.")
+            
+            # Standard teachers can only create blogs for themselves
+            validated_data["author"] = teacher_profile
+
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Update blog, ensuring only admins can modify author"""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            user = request.user
+            is_admin = user.is_superuser or user.is_staff or getattr(user, "role", None) == "ADMIN"
+            if not is_admin:
+                # Standard teachers cannot change the author
+                validated_data.pop("author", None)
+        return super().update(instance, validated_data)
 
 
 
