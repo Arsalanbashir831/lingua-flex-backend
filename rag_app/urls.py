@@ -33,6 +33,7 @@ urlpatterns = [
         "api/payments/", include("stripe_payments.urls")
     ),  # Added Stripe payments URLs
     path("api/astrology/", include("astrology.urls")),  # Vedic Astrology
+    path("api/family-tree/", include("family_tree.urls")),  # Standalone Family Tree
 ]
 
 urlpatterns += [

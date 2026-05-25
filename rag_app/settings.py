@@ -124,6 +124,7 @@ INSTALLED_APPS = [
     "blogs",
     "stripe_payments",
     "astrology",
+    "family_tree",
 ]
 
 MIDDLEWARE = [
