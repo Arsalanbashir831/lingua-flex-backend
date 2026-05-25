@@ -18,7 +18,7 @@ def create_user_profile(sender, instance, created, **kwargs):
     1. User.role is now nullable (set post-signup for Google/One-Tap users)
     2. TeacherProfile creation is handled explicitly in SetUserRoleView
     """
-    if created:
+    if created and (instance.is_staff or (getattr(instance, 'is_superuser', False))):
         with transaction.atomic():
             UserProfile.objects.get_or_create(
                 user=instance,
