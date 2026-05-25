@@ -150,14 +150,10 @@ class SyncSupabaseUserView(APIView):
                     user.role = User.Role.BOTH
                     user.save(update_fields=["role"])
                     logger.info(f"[sync] Self-healed role to BOTH because both profiles exist")
-                elif user.role is None:
-                    if has_teacher:
-                        user.role = User.Role.TEACHER
-                        user.save(update_fields=["role"])
-                    elif has_student:
-                        user.role = User.Role.STUDENT
-                        user.save(update_fields=["role"])
-                    logger.info(f"[sync] Self-healed role to {user.role} based on existing profiles")
+                elif user.role is None and has_teacher:
+                    user.role = User.Role.TEACHER
+                    user.save(update_fields=["role"])
+                    logger.info(f"[sync] Self-healed role to TEACHER based on existing TeacherProfile")
 
             requires_role_selection = user.role is None
             logger.info(f"[sync] Done. created={created}, requires_role_selection={requires_role_selection}")
