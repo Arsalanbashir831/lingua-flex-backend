@@ -142,6 +142,21 @@ class SyncSupabaseUserView(APIView):
                     except Exception as profile_err:
                         logger.error(f"[sync] Profile creation failed: {profile_err}", exc_info=True)
 
+                # Self-healing auto-resolve role based on existing profiles
+                if user.role is None:
+                    has_teacher = TeacherProfile.objects.filter(user_profile__user=user).exists()
+                    has_student = UserProfile.objects.filter(user=user).exists()
+                    if has_teacher and has_student:
+                        user.role = User.Role.BOTH
+                        user.save(update_fields=["role"])
+                    elif has_teacher:
+                        user.role = User.Role.TEACHER
+                        user.save(update_fields=["role"])
+                    elif has_student:
+                        user.role = User.Role.STUDENT
+                        user.save(update_fields=["role"])
+                    logger.info(f"[sync] Self-healed role to {user.role} based on existing profiles")
+
             requires_role_selection = user.role is None
             logger.info(f"[sync] Done. created={created}, requires_role_selection={requires_role_selection}")
 

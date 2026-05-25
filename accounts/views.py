@@ -188,6 +188,29 @@ def roles_status(request):
         except Exception:
             pass
 
+    # Also check UserProfile existence (covers edge cases from older data)
+    if not has_student:
+        try:
+            from accounts.models import UserProfile
+
+            has_student = UserProfile.objects.filter(
+                user=user
+            ).exists()
+        except Exception:
+            pass
+
+    # Self-healing database check: if role is None but profile exists, heal User.role field
+    if not user.role:
+        if has_student and has_teacher:
+            user.role = User.Role.BOTH
+            user.save(update_fields=["role"])
+        elif has_teacher:
+            user.role = User.Role.TEACHER
+            user.save(update_fields=["role"])
+        elif has_student:
+            user.role = User.Role.STUDENT
+            user.save(update_fields=["role"])
+
     teacher_data = None
     student_data = None
 
