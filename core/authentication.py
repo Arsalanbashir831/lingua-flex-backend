@@ -54,6 +54,7 @@ class SupabaseTokenAuthentication(BaseAuthentication):
                 algorithms=["RS256", "ES256", "HS256"],
                 # Supabase uses 'authenticated' audience for login tokens
                 options={"verify_aud": False},
+                leeway=120,
             )
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed("Token has expired.")
@@ -89,6 +90,7 @@ class SupabaseTokenAuthentication(BaseAuthentication):
                 signing_key.key,
                 algorithms=["RS256", "ES256", "HS256"],
                 options={"verify_aud": False},
+                leeway=120,
             )
         except Exception as e:
             logger.error(f"Manual token verification failed: {str(e)}")

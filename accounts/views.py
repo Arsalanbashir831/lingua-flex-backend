@@ -199,12 +199,12 @@ def roles_status(request):
         except Exception:
             pass
 
-    # Self-healing database check: if role is None but profile exists, heal User.role field
-    if not user.role:
-        if has_student and has_teacher:
-            user.role = User.Role.BOTH
-            user.save(update_fields=["role"])
-        elif has_teacher:
+    # Self-healing database check: heal User.role field if it's out of sync with actual profiles
+    if has_student and has_teacher and user.role != User.Role.BOTH:
+        user.role = User.Role.BOTH
+        user.save(update_fields=["role"])
+    elif not user.role:
+        if has_teacher:
             user.role = User.Role.TEACHER
             user.save(update_fields=["role"])
         elif has_student:
