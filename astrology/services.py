@@ -321,24 +321,20 @@ class GeminiAIService:
         from google import genai
         from google.genai import types
 
-        if category == "d1-chart":
+        if category == "divisional-charts":
             context_data = (
                 structured_data.get("divisional_data", {})
                 .get("data", {})
                 .get("charts", [])
             )
-            d1_data = next((c for c in context_data if c.get("chart") == "D1"), {})
-            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their D1 chart.
-Here is their D1 planetary data: {json.dumps(d1_data, indent=2)}"""
-        elif category == "d9-chart":
-            context_data = (
-                structured_data.get("divisional_data", {})
-                .get("data", {})
-                .get("charts", [])
-            )
-            d9_data = next((c for c in context_data if c.get("chart") == "D9"), {})
-            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their D9 Navamsa chart.
-Here is their D9 planetary data: {json.dumps(d9_data, indent=2)}"""
+            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their Divisional Charts (Vargas).
+Here is their complete set of 16 divisional charts data (including D1 Lagna, D9 Navamsa, D10 Dasamsa, D60 Shastiamsa, etc.): {json.dumps(context_data, indent=2)}
+
+You can answer questions about any of the 16 divisional charts. Identify which chart(s) they are asking about (e.g. D1, D9, D10, D60) and analyze their planetary placements, signs, and houses based on this data."""
+        elif category == "dasha":
+            dasha_data = structured_data.get("dasha", {})
+            system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their Vimshottari Dasha timing sequences (Mahadashas, Antardashas, and divisions).
+Here is their complete Vimshottari Dasha timing schedule: {json.dumps(dasha_data, indent=2)}"""
         elif category == "navatara":
             tara_data = structured_data.get("daily_tara_bala", {})
             system_prompt = f"""You are an expert Vedic astrologer. The user is asking about their current Navatara (Daily Tara Bala).

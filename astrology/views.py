@@ -919,7 +919,7 @@ class AstrologyInsightChatView(APIView):
                 {"detail": "Invalid category."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        special_categories = ["d1-chart", "d9-chart"]
+        special_categories = ["divisional-charts", "dasha"]
         insight_text = None
 
         if category not in special_categories:

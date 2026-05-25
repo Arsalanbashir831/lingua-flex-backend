@@ -149,8 +149,8 @@ class AstrologyInsight(models.Model):
         ("rashi_planets", "Meaning of the Rashi Planets"),
         ("lagna_lord", "Your Lagna Lord Position"),
         ("challenges", "Challenges and Learning"),
-        ("d1-chart", "D1 Chart Context"),
-        ("d9-chart", "D9 Navamsa Chart Context"),
+        ("divisional-charts", "Divisional Charts Context"),
+        ("dasha", "Vimshottari Dasha Context"),
     )
 
     birth_profile = models.ForeignKey(
