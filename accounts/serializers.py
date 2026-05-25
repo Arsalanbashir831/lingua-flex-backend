@@ -3,6 +3,7 @@ from .models import (
     UserProfile,
     TeacherProfile,
     Message,
+    MessageAttachment,
     Gig,
     VoiceConversation,
 )
@@ -387,12 +388,20 @@ class ComprehensiveUserProfileSerializer(serializers.ModelSerializer):
         return data
 
 
+class MessageAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageAttachment
+        fields = ["id", "file_url", "file_name", "file_type", "file_size", "uploaded_at"]
+        read_only_fields = ["id", "uploaded_at"]
+
+
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
+    attachments = MessageAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Message
-        fields = ["id", "chat", "sender", "content", "timestamp"]
+        fields = ["id", "chat", "sender", "content", "attachments", "timestamp"]
         read_only_fields = ["id", "timestamp", "sender"]
 
 

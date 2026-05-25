@@ -51,6 +51,27 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "")  # sb_secret_...
 SUPABASE_BLOG_IMAGE_BUCKET = os.getenv("SUPABASE_BLOG_IMAGE_BUCKET", "blog-images")
 SUPABASE_USER_UPLOADS_BUCKET = os.getenv("SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
 
+# ─── Chat File Uploads ─────────────────────────────────────────────────────────
+CHAT_UPLOADS_BUCKET = os.getenv("CHAT_UPLOADS_BUCKET", "chat-uploads")
+CHAT_MAX_FILES_PER_MESSAGE = int(os.getenv("CHAT_MAX_FILES_PER_MESSAGE", "10"))
+CHAT_FILE_MAX_SIZE_BYTES = int(os.getenv("CHAT_FILE_MAX_SIZE_BYTES", str(10 * 1024 * 1024)))    # 10 MB
+CHAT_VIDEO_MAX_SIZE_BYTES = int(os.getenv("CHAT_VIDEO_MAX_SIZE_BYTES", str(50 * 1024 * 1024)))  # 50 MB
+CHAT_ALLOWED_MIME_TYPES = [
+    # Images
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    # Documents
+    "application/pdf",
+    "application/msword",                                                         # .doc
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",   # .docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",         # .xlsx
+    # Audio
+    "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav",
+    # Video
+    "video/mp4", "video/quicktime",
+]
+CHAT_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime"]
+
+
 # ─── URLs for Supabase Auth email redirects ───────────────────────────────────
 BASE_URL_RESET_PASSWORD = os.getenv("BASE_URL_RESET_PASSWORD", "")
 BASE_URL_SIGNIN = os.getenv("BASE_URL_SIGNIN", "")

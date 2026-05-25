@@ -63,14 +63,42 @@ class Message(models.Model):
         Chat, related_name="messages", on_delete=models.CASCADE, db_column="chat_id"
     )
     sender = models.ForeignKey(User, on_delete=models.CASCADE, db_column="sender_id")
-    content = models.TextField()
+    # content is nullable to support file-only messages (no text caption)
+    content = models.TextField(blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "messages"  # Explicitly set table name to match Supabase
+        ordering = ["timestamp"]
 
     def __str__(self):
         return f"Message from {self.sender.email} at {self.timestamp}"
+
+
+class MessageAttachment(models.Model):
+    """
+    Stores file attachments for a chat message.
+    One message can have up to settings.CHAT_MAX_FILES_PER_MESSAGE attachments.
+    Files are stored in Supabase Storage under the 'chat-uploads' bucket.
+    Path format: {chat_id}/{sender_id}/{uuid}.{ext}
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="attachments"
+    )
+    file_url = models.URLField(max_length=2000)
+    file_name = models.CharField(max_length=500)
+    file_type = models.CharField(max_length=100)   # MIME type e.g. "image/jpeg"
+    file_size = models.PositiveIntegerField()       # bytes
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "message_attachments"
+        ordering = ["uploaded_at"]
+
+    def __str__(self):
+        return f"Attachment '{self.file_name}' on message {self.message_id}"
 
 
 class Gig(models.Model):
