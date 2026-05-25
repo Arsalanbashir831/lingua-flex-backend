@@ -1,194 +1,178 @@
-# Backend Supabase Project
+# LinguaFlex Backend Service
 
-This project is a Django-based backend application integrated with Supabase and OpenAI APIs. It supports authentication with Supabase tokens and provides RESTful APIs.
+This repository houses the Django and FastAPI backend for **LinguaFlex (Parlezhub)**. It manages user and teacher accounts, class scheduling, astrological readings/insights, blog publishing, real-time multi-file chat, and Stripe payments.
 
 ## Features
 
-- Django 5.2.4 backend
-- PostgreSQL database on Supabase
-- Custom authentication with Supabase tokens
-- REST API with Django REST Framework
-- OpenAI integration support
-- Configuration through environment variables
+- **Modern Architecture**: Hybrid Django 6.x (REST API) + FastAPI (Real-time and WebSockets) backend.
+- **Supabase Integration**: PostgreSQL database, JWT authentication, and secure bucket storage.
+- **Astrology Engine**: Full natal charts, 16 divisional charts parsing, and dynamic custom-date transit caching.
+- **AI Capabilities**: Deep integration with Google Gemini API for personalized astrological readings.
+- **Payment Processing**: Stripe checkout, bulk payment methods management, and partial/full refund requests.
+- **Bookings & Availability**: Weekly bulk availability slots, reschedule logic, approvals, and Zoom video meetings integration.
+- **Unified Real-time Chat**: Unified HTTP POST endpoint for message sending (supporting optional multi-file attachments up to 10 files with magic-byte verification) + WebSocket push broadcasts.
+
+---
 
 ## Project Structure
 
-- `core/`: Main application logic including models, views, serializers, and authentication
-- `rag_app/`: Django project settings and configurations
-- `manage.py`: Django CLI utility
-- `requirements.txt`: Python dependencies
+*   `accounts/`: Manages user, teacher/consultant profiles, gigs, and database messages.
+*   `astrology/`: Astro-calculations, Natal & custom-date Transit caching, and AI insights.
+*   `blogs/`: Teacher and Admin blog authorship, publishing, and file management.
+*   `bookings/`: Booking schedules, bulk availability, cancellations, and Zoom meetings.
+*   `chat/`: FastAPI real-time chat package (main setup, routers, dependencies, and services).
+*   `core/`: Core helpers, Supabase clients, and asymmetric JWKS-based JWT token authentications.
+*   `stripe_payments/`: Stripe payments, payment methods setup, and refund handling.
+*   `rag_app/`: Main project settings, middleware, and WSGI/ASGI configurations.
+
+---
 
 ## Setup Instructions
 
-Follow these detailed steps to set up the project locally:
+Follow these steps to set up the project locally:
 
-1. **Clone the repository**
+1. **Clone the repository**:
+   ```bash
+   git clone <repository_url>
+   cd lingua-flex-backend
+   ```
 
-   - Open a terminal or command prompt.
-   - Run `git clone <repository_url>` replacing `<repository_url>` with your repository's URL.
-   - Navigate into the cloned directory: `cd backend_supabase`.
+2. **Sync Virtual Environment & Dependencies**:
+   This project uses `uv` for lightning-fast package management and locks:
+   ```bash
+   uv sync
+   ```
 
-2. **Set up a Python virtual environment**
+3. **Configure Environment Variables**:
+   Create a `.env` file in the root directory and copy the contents from `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+   Fill in all environment variables (Supabase URL, Secret keys, Stripe/Resend/Zoom/Astrology/Gemini API keys).
 
-   - Create a virtual environment by running:
-     - On Windows: `python -m venv venv`
-     - On macOS/Linux: `python3 -m venv venv`
-   - Activate the virtual environment:
-     - On Windows (PowerShell): `venv\Scripts\Activate.ps1`
-     - On Windows (cmd): `venv\Scripts\activate.bat`
-     - On macOS/Linux: `source venv/bin/activate`
+4. **Apply Database Schema Migrations**:
+   ```bash
+   uv run python manage.py migrate
+   ```
 
-3. **Install required dependencies**
+5. **Start Servers**:
+   See the **Running both servers** section below to run Django (port 8000) and FastAPI (port 8001) simultaneously.
 
-   - With the virtual environment activated, run:
-     ```
-     pip install -r requirements.txt
-     ```
-
-4. **Configure environment variables**
-
-   - Create a `.env` file in the project root directory.
-   - Define all required environment variables as listed in the Environment Variables section.
-
-5. **Apply database migrations**
-
-   - Run the following command to setup the database schema:
-     ```
-     python manage.py migrate
-     ```
-
-6. **Run the development server**
-
-   - Start the Django development server with:
-     ```
-     python manage.py runserver
-     ```
-   - The server should start at `http://127.0.0.1:8000/` by default.
-
-7. **(Optional) Create a superuser**
-   - To access Django admin, create a superuser:
-     ```
-     python manage.py createsuperuser
-     ```
-
-These steps ensure you have a working local development environment for the backend Supabase project.
-
-## API Endpoints
-
-### User Management
-
-- `POST /api/register/`: Register a new user.
-- `POST /api/login/`: Authenticate a user and obtain a token.
-- `POST /api/password-reset/`: Initiate password reset process.
-- `POST /api/password-reset/confirm/`: Confirm password reset with token.
-- `POST /api/token/refresh/`: Refresh JWT authentication token.
-- `GET /api/user/profile/`: Retrieve user profile information.
-- `POST /api/user/profile-picture/`: Upload or update user profile picture.
-- `GET /api/user/profile-picture-url/`: Get URL of the user's profile picture.
-
-### File Management
-
-- `GET /api/user-files/`: List files belonging to the authenticated user.
-- `POST /api/files/upload/`: Upload a new file.
-- `DELETE /api/user-files/<file_name>/`: Delete a specific file by its name.
+---
 
 ## Environment Variables
 
-The `.env` file should contain the following variables:
+The `.env` file must define the following variables:
 
+```ini
+# Supabase Database & API Settings
+DATABASE_URL=postgresql://...
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+SUPABASE_BLOG_IMAGE_BUCKET=blog-images
+SUPABASE_USER_UPLOADS_BUCKET=user-uploads
+CHAT_UPLOADS_BUCKET=chat-uploads
+
+# Frontend App Integration Paths
+BASE_URL=http://localhost:3000
+BASE_URL_SIGNIN=http://localhost:3000/auth/sign-in
+BASE_URL_RESET_PASSWORD=http://localhost:3000/auth/reset-password
+
+# Zoom API Credentials (Consultant Meetings)
+ZOOM_ACCOUNT_ID=...
+ZOOM_CLIENT_ID=...
+ZOOM_CLIENT_SECRET=...
+ZOOM_HOST_EMAIL=...
+
+# Email Notification Service
+RESEND_API_KEY=re_...
+
+# Payment Processing (Stripe Integration)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Astrology Engine & AI Models
+ASTROLOGY_API_KEY=ask_...
+GEMINI_API_KEY=AIzaSy...
+
+# Cryptographic Fields Encryption
+FIELD_ENCRYPTION_KEY=...
+
+# CORS & Trusted Origins
+ALLOWED_HOSTS=api.shaktiwheel.in,localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:3000,...
+CSRF_TRUSTED_ORIGINS=https://app.parlezhub.com,...
 ```
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_service_key
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-SUPABASE_DB_URL=your_database_url
-SUPABASE_DBNAME=your_db_name
-SUPABASE_USER=your_db_username
-SUPABASE_PASSWORD=your_db_password
-SUPABASE_HOST=your_db_host
-SUPABASE_PORT=your_db_port
-BASE_URL_RESET_PASSWORD=url_for_password_reset
-BASE_URL_SIGNIN=url_for_signin
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key
-```
+
+---
 
 ## Authentication
 
-- Custom Supabase token authentication is implemented in the `core.authentication` module.
-- JWT tokens configured for access and refresh with custom authentication backend.
+Authentication is handled locally by verifying Supabase's asymmetric JWKS keys. Access and refresh token validation are securely done in the `core.authentication` module for REST API routes, and in `chat.dependencies` for WebSocket connections, eliminating external API network calls.
 
-## Dependencies
+---
 
-- Django
-- Django REST Framework
-- djangorestframework-simplejwt
-- dj-database-url
-- python-dotenv
-- corsheaders
+## Primary Dependencies
 
-## License
-
-Specify your project license here.
+- **Django 6.x** & **Django REST Framework**
+- **FastAPI** & **Uvicorn**
+- **Supabase-py** & **Postgrest-py**
+- **PyJWT** & **Cryptography**
+- **Resend** (Email notifications)
+- **Stripe** (Secure Checkout & Refunds)
+- **python-multipart** (Form data file uploads)
 
 ---
 
 ## Running both servers (Django + FastAPI)
 
-This project uses Django for the primary REST API and a small FastAPI app (`fastapi_chat.py`) for realtime chat and notifications. You can run both locally during development on different ports.
+This project uses Django for the primary REST API and a modular FastAPI package (`chat/` booted via `fastapi_chat.py`) for realtime chat, unified multi-file sharing, and notifications. You can run both locally during development on different ports.
 
 Recommended ports:
 
 - Django: 8000
 - FastAPI (uvicorn): 8001
 
-PowerShell example (from project root):
+### Local Setup with `uv` (Recommended)
 
-1. Activate virtual environment and install dependencies (if not already done):
+1. **Install dependencies and sync environment**:
+   This project uses `uv` for modern, high-performance package management.
+   ```bash
+   uv sync
+   ```
 
-```powershell
-# Activate venv (PowerShell)
-.\venv\Scripts\Activate.ps1
+2. **Configure environment variables**:
+   Ensure required environment variables are set in a `.env` file (the project loads variables using `python-dotenv`). At minimum, verify Supabase DB credentials and keys (see the Environment Variables section above).
 
-# Install dependencies
-pip install -r requirements.txt
-```
+3. **Apply migrations**:
+   ```bash
+   uv run python manage.py migrate
+   ```
 
-2. Ensure required environment variables are set in a `.env` file (project loads with python-dotenv). At minimum verify Supabase DB and keys (see Environment Variables above).
+4. **Start Django (port 8000)**:
+   ```bash
+   # In Terminal A
+   uv run python manage.py runserver 0.0.0.0:8000
+   ```
 
-3. Apply migrations and create a superuser if needed:
+5. **Start FastAPI with uvicorn (port 8001)**:
+   ```bash
+   # In Terminal B
+   uv run uvicorn fastapi_chat:app --host 0.0.0.0 --port 8001 --reload
+   ```
 
-```powershell
-python manage.py migrate
-python manage.py createsuperuser
-```
+6. **Verify**:
 
-4. Start Django (port 8000):
+   - Django: http://127.0.0.1:8000/ and admin at `/django-admin/` or `/admin/`.
+   - FastAPI Docs (Swagger): http://127.0.0.1:8001/docs or http://127.0.0.1:8001/redoc
 
-```powershell
-# In Terminal A
-python manage.py runserver 0.0.0.0:8000
-```
+### Notes and Troubleshooting:
 
-5. Start FastAPI with uvicorn (port 8001):
-
-```powershell
-# In Terminal B
-python -m uvicorn fastapi_chat:app --host 0.0.0.0 --port 8001 --reload
-```
-
-6. Verify
-
-- Django: http://127.0.0.1:8000/ and admin at `/django-admin/` or `/admin/`.
-- FastAPI: http://127.0.0.1:8001/docs (Swagger) or http://127.0.0.1:8001/redoc
-
-Notes and troubleshooting:
-
-- Use separate terminals for each server so you can watch logs.
-- If `uvicorn` isn't available, use `python -m uvicorn ...` as shown above.
-- Ensure `SUPABASE_SERVICE_ROLE_KEY` and other server-only secrets are only used on the server and never exposed to client code.
-- FastAPI's token decoding in `fastapi_chat.py` currently skips signature verification; do not use that in production. Prefer verifying JWTs with Supabase JWKs or via Supabase API.
-- For production, run Django and FastAPI behind a reverse proxy (nginx) and use gunicorn/uvicorn workers instead of `runserver`/`--reload`.
+- **Separate Terminals**: Use separate terminal windows or panes for each server to watch real-time request logs.
+- **Security & JWT Verification**: FastAPI's token decoding is highly secure and fully verified locally using Supabase JWKS (asymmetric keys) with no network overhead.
+- **WebSocket Handshakes**: WebSocket connections use the deferred accept model. The handshake succeeds immediately to prevent cross-origin/pre-handshake failures, and JWT validation is done asynchronously immediately after connection.
+- **Production Setup**: For production, run Django and FastAPI behind a reverse proxy (such as nginx) and use gunicorn/uvicorn workers instead of `runserver`/`--reload`.
 
 ---
 
