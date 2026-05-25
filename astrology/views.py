@@ -597,7 +597,7 @@ class DashaView(APIView):
                 "antardasha_end": current.get("antardasha_end"),
             },
             "current_antardashas": data.get("current_antardashas", []),
-            "mahadasha_sequence": data.get("mahadasha_sequence", []),
+            "mahadasha_sequence": data.get("mahadashas", []),
         }
 
 
