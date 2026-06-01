@@ -74,8 +74,12 @@ class SyncSupabaseUserView(APIView):
 
             # Step 2: Extract name from user metadata
             user_metadata = user_data.user_metadata or {}
-            first_name = user_metadata.get("first_name") or user_metadata.get("given_name", "")
-            last_name = user_metadata.get("last_name") or user_metadata.get("family_name", "")
+            first_name = user_metadata.get("first_name") or user_metadata.get(
+                "given_name", ""
+            )
+            last_name = user_metadata.get("last_name") or user_metadata.get(
+                "family_name", ""
+            )
             full_name = user_metadata.get("full_name") or user_metadata.get("name", "")
 
             if not first_name and not last_name and full_name:
@@ -83,7 +87,9 @@ class SyncSupabaseUserView(APIView):
                 first_name = name_parts[0]
                 last_name = name_parts[1] if len(name_parts) > 1 else ""
 
-            logger.info(f"[sync] Extracted name: first={first_name!r}, last={last_name!r}")
+            logger.info(
+                f"[sync] Extracted name: first={first_name!r}, last={last_name!r}"
+            )
 
             # Step 3: Determine auth provider
             google_id = None
@@ -94,7 +100,9 @@ class SyncSupabaseUserView(APIView):
                     is_google_login = True
                     break
 
-            logger.info(f"[sync] is_google_login={is_google_login}, google_id={google_id}")
+            logger.info(
+                f"[sync] is_google_login={is_google_login}, google_id={google_id}"
+            )
 
             with transaction.atomic():
                 user = None
@@ -112,10 +120,14 @@ class SyncSupabaseUserView(APIView):
                         user.google_id = google_id
                         user.email_verified = True
                         user.save()
-                        logger.info("[sync] Updated existing user with Google OAuth info")
+                        logger.info(
+                            "[sync] Updated existing user with Google OAuth info"
+                        )
 
                 except User.DoesNotExist:
-                    logger.info(f"[sync] User not found, creating new. google_id={google_id!r}")
+                    logger.info(
+                        f"[sync] User not found, creating new. google_id={google_id!r}"
+                    )
                     try:
                         user = User.objects.create_oauth_user(
                             id=supabase_id,
@@ -123,13 +135,19 @@ class SyncSupabaseUserView(APIView):
                             first_name=first_name,
                             last_name=last_name,
                             role=provided_role,
-                            auth_provider=User.AuthProvider.GOOGLE if is_google_login else User.AuthProvider.EMAIL,
+                            auth_provider=User.AuthProvider.GOOGLE
+                            if is_google_login
+                            else User.AuthProvider.EMAIL,
                             google_id=google_id,
                         )
                         created = True
-                        logger.info(f"[sync] Created new user: id={user.id}, email={user.email}")
+                        logger.info(
+                            f"[sync] Created new user: id={user.id}, email={user.email}"
+                        )
                     except Exception as create_err:
-                        logger.error(f"[sync] Failed to create user: {create_err}", exc_info=True)
+                        logger.error(
+                            f"[sync] Failed to create user: {create_err}", exc_info=True
+                        )
                         raise
 
                 # Step 4: Create profiles if role is already known
@@ -140,23 +158,34 @@ class SyncSupabaseUserView(APIView):
                             TeacherProfile.objects.create(user_profile=user_profile)
                         logger.info(f"[sync] Created profiles for role={user.role}")
                     except Exception as profile_err:
-                        logger.error(f"[sync] Profile creation failed: {profile_err}", exc_info=True)
+                        logger.error(
+                            f"[sync] Profile creation failed: {profile_err}",
+                            exc_info=True,
+                        )
 
                 # Self-healing auto-resolve role based on existing profiles
-                has_teacher = TeacherProfile.objects.filter(user_profile__user=user).exists()
+                has_teacher = TeacherProfile.objects.filter(
+                    user_profile__user=user
+                ).exists()
                 has_student = UserProfile.objects.filter(user=user).exists()
-                
+
                 if has_teacher and has_student and user.role != User.Role.BOTH:
                     user.role = User.Role.BOTH
                     user.save(update_fields=["role"])
-                    logger.info(f"[sync] Self-healed role to BOTH because both profiles exist")
+                    logger.info(
+                        "[sync] Self-healed role to BOTH because both profiles exist"
+                    )
                 elif user.role is None and has_teacher:
                     user.role = User.Role.TEACHER
                     user.save(update_fields=["role"])
-                    logger.info(f"[sync] Self-healed role to TEACHER based on existing TeacherProfile")
+                    logger.info(
+                        "[sync] Self-healed role to TEACHER based on existing TeacherProfile"
+                    )
 
             requires_role_selection = user.role is None
-            logger.info(f"[sync] Done. created={created}, requires_role_selection={requires_role_selection}")
+            logger.info(
+                f"[sync] Done. created={created}, requires_role_selection={requires_role_selection}"
+            )
 
             user_serializer = GoogleOAuthUserSerializer(user)
             return Response(
@@ -181,7 +210,6 @@ class SyncSupabaseUserView(APIView):
                 {"success": False, "error": f"Sync failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
 
 
 class SetUserRoleView(APIView):
@@ -239,9 +267,7 @@ class SetUserRoleView(APIView):
             )
 
 
-
 class UserProfilePictureUploadView(APIView):
-
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -266,9 +292,7 @@ class UserProfilePictureUploadView(APIView):
                 try:
                     # Get the file path string from ImageFieldFile
                     previous_file_path = user.profile_picture.name
-                    delete_res = supabase.storage.from_("user-uploads").remove(
-                        [previous_file_path]
-                    )
+                    supabase.storage.from_("user-uploads").remove([previous_file_path])
                     # print(f"Previous profile picture deletion result: {delete_res}")
                 except Exception as delete_error:
                     print(
@@ -365,4 +389,3 @@ class HealthCheckView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
