@@ -248,5 +248,101 @@ class FamilyTreeTests(APITestCase):
         self.assertEqual(len(response.data["edges"]), 1)
         self.assertEqual(response.data["edges"][0]["type"], "spouse")
 
+    def test_users_autocomplete_search(self):
+        """Verify the autocomplete search API works and excludes the self user."""
+        self.client.force_authenticate(user=self.user1)
+        
+        users_url = reverse("family-tree-users-list")
+        
+        # 1. Standard listing without query should show user2
+        response = self.client.get(users_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should contain user2, but exclude user1 (requesting user)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], str(self.user2.id))
+        self.assertEqual(response.data[0]["email"], "user2@example.com")
+        self.assertEqual(response.data[0]["name"], "User Two")
+
+        # 2. Filter query matching user2 email
+        response = self.client.get(f"{users_url}?q=user2")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+        # 3. Filter query not matching anything
+        response = self.client.get(f"{users_url}?q=nonexistent")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
+    def test_create_member_linking_by_uuid(self):
+        """Verify creating a member and linking by connected_user_id pre-populates details."""
+        self.client.force_authenticate(user=self.user1)
+        
+        # Give user2 some profile details
+        self.user2.gender = "female"
+        self.user2.date_of_birth = "1992-08-20"
+        self.user2.save()
+
+        payload = {
+            "connected_user_id": str(self.user2.id)
+            # Empty name, gender, birth_date to verify pre-population
+        }
+        response = self.client.post(self.member_url_for_list(), payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["is_connected"], True)
+        self.assertEqual(response.data["name"], "User Two")
+        self.assertEqual(response.data["gender"], "female")
+        self.assertEqual(response.data["birth_date"], "1992-08-20")
+        self.assertEqual(response.data["connected_user_details"]["email"], "user2@example.com")
+
+    def test_create_member_linking_by_email(self):
+        """Verify creating a member and linking by connected_user_email."""
+        self.client.force_authenticate(user=self.user1)
+
+        payload = {
+            "name": "Custom Name override",
+            "connected_user_email": "user2@example.com"
+        }
+        response = self.client.post(self.member_url_for_list(), payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["is_connected"], True)
+        # Kept the manual name since it was explicitly supplied
+        self.assertEqual(response.data["name"], "Custom Name override")
+        self.assertEqual(response.data["connected_user_details"]["id"], str(self.user2.id))
+
+    def test_create_member_linking_fallback(self):
+        """Verify that a non-existent connection email falls back gracefully to a manual node."""
+        self.client.force_authenticate(user=self.user1)
+
+        payload = {
+            "name": "Manual Member",
+            "gender": "male",
+            "connected_user_email": "doesnotexist@example.com"
+        }
+        response = self.client.post(self.member_url_for_list(), payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["is_connected"], False)
+        self.assertIsNone(response.data["connected_user_details"])
+        self.assertEqual(response.data["name"], "Manual Member")
+
+    def test_update_member_linking_and_unlinking(self):
+        """Verify that updating connection fields can link or unlink an existing member."""
+        self.client.force_authenticate(user=self.user1)
+
+        # Create a manual member
+        member = FamilyMember.objects.create(user=self.user1, name="Old Member")
+        detail_url = reverse("family-member-detail", kwargs={"pk": member.id})
+
+        # 1. Update to link the user
+        response = self.client.put(detail_url, {"connected_user_id": str(self.user2.id)}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["is_connected"], True)
+        self.assertEqual(response.data["connected_user_details"]["email"], "user2@example.com")
+
+        # 2. Update connection fields to None to unlink
+        response = self.client.put(detail_url, {"connected_user_id": None, "connected_user_email": None}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["is_connected"], False)
+        self.assertIsNone(response.data["connected_user_details"])
+
     def member_url_for_list(self):
         return self.member_list_url

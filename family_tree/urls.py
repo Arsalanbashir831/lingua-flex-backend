@@ -1,12 +1,16 @@
 from django.urls import path
 from .views import (
     FamilyTreeView, FamilyMemberListView, FamilyMemberDetailView,
-    FamilyRelationshipView, FamilyRelationshipRemoveView
+    FamilyRelationshipView, FamilyRelationshipRemoveView,
+    FamilyTreeUsersListView
 )
 
 urlpatterns = [
     # Nodes/Edges summary
     path('', FamilyTreeView.as_view(), name='family-tree-summary'),
+
+    # Users Autocomplete
+    path('users/', FamilyTreeUsersListView.as_view(), name='family-tree-users-list'),
 
     # Members management
     path('members/', FamilyMemberListView.as_view(), name='family-member-list'),

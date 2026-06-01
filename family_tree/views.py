@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from core.models import User
 
 from .models import FamilyMember, FamilyRelationship
 from .serializers import FamilyMemberSerializer, FamilyRelationshipSerializer
@@ -21,17 +22,7 @@ class FamilyTreeView(APIView):
         member_map = {m.id: m for m in members}
 
         # Build nodes payload
-        nodes = []
-        for m in members:
-            nodes.append({
-                "id": str(m.id),
-                "name": m.name,
-                "gender": m.gender,
-                "birth_date": str(m.birth_date) if m.birth_date else None,
-                "birth_time": str(m.birth_time) if m.birth_time else None,
-                "birth_place": m.birth_place,
-                "created_at": m.created_at.isoformat()
-            })
+        nodes = FamilyMemberSerializer(members, many=True).data
 
         # Fetch all relationships connecting these members
         relationships = FamilyRelationship.objects.filter(
@@ -222,3 +213,39 @@ class FamilyRelationshipRemoveView(APIView):
             return Response({"detail": "Relationship not found."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"detail": "Relationship removed successfully."}, status=status.HTTP_200_OK)
+
+
+class FamilyTreeUsersListView(APIView):
+    """
+    GET — Autocomplete list of registered users for the family tree combo box.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+        users = User.objects.all()
+
+        if query:
+            users = users.filter(
+                Q(email__icontains=query) |
+                Q(first_name__icontains=query) |
+                Q(last_name__icontains=query)
+            )
+
+        # Exclude the requesting user to avoid self-linking in the autocomplete list
+        users = users.exclude(id=request.user.id)
+
+        # Limit to 50 results for optimal database performance
+        users = users.order_by("first_name", "last_name", "email")[:50]
+
+        data = []
+        for u in users:
+            data.append({
+                "id": str(u.id),
+                "email": u.email,
+                "first_name": u.first_name or "",
+                "last_name": u.last_name or "",
+                "name": u.get_full_name() or u.username
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
