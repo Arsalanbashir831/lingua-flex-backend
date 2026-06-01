@@ -4,6 +4,7 @@ from .views import (
     UserProfilePictureGetView,
     SyncSupabaseUserView,
     SetUserRoleView,
+    HealthCheckView,
 )
 
 urlpatterns = [
@@ -29,5 +30,11 @@ urlpatterns = [
         "auth/set-role/",
         SetUserRoleView.as_view(),
         name="set_user_role",
+    ),
+    # CI/CD health-check and uptime monitoring endpoint (no auth required)
+    path(
+        "health/",
+        HealthCheckView.as_view(),
+        name="health_check",
     ),
 ]

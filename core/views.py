@@ -327,3 +327,42 @@ class UserProfilePictureGetView(APIView):
         image_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{profile_picture_key}"
 
         return Response({"profile_picture_url": image_url}, status=status.HTTP_200_OK)
+
+
+class HealthCheckView(APIView):
+    """
+    Lightweight health-check endpoint for CI/CD pipeline verification and uptime monitoring.
+
+    GET /api/health/
+    Returns HTTP 200 if the server is up and the database is reachable.
+    Returns HTTP 503 if the database is unavailable.
+
+    This endpoint requires no authentication so that the GitHub Actions workflow
+    can poll it immediately after a deploy to confirm the server is live.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []  # No auth overhead on health checks
+
+    def get(self, request):
+        from django.db import connection
+
+        try:
+            # Perform a lightweight DB connectivity check
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+        except Exception as exc:
+            logger.error("Health check DB probe failed: %s", exc)
+            return Response(
+                {"status": "unhealthy", "detail": "Database connection failed."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(
+            {
+                "status": "ok",
+                "database": "reachable",
+            },
+            status=status.HTTP_200_OK,
+        )
+
