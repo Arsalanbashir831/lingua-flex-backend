@@ -183,6 +183,7 @@ class GeminiAIService:
         DAILY_TARA_PROMPT,
         FOREIGN_TRAVEL_PROMPT,
         D2_HORA_PROMPT,
+        D4_CHATURTHAMSHA_PROMPT,
     )
 
     PROMPTS = {
@@ -205,6 +206,7 @@ class GeminiAIService:
         "daily_tara": DAILY_TARA_PROMPT,
         "foreign_travel": FOREIGN_TRAVEL_PROMPT,
         "d2_hora": D2_HORA_PROMPT,
+        "d4_chaturthamsha": D4_CHATURTHAMSHA_PROMPT,
     }
 
     @classmethod
@@ -301,6 +303,10 @@ class GeminiAIService:
             )
         elif category == "d2_hora":
             prompt = cls._build_d2_hora_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
+        elif category == "d4_chaturthamsha":
+            prompt = cls._build_d4_chaturthamsha_prompt(
                 prompt_template, structured_data, user_prompt=user_prompt_text
             )
         else:
@@ -1667,6 +1673,212 @@ STRICT RULES:
             d2_house_lords=d2_house_lords_str,
             d2_planets=d2_planets_str,
             hora_balance=hora_balance_str,
+            d1_cross_ref=d1_cross_ref_str,
+            mahadasha=mahadasha_str,
+            antardasha=antardasha_str,
+            dasha_sequence=dasha_sequence_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: D4 Chaturthamsha Chart Analysis
+    # Placeholders: birth_time_note, d4_lagna, d4_house_lords, d4_planets,
+    #   d4_divisions_summary, d1_cross_ref, mahadasha, antardasha,
+    #   dasha_sequence, user_prompt
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_d4_chaturthamsha_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
+        _sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter",
+        }
+
+        def parse_degree(deg_val) -> float:
+            if isinstance(deg_val, (int, float)):
+                return float(deg_val)
+            try:
+                if isinstance(deg_val, str) and ":" in deg_val:
+                    parts = deg_val.split(":")
+                    deg = float(parts[0])
+                    min_val = float(parts[1]) if len(parts) > 1 else 0.0
+                    sec_val = float(parts[2]) if len(parts) > 2 else 0.0
+                    return deg + (min_val / 60.0) + (sec_val / 3600.0)
+                return float(deg_val)
+            except Exception:
+                return 0.0
+
+        def get_d4_division(deg_str_or_num) -> str:
+            d = parse_degree(deg_str_or_num)
+            d = d % 30.0
+            if d < 7.5:
+                return "Sanaki (0°00′ to 7°30′: Active effort, pursuit of happiness)"
+            elif d < 15.0:
+                return "Sanand (7°30′ to 15°00′: Acceptance, inner contentment)"
+            elif d < 22.5:
+                return "Sanat_Kumar (15°00′ to 22°30′: Youthful, adaptive happiness)"
+            else:
+                return "Sanatan (22°30′ to 30°00′: Stable, eternal, mature happiness)"
+
+        birth_time_note = (
+            "Birth time provided by user. D4 divisional charts require accurate birth "
+            "time — if birth time is approximate or unknown, D4 positions may shift."
+        )
+
+        # --- Extract D4 positions ---
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d4_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D4":
+                d4_positions = chart.get("positions", [])
+                break
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+
+        # D4 Lagna
+        d4_asc = next(
+            (p for p in d4_positions if p.get("planet") == "Ascendant"), {}
+        )
+        d4_lagna_sign = d4_asc.get("sign", "N/A")
+        d4_lagna_lord = _sign_lords.get(d4_lagna_sign, "N/A")
+        
+        # Lagna division based on D1 Ascendant degree
+        d1_asc = planet_map.get("Ascendant", {})
+        d1_asc_deg = d1_asc.get("degree", 0.0)
+        d4_lagna_division = get_d4_division(d1_asc_deg)
+        d4_lagna_str = f"{d4_lagna_sign} (Lord: {d4_lagna_lord}) | Division: {d4_lagna_division}"
+
+        # D4 house lords (all 12)
+        d4_planet_map = {p.get("planet"): p for p in d4_positions}
+        d4_house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(d4_lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = d4_planet_map.get(lord_name, {})
+            lord_sign = lord_data.get("sign", "N/A")
+            try:
+                d4_lagna_idx = cls._SIGN_ORDER.index(d4_lagna_sign)
+                lord_sign_idx = cls._SIGN_ORDER.index(lord_sign)
+                lord_d4_house = ((lord_sign_idx - d4_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                lord_d4_house = "N/A"
+            
+            # Get lord D1 degree to calculate its division
+            lord_d1_data = planet_map.get(lord_name, {})
+            lord_d1_deg = lord_d1_data.get("degree", 0.0)
+            lord_division = get_d4_division(lord_d1_deg)
+            
+            d4_house_lord_lines.append(
+                f"  House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | In D4 House {lord_d4_house} ({lord_sign})"
+                f" | Division: {lord_division}"
+            )
+        d4_house_lords_str = "\n".join(d4_house_lord_lines)
+
+        # D4 planetary placements
+        d4_planet_lines = []
+        divisions_count = {"Sanaki": 0, "Sanand": 0, "Sanat_Kumar": 0, "Sanatan": 0}
+        for p in d4_positions:
+            pname = p.get("planet", "")
+            if pname == "Ascendant":
+                continue
+            p_sign = p.get("sign", "N/A")
+            try:
+                d4_lagna_idx = cls._SIGN_ORDER.index(d4_lagna_sign)
+                p_sign_idx = cls._SIGN_ORDER.index(p_sign)
+                d4_house_num = ((p_sign_idx - d4_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                d4_house_num = "N/A"
+            
+            p_dignity = p.get("dignity", "N/A")
+            
+            # Division based on D1 degree
+            p_d1_data = planet_map.get(pname, {})
+            p_d1_deg = p_d1_data.get("degree", 0.0)
+            p_division = get_d4_division(p_d1_deg)
+            
+            div_key = p_division.split(" (")[0]
+            if div_key in divisions_count:
+                divisions_count[div_key] += 1
+                
+            d4_planet_lines.append(
+                f"  {pname} → D4 House: {d4_house_num}"
+                f" | Sign: {p_sign}"
+                f" | D4 Degree: {p.get('degree', 'N/A')}°"
+                f" | Dignity: {p_dignity}"
+                f" | D4 Division: {p_division}"
+            )
+        d4_planets_str = "\n".join(d4_planet_lines) if d4_planet_lines else "Not available"
+
+        # D4 divisions summary
+        d4_divisions_summary_str = (
+            f"  Sanaki planets: {divisions_count['Sanaki']} (desire for comfort, active effort)\n"
+            f"  Sanand planets: {divisions_count['Sanand']} (inner contentment, emotional steadiness)\n"
+            f"  Sanat_Kumar planets: {divisions_count['Sanat_Kumar']} (adaptive happiness, changing life stages)\n"
+            f"  Sanatan planets: {divisions_count['Sanatan']} (eternal / mature happiness, stable inner peace)\n"
+        )
+
+        # --- D1 cross-reference ---
+        birth_planets = cls._get_birth_planets(structured_data)
+        d1_asc = planet_map.get("Ascendant", {})
+        d1_lagna_sign = d1_asc.get("sign", "N/A")
+        d1_lagna_lord = d1_asc.get("lord", "N/A")
+        bp_map = {p.get("planet"): p for p in birth_planets}
+
+        def _d1_lord_of_house(h: int) -> str:
+            h_sign = cls._sign_of_house(d1_lagna_sign, h)
+            return _sign_lords.get(h_sign, "N/A")
+
+        d1_4th_lord = _d1_lord_of_house(4)
+
+        def _planet_summary(planet_name: str) -> str:
+            p = bp_map.get(planet_name, {})
+            return (
+                f"House {p.get('house', 'N/A')}"
+                f" | Sign: {p.get('sign', 'N/A')}"
+                f" | Dignity: {p.get('dignity', 'N/A')}"
+            )
+
+        d1_cross_ref_str = (
+            f"  D1 Lagna: {d1_lagna_sign} (Lord: {d1_lagna_lord})\n"
+            f"  D1 4th House Lord: {d1_4th_lord} — {_planet_summary(d1_4th_lord)}\n"
+            f"  D1 Moon — {_planet_summary('Moon')}\n"
+            f"  D1 Mars (Significator of Land/Property) — {_planet_summary('Mars')}\n"
+            f"  D1 Venus (Significator of Vehicles/Comforts) — {_planet_summary('Venus')}"
+        )
+
+        # --- Dasha ---
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        mahadasha_str = (
+            f"{current.get('mahadasha', 'N/A')}"
+            f" (ends: {current.get('mahadasha_end', 'N/A')})"
+        )
+        antardasha_str = (
+            f"{current.get('antardasha', 'N/A')}"
+            f" (ends: {current.get('antardasha_end', 'N/A')})"
+        )
+        antardashas = dasha_raw.get("data", {}).get("current_antardashas", [])
+        dasha_seq_lines = []
+        for a in antardashas:
+            marker = " (CURRENT)" if a.get("is_current") else ""
+            dasha_seq_lines.append(
+                f"  {a.get('planet')} Antardasha:"
+                f" {a.get('start_date')} → {a.get('end_date')}{marker}"
+            )
+        dasha_sequence_str = (
+            "\n".join(dasha_seq_lines) if dasha_seq_lines else "Not available"
+        )
+
+        return template.format(
+            user_prompt=user_prompt,
+            birth_time_note=birth_time_note,
+            d4_lagna=d4_lagna_str,
+            d4_house_lords=d4_house_lords_str,
+            d4_planets=d4_planets_str,
+            d4_divisions_summary=d4_divisions_summary_str,
             d1_cross_ref=d1_cross_ref_str,
             mahadasha=mahadasha_str,
             antardasha=antardasha_str,
