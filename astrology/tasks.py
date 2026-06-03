@@ -146,6 +146,21 @@ def generate_all_insights_async(birth_profile_id: int):
         "dasha": natal_cache.dasha_data,
         "kp_system": natal_cache.kp_data,
         "transits": transit_data,
+        # Personal profile context — used by marriage analysis builder
+        "profile_context": {
+            "name": profile.display_name,
+            "gender": (profile.user.gender if profile.user else None),
+            "birth_year": profile.birth_year,
+            "birth_month": profile.birth_month,
+            "birth_day": profile.birth_day,
+            "birth_hour": profile.birth_hour,
+            "birth_minute": profile.birth_minute,
+            "city": profile.city,
+            "country_code": profile.country_code,
+            "marriage_date": profile.marriage_date,
+            "kids": profile.kids,
+            "comments": profile.comments,
+        },
     }
 
     # 4. Iterate over all valid categories

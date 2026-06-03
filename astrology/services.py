@@ -580,53 +580,239 @@ STRICT RULES:
         )
 
     # -------------------------------------------------------------------------
-    # Builder: Marriage Timing
-    # Placeholders: lagna, house2, house7, house11, mahadasha, antardasha, dasha_sequence
+    # Builder: Marriage Analysis (Comprehensive)
+    # Placeholders: name, gender, date_of_birth, time_of_birth, place_of_birth,
+    #   birth_time_note, marital_status, personal_context, lagna,
+    #   d1_house_lords, d1_planets, d9_lagna, d9_house_lords, d9_planets,
+    #   mahadasha, antardasha, dasha_sequence, transits
     # -------------------------------------------------------------------------
     @classmethod
     def _build_marriage_prompt(
         cls, template: str, structured_data: dict, user_prompt: str = ""
     ) -> str:
+        import json
+
+        # --- Profile context (personal & birth details) ---
+        ctx = structured_data.get("profile_context", {})
+        name = ctx.get("name") or "Not provided"
+        gender = ctx.get("gender") or "Not specified"
+        birth_year = ctx.get("birth_year", "?")
+        birth_month = ctx.get("birth_month", "?")
+        birth_day = ctx.get("birth_day", "?")
+        birth_hour = ctx.get("birth_hour", "?")
+        birth_minute = ctx.get("birth_minute", "?")
+        city = ctx.get("city", "?")
+        country_code = ctx.get("country_code", "?")
+        marriage_date = ctx.get("marriage_date")
+        kids = ctx.get("kids")
+        comments = ctx.get("comments")
+
+        date_of_birth = (
+            f"{birth_year}-{str(birth_month).zfill(2)}-{str(birth_day).zfill(2)}"
+        )
+        time_of_birth = f"{str(birth_hour).zfill(2)}:{str(birth_minute).zfill(2)}"
+        place_of_birth = f"{city}, {country_code}"
+        birth_time_note = (
+            "Birth time fields are provided by the user. "
+            "Assumed accurate unless stated otherwise."
+        )
+
+        # Derive marital status
+        if marriage_date:
+            marital_status = f"Married (marriage date on record: {marriage_date})"
+        elif kids:
+            marital_status = (
+                f"Likely married or in committed relationship (has {kids} child/children)"
+            )
+        else:
+            marital_status = "Unknown / Not specified"
+
+        # Personal context block
+        ctx_parts = []
+        if marriage_date:
+            ctx_parts.append(f"Marriage Date: {marriage_date}")
+        if kids is not None:
+            ctx_parts.append(f"Number of Children: {kids}")
+        if comments:
+            ctx_parts.append(f"Additional Notes: {comments}")
+        personal_context = (
+            "\n".join(ctx_parts) if ctx_parts else "No additional context provided."
+        )
+
+        # --- Lagna + sign order helper ---
+        _sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter",
+        }
+
         planet_map = cls._get_d1_planet_map(structured_data)
         asc = planet_map.get("Ascendant", {})
         lagna_sign = asc.get("sign", "N/A")
         lagna_lord = asc.get("lord", "N/A")
 
-        house2_sign = cls._sign_of_house(lagna_sign, 2)
-        house7_sign = cls._sign_of_house(lagna_sign, 7)
-        house11_sign = cls._sign_of_house(lagna_sign, 11)
+        # --- D1 house lords (all 12) ---
+        birth_planets = cls._get_birth_planets(structured_data)
+        bp_map = {p.get("planet"): p for p in birth_planets}
 
+        # Build house → [planets] map for conjunction detection
+        h_to_planets: dict = {}
+        for p in birth_planets:
+            h = p.get("house")
+            if h:
+                h_to_planets.setdefault(h, []).append(p.get("planet"))
+
+        d1_house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = bp_map.get(lord_name, {})
+            lord_house = lord_data.get("house", "N/A")
+            lord_sign = lord_data.get("sign", "N/A")
+            lord_dignity = lord_data.get("dignity", "N/A")
+            d1_house_lord_lines.append(
+                f"  House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | Placed in House {lord_house} ({lord_sign})"
+                f" | Dignity: {lord_dignity}"
+            )
+        d1_house_lords_str = "\n".join(d1_house_lord_lines)
+
+        # --- Full D1 planetary data ---
+        d1_lines = []
+        for p in birth_planets:
+            pname = p.get("planet", "")
+            house = p.get("house")
+            conditions = []
+            if p.get("is_retrograde") == "Yes":
+                conditions.append("Retrograde")
+            if p.get("is_combust") == "Yes":
+                conditions.append("Combust")
+            cond_str = ", ".join(conditions) if conditions else "Direct/Normal"
+            conjuncts = [
+                x for x in h_to_planets.get(house, []) if x != pname
+            ]
+            conj_str = ", ".join(conjuncts) if conjuncts else "None"
+            d1_lines.append(
+                f"  {pname} → House: {house}"
+                f" | Sign: {p.get('sign', 'N/A')}"
+                f" | Degree: {p.get('degree', 'N/A')}°"
+                f" | Nakshatra: {p.get('nakshatra', 'N/A')}"
+                f" | Dignity: {p.get('dignity', 'N/A')}"
+                f" | Conditions: {cond_str}"
+                f" | Conjunct: {conj_str}"
+            )
+        d1_planets_str = "\n".join(d1_lines) if d1_lines else "Not available"
+
+        # --- D9 data ---
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d9_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D9":
+                d9_positions = chart.get("positions", [])
+                break
+
+        # D9 Lagna
+        d9_asc = next(
+            (p for p in d9_positions if p.get("planet") == "Ascendant"), {}
+        )
+        d9_lagna_sign = d9_asc.get("sign", "N/A")
+        d9_lagna_lord = _sign_lords.get(d9_lagna_sign, "N/A")
+        d9_lagna_str = f"{d9_lagna_sign} (Lord: {d9_lagna_lord})"
+
+        # D9 house lords — derived from D9 ascendant
+        d9_planet_map = {p.get("planet"): p for p in d9_positions}
+        d9_house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(d9_lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = d9_planet_map.get(lord_name, {})
+            lord_sign = lord_data.get("sign", "N/A")
+            # Calculate D9 house for this lord from its sign + D9 lagna
+            try:
+                d9_lagna_idx = cls._SIGN_ORDER.index(d9_lagna_sign)
+                lord_sign_idx = cls._SIGN_ORDER.index(lord_sign)
+                lord_d9_house = ((lord_sign_idx - d9_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                lord_d9_house = "N/A"
+            d9_house_lord_lines.append(
+                f"  D9 House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | In D9 House {lord_d9_house} ({lord_sign})"
+            )
+        d9_house_lords_str = "\n".join(d9_house_lord_lines)
+
+        # D9 planetary positions with calculated house numbers
+        d9_planet_lines = []
+        for p in d9_positions:
+            pname = p.get("planet", "")
+            if pname == "Ascendant":
+                continue
+            p_sign = p.get("sign", "N/A")
+            try:
+                d9_lagna_idx = cls._SIGN_ORDER.index(d9_lagna_sign)
+                p_sign_idx = cls._SIGN_ORDER.index(p_sign)
+                d9_house_num = ((p_sign_idx - d9_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                d9_house_num = "N/A"
+            d9_planet_lines.append(
+                f"  {pname} → D9 House: {d9_house_num}"
+                f" | Sign: {p_sign}"
+                f" | Degree: {p.get('degree', 'N/A')}°"
+            )
+        d9_planets_str = (
+            "\n".join(d9_planet_lines) if d9_planet_lines else "Not available"
+        )
+
+        # --- Dasha ---
         dasha_raw = structured_data.get("dasha", {})
         current = dasha_raw.get("data", {}).get("current_period", {})
-        mahadasha = current.get("mahadasha", "N/A")
-        antardasha = current.get("antardasha", "N/A")
+        mahadasha_str = (
+            f"{current.get('mahadasha', 'N/A')}"
+            f" (ends: {current.get('mahadasha_end', 'N/A')})"
+        )
+        antardasha_str = (
+            f"{current.get('antardasha', 'N/A')}"
+            f" (ends: {current.get('antardasha_end', 'N/A')})"
+        )
 
         antardashas = dasha_raw.get("data", {}).get("current_antardashas", [])
-        dasha_lines = []
+        dasha_seq_lines = []
         for a in antardashas:
             marker = " (CURRENT)" if a.get("is_current") else ""
-            dasha_lines.append(
-                f"  {a.get('planet')} Antardasha: {a.get('start_date')} to {a.get('end_date')}{marker}"
+            dasha_seq_lines.append(
+                f"  {a.get('planet')} Antardasha:"
+                f" {a.get('start_date')} → {a.get('end_date')}{marker}"
             )
-        dasha_sequence = "\n".join(dasha_lines) if dasha_lines else "Not available"
+        dasha_sequence_str = (
+            "\n".join(dasha_seq_lines) if dasha_seq_lines else "Not available"
+        )
 
+        # --- Transits ---
         transit_raw = structured_data.get("transits", {})
         transits_list = transit_raw.get("data", {}).get("transits", [])
-        import json
-
         transits_str = (
             json.dumps(transits_list, indent=2) if transits_list else "Not available"
         )
 
         return template.format(
             user_prompt=user_prompt,
+            name=name,
+            gender=gender,
+            date_of_birth=date_of_birth,
+            time_of_birth=time_of_birth,
+            place_of_birth=place_of_birth,
+            birth_time_note=birth_time_note,
+            marital_status=marital_status,
+            personal_context=personal_context,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
-            house2=house2_sign,
-            house7=house7_sign,
-            house11=house11_sign,
-            mahadasha=mahadasha,
-            antardasha=antardasha,
-            dasha_sequence=dasha_sequence,
+            d1_house_lords=d1_house_lords_str,
+            d1_planets=d1_planets_str,
+            d9_lagna=d9_lagna_str,
+            d9_house_lords=d9_house_lords_str,
+            d9_planets=d9_planets_str,
+            mahadasha=mahadasha_str,
+            antardasha=antardasha_str,
+            dasha_sequence=dasha_sequence_str,
             transits=transits_str,
         )
 
