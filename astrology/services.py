@@ -181,6 +181,7 @@ class GeminiAIService:
         LAGNA_LORD_PROMPT,
         CHALLENGES_PROMPT,
         DAILY_TARA_PROMPT,
+        FOREIGN_TRAVEL_PROMPT,
     )
 
     PROMPTS = {
@@ -201,6 +202,7 @@ class GeminiAIService:
         "lagna_lord": LAGNA_LORD_PROMPT,
         "challenges": CHALLENGES_PROMPT,
         "daily_tara": DAILY_TARA_PROMPT,
+        "foreign_travel": FOREIGN_TRAVEL_PROMPT,
     }
 
     @classmethod
@@ -289,6 +291,10 @@ class GeminiAIService:
             )
         elif category == "astro_energy":
             prompt = cls._build_astro_energy_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
+        elif category == "foreign_travel":
+            prompt = cls._build_foreign_travel_prompt(
                 prompt_template, structured_data, user_prompt=user_prompt_text
             )
         else:
@@ -1165,6 +1171,117 @@ STRICT RULES:
             user_prompt=user_prompt,
             lagna=f"{lagna_sign} (Lord: {lagna_lord})",
             planets=planets_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: Foreign Travel & Settlement
+    # Placeholders: lagna, house_lords, d1_data, d9_data, d4_data, d10_data,
+    #               d24_data, dasha, dasha_sequence, transits
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_foreign_travel_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
+        import json
+
+        # --- Lagna + lord ---
+        planet_map = cls._get_d1_planet_map(structured_data)
+        asc = planet_map.get("Ascendant", {})
+        lagna_sign = asc.get("sign", "N/A")
+        lagna_lord = asc.get("lord", "N/A")
+
+        # --- House lords: for each house, find the ruling planet and where it sits ---
+        _sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter",
+        }
+        birth_planets = cls._get_birth_planets(structured_data)
+        bp_map = {p.get("planet"): p for p in birth_planets}
+
+        house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = bp_map.get(lord_name, {})
+            lord_house = lord_data.get("house", "N/A")
+            lord_sign = lord_data.get("sign", "N/A")
+            lord_dignity = lord_data.get("dignity", "N/A")
+            house_lord_lines.append(
+                f"  House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | Placed in House {lord_house} ({lord_sign})"
+                f" | Dignity: {lord_dignity}"
+            )
+        house_lords_str = "\n".join(house_lord_lines)
+
+        # --- Full D1 planet data (sign, house, degree, dignity, retrograde, combust) ---
+        d1_lines = []
+        for p in birth_planets:
+            conditions = []
+            if p.get("is_retrograde") == "Yes":
+                conditions.append("Retrograde")
+            if p.get("is_combust") == "Yes":
+                conditions.append("Combust")
+            cond_str = ", ".join(conditions) if conditions else "Direct/Normal"
+            d1_lines.append(
+                f"  {p.get('planet')} → Sign: {p.get('sign', 'N/A')}"
+                f" | House: {p.get('house', 'N/A')}"
+                f" | Degree: {p.get('degree', 'N/A')}°"
+                f" | Dignity: {p.get('dignity', 'N/A')}"
+                f" | Nakshatra: {p.get('nakshatra', 'N/A')}"
+                f" | Conditions: {cond_str}"
+            )
+        d1_data_str = "\n".join(d1_lines) if d1_lines else "Not available"
+
+        # --- Extract D4, D9, D10, D24 from divisional_data ---
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        charts_by_code = {c.get("chart"): c.get("positions", []) for c in all_charts}
+
+        d9_str = json.dumps(charts_by_code.get("D9", []), indent=2)
+        d4_str = json.dumps(charts_by_code.get("D4", []), indent=2)
+        d10_str = json.dumps(charts_by_code.get("D10", []), indent=2)
+        d24_str = json.dumps(charts_by_code.get("D24", []), indent=2)
+
+        # --- Dasha: current period + upcoming antardasha sequence ---
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        dasha_str = (
+            f"Mahadasha: {current.get('mahadasha', 'N/A')}"
+            f" (ends: {current.get('mahadasha_end', 'N/A')})\n"
+            f"Antardasha: {current.get('antardasha', 'N/A')}"
+            f" (ends: {current.get('antardasha_end', 'N/A')})"
+        )
+
+        antardashas = dasha_raw.get("data", {}).get("current_antardashas", [])
+        dasha_seq_lines = []
+        for a in antardashas:
+            marker = " (CURRENT)" if a.get("is_current") else ""
+            dasha_seq_lines.append(
+                f"  {a.get('planet')} Antardasha:"
+                f" {a.get('start_date')} → {a.get('end_date')}{marker}"
+            )
+        dasha_sequence_str = "\n".join(dasha_seq_lines) if dasha_seq_lines else "Not available"
+
+        # --- Today's transits ---
+        transit_raw = structured_data.get("transits", {})
+        transits_list = transit_raw.get("data", {}).get("transits", [])
+        transits_str = (
+            json.dumps(transits_list, indent=2) if transits_list else "Not available"
+        )
+
+        return template.format(
+            user_prompt=user_prompt,
+            lagna=f"{lagna_sign} (Lord: {lagna_lord})",
+            house_lords=house_lords_str,
+            d1_data=d1_data_str,
+            d9_data=d9_str,
+            d4_data=d4_str,
+            d10_data=d10_str,
+            d24_data=d24_str,
+            dasha=dasha_str,
+            dasha_sequence=dasha_sequence_str,
+            transits=transits_str,
         )
 
     @classmethod

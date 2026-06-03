@@ -186,14 +186,29 @@ def _build_natal_response(
 
     # Dynamic divisional charts extraction
     requested_div_charts = [
-        "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12", "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D7",
+        "D9",
+        "D10",
+        "D12",
+        "D16",
+        "D20",
+        "D24",
+        "D27",
+        "D30",
+        "D40",
+        "D45",
+        "D60",
     ]
     charts = {c["chart"]: c for c in div_data.get("charts", [])}
 
     for chart_code in requested_div_charts:
         chart_obj = charts.get(chart_code, {})
         chart_tables = _build_ui_tables(chart_obj.get("positions", []), planets_list)
-        
+
         key_name = f"{chart_code.lower()}_chart"
         response_dict[key_name] = {
             "name": chart_obj.get("name", chart_code),
@@ -350,9 +365,19 @@ class BirthProfileView(APIView):
                 old_val = getattr(profile, field)
                 new_val = request.data[field]
                 # Coerce integers for proper comparison
-                if field in ["birth_year", "birth_month", "birth_day", "birth_hour", "birth_minute"]:
+                if field in [
+                    "birth_year",
+                    "birth_month",
+                    "birth_day",
+                    "birth_hour",
+                    "birth_minute",
+                ]:
                     try:
-                        if old_val is None or new_val is None or int(old_val) != int(new_val):
+                        if (
+                            old_val is None
+                            or new_val is None
+                            or int(old_val) != int(new_val)
+                        ):
                             birth_details_changed = True
                             break
                     except (ValueError, TypeError):
@@ -374,7 +399,10 @@ class BirthProfileView(APIView):
             # Trigger background insight generation
             import threading
             from .tasks import generate_all_insights_async
-            threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+
+            threading.Thread(
+                target=generate_all_insights_async, args=(profile.id,)
+            ).start()
         else:
             profile = serializer.save()
 
@@ -383,7 +411,7 @@ class BirthProfileView(APIView):
 
 class NatalChartView(APIView):
     """
-    GET — Returns combined D1 + D9 chart data plus full planet details.
+    GET — Returns combined D1 - D60 chart data plus full planet details.
 
     Supports ?student_id=X for teachers with delegated access.
     Data is computed once (on first request) and cached permanently in
@@ -401,15 +429,32 @@ class NatalChartView(APIView):
         # Return from cache if available
         try:
             cache = profile.natal_cache
-            
+
             # Verify if the cache has all the required divisional charts (e.g. check for 'D60')
             div_data = cache.divisional_data.get("data", {})
             cached_charts = {c["chart"] for c in div_data.get("charts", [])}
             required_charts = {
-                "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12", "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"
+                "D1",
+                "D2",
+                "D3",
+                "D4",
+                "D7",
+                "D9",
+                "D10",
+                "D12",
+                "D16",
+                "D20",
+                "D24",
+                "D27",
+                "D30",
+                "D40",
+                "D45",
+                "D60",
             }
             if not required_charts.issubset(cached_charts):
-                logger.info(f"Cached charts list is incomplete for user {profile.display_name}. Triggering cache miss...")
+                logger.info(
+                    f"Cached charts list is incomplete for user {profile.display_name}. Triggering cache miss..."
+                )
                 raise NatalChartCache.DoesNotExist
 
             msg = f"Natal chart retrieved from DATABASE cache for user: {profile.display_name}"
@@ -479,7 +524,7 @@ class TransitView(APIView):
 
         # Check if a specific transit date was requested
         transit_date_str = request.query_params.get("transit_date")
-        
+
         if transit_date_str:
             try:
                 # Parse to validate format YYYY-MM-DD
@@ -487,10 +532,14 @@ class TransitView(APIView):
             except ValueError:
                 return Response(
                     {"detail": "Invalid transit_date format. Use YYYY-MM-DD."},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
-            tz = pytz.timezone(profile.timezone_str) if profile.timezone_str else pytz.utc
+            tz = (
+                pytz.timezone(profile.timezone_str)
+                if profile.timezone_str
+                else pytz.utc
+            )
             target_date = datetime.now(tz).date()
             transit_date_str = None  # defaults to today in API
 
@@ -561,16 +610,22 @@ class DashaView(APIView):
             natal_cache = profile.natal_cache
         except NatalChartCache.DoesNotExist:
             return Response(
-                {"detail": "Natal chart not yet computed. Please fetch the natal chart first."},
+                {
+                    "detail": "Natal chart not yet computed. Please fetch the natal chart first."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if natal_cache.dasha_data:
-            logger.info(f"Dasha data retrieved from DATABASE cache for user: {profile.display_name}")
+            logger.info(
+                f"Dasha data retrieved from DATABASE cache for user: {profile.display_name}"
+            )
             return Response(self._shape_response(natal_cache.dasha_data))
 
         # Cache miss — fetch from API
-        logger.info(f"Dasha data CACHE MISS for user: {profile.display_name}. Calling Astrology.io API...")
+        logger.info(
+            f"Dasha data CACHE MISS for user: {profile.display_name}. Calling Astrology.io API..."
+        )
 
         client = AstrologyAPIClient()
         try:
@@ -790,6 +845,7 @@ class AstrologyInsightView(APIView):
                     "benefic_planets",
                     "malefic_planets",
                     "chart_analysis",
+                    "foreign_travel",
                 ]:
                     if not natal_cache.dasha_data:
                         natal_cache.dasha_data = client.get_vimshottari_dasha(profile)
@@ -800,7 +856,7 @@ class AstrologyInsightView(APIView):
                         natal_cache.kp_data = client.get_kp_system(profile)
                     data_to_pass["kp_system"] = natal_cache.kp_data
 
-                if category in ["marriage", "medical", "darakaraka"]:
+                if category in ["marriage", "medical", "darakaraka", "foreign_travel"]:
                     from django.utils.timezone import localtime, now
 
                     today_local = localtime(now()).date()
@@ -955,6 +1011,7 @@ class AstrologyInsightChatView(APIView):
             structured_data["kp_system"] = natal_cache.kp_data
 
         from django.utils.timezone import localtime, now
+
         today_local = localtime(now()).date()
         transit_cache = TransitCache.objects.filter(
             birth_profile=profile, cached_for_date=today_local
@@ -1270,9 +1327,19 @@ class GuestProfileDetailView(APIView):
                 old_val = getattr(profile, field)
                 new_val = request.data[field]
                 # Coerce integers for proper comparison
-                if field in ["birth_year", "birth_month", "birth_day", "birth_hour", "birth_minute"]:
+                if field in [
+                    "birth_year",
+                    "birth_month",
+                    "birth_day",
+                    "birth_hour",
+                    "birth_minute",
+                ]:
                     try:
-                        if old_val is None or new_val is None or int(old_val) != int(new_val):
+                        if (
+                            old_val is None
+                            or new_val is None
+                            or int(old_val) != int(new_val)
+                        ):
                             birth_details_changed = True
                             break
                     except (ValueError, TypeError):
@@ -1294,7 +1361,10 @@ class GuestProfileDetailView(APIView):
             # Trigger background insight generation
             import threading
             from .tasks import generate_all_insights_async
-            threading.Thread(target=generate_all_insights_async, args=(profile.id,)).start()
+
+            threading.Thread(
+                target=generate_all_insights_async, args=(profile.id,)
+            ).start()
         else:
             profile = serializer.save()
 

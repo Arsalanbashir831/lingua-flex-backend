@@ -151,6 +151,7 @@ class AstrologyInsight(models.Model):
         ("challenges", "Challenges and Learning"),
         ("divisional-charts", "Divisional Charts Context"),
         ("dasha", "Vimshottari Dasha Context"),
+        ("foreign_travel", "Foreign Travel & Settlement"),
     )
 
     birth_profile = models.ForeignKey(
