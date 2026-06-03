@@ -154,6 +154,7 @@ class AstrologyInsight(models.Model):
         ("foreign_travel", "Foreign Travel & Settlement"),
         ("d2_hora", "D2 Hora Chart Analysis"),
         ("d4_chaturthamsha", "D4 Chaturthamsha Chart Analysis"),
+        ("d10_dashamsha", "D10 Dashamsha Chart Analysis"),
     )
 
     birth_profile = models.ForeignKey(

@@ -848,6 +848,7 @@ class AstrologyInsightView(APIView):
                     "foreign_travel",
                     "d2_hora",
                     "d4_chaturthamsha",
+                    "d10_dashamsha",
                 ]:
                     if not natal_cache.dasha_data:
                         natal_cache.dasha_data = client.get_vimshottari_dasha(profile)
