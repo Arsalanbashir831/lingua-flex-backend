@@ -852,6 +852,7 @@ class AstrologyInsightView(APIView):
                     "d7_saptamsha",
                     "d12_dwadashamsha",
                     "d60_shashtiamsha",
+                    "d27_saptavimshamsha",
                 ]:
                     if not natal_cache.dasha_data:
                         natal_cache.dasha_data = client.get_vimshottari_dasha(profile)

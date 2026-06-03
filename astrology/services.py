@@ -188,6 +188,7 @@ class GeminiAIService:
         D7_SAPTAMSHA_PROMPT,
         D12_DWADASHAMSHA_PROMPT,
         D60_SHASHTIAMSHA_PROMPT,
+        D27_SAPTAVIMSHAMSHA_PROMPT,
     )
 
     PROMPTS = {
@@ -215,6 +216,7 @@ class GeminiAIService:
         "d7_saptamsha": D7_SAPTAMSHA_PROMPT,
         "d12_dwadashamsha": D12_DWADASHAMSHA_PROMPT,
         "d60_shashtiamsha": D60_SHASHTIAMSHA_PROMPT,
+        "d27_saptavimshamsha": D27_SAPTAVIMSHAMSHA_PROMPT,
     }
 
     @classmethod
@@ -331,6 +333,10 @@ class GeminiAIService:
             )
         elif category == "d60_shashtiamsha":
             prompt = cls._build_d60_shashtiamsha_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
+        elif category == "d27_saptavimshamsha":
+            prompt = cls._build_d27_saptavimshamsha_prompt(
                 prompt_template, structured_data, user_prompt=user_prompt_text
             )
         else:
@@ -2630,6 +2636,162 @@ STRICT RULES:
             d60_lagna=d60_lagna_str,
             d60_house_lords=d60_house_lords_str,
             d60_planets=d60_planets_str,
+            d1_cross_ref=d1_cross_ref_str,
+            mahadasha=mahadasha_str,
+            antardasha=antardasha_str,
+            dasha_sequence=dasha_sequence_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: D27 Saptavimshamsha Chart Analysis
+    # Placeholders: birth_time_note, d27_lagna, d27_house_lords, d27_planets,
+    #   d1_cross_ref, mahadasha, antardasha, dasha_sequence, user_prompt
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_d27_saptavimshamsha_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
+        _sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter",
+        }
+
+        birth_time_note = (
+            "Birth time provided by user. D27 Saptavimshamsha divisional chart requires "
+            "accurate birth time — if birth time is approximate or unknown, D27 positions may shift."
+        )
+
+        # --- Extract D27 positions ---
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d27_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D27":
+                d27_positions = chart.get("positions", [])
+                break
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+
+        # D27 Lagna
+        d27_asc = next(
+            (p for p in d27_positions if p.get("planet") == "Ascendant"), {}
+        )
+        d27_lagna_sign = d27_asc.get("sign", "N/A")
+        d27_lagna_lord = _sign_lords.get(d27_lagna_sign, "N/A")
+        d27_lagna_str = f"{d27_lagna_sign} (Lord: {d27_lagna_lord})"
+
+        # D27 house lords
+        d27_planet_map = {p.get("planet"): p for p in d27_positions}
+        d27_house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(d27_lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = d27_planet_map.get(lord_name, {})
+            lord_sign = lord_data.get("sign", "N/A")
+            try:
+                d27_lagna_idx = cls._SIGN_ORDER.index(d27_lagna_sign)
+                lord_sign_idx = cls._SIGN_ORDER.index(lord_sign)
+                lord_d27_house = ((lord_sign_idx - d27_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                lord_d27_house = "N/A"
+            
+            d27_house_lord_lines.append(
+                f"  House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | In D27 House {lord_d27_house} ({lord_sign})"
+            )
+        d27_house_lords_str = "\n".join(d27_house_lord_lines)
+
+        # D27 planetary placements
+        d27_planet_lines = []
+        for p in d27_positions:
+            pname = p.get("planet", "")
+            if pname == "Ascendant":
+                continue
+            p_sign = p.get("sign", "N/A")
+            try:
+                d27_lagna_idx = cls._SIGN_ORDER.index(d27_lagna_sign)
+                p_sign_idx = cls._SIGN_ORDER.index(p_sign)
+                d27_house_num = ((p_sign_idx - d27_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                d27_house_num = "N/A"
+            
+            p_dignity = p.get("dignity", "N/A")
+            p_aspects = p.get("aspects", [])
+            
+            d27_planet_lines.append(
+                f"  {pname} → D27 House: {d27_house_num}"
+                f" | Sign: {p_sign}"
+                f" | D27 Degree: {p.get('degree', 'N/A')}°"
+                f" | Dignity: {p_dignity}"
+                f" | Aspects: {p_aspects}"
+            )
+        d27_planets_str = "\n".join(d27_planet_lines) if d27_planet_lines else "Not available"
+
+        # --- D1 cross-reference ---
+        birth_planets = cls._get_birth_planets(structured_data)
+        d1_asc = planet_map.get("Ascendant", {})
+        d1_lagna_sign = d1_asc.get("sign", "N/A")
+        d1_lagna_lord = d1_asc.get("lord", "N/A")
+        bp_map = {p.get("planet"): p for p in birth_planets}
+
+        def _d1_lord_of_house(h: int) -> str:
+            h_sign = cls._sign_of_house(d1_lagna_sign, h)
+            return _sign_lords.get(h_sign, "N/A")
+
+        d1_3rd_lord = _d1_lord_of_house(3)
+        d1_6th_lord = _d1_lord_of_house(6)
+        d1_8th_lord = _d1_lord_of_house(8)
+        d1_12th_lord = _d1_lord_of_house(12)
+
+        def _planet_summary(planet_name: str) -> str:
+            p = bp_map.get(planet_name, {})
+            return (
+                f"House {p.get('house', 'N/A')}"
+                f" | Sign: {p.get('sign', 'N/A')} ({p.get('dignity', 'N/A')})"
+            )
+
+        d1_cross_ref_str = (
+            f"  D1 Lagna: {d1_lagna_sign} (Lord: {d1_lagna_lord})\n"
+            f"  D1 Sun (Willpower) — {_planet_summary('Sun')}\n"
+            f"  D1 Moon (Mind/Emotion) — {_planet_summary('Moon')}\n"
+            f"  D1 Mars (Courage/Resilience) — {_planet_summary('Mars')}\n"
+            f"  D1 Saturn (Endurance/Fear) — {_planet_summary('Saturn')}\n"
+            f"  D1 3rd House Lord (Effort): {d1_3rd_lord} — {_planet_summary(d1_3rd_lord)}\n"
+            f"  D1 6th House Lord (Obstacles): {d1_6th_lord} — {_planet_summary(d1_6th_lord)}\n"
+            f"  D1 8th House Lord (Crisis): {d1_8th_lord} — {_planet_summary(d1_8th_lord)}\n"
+            f"  D1 12th House Lord (Vulnerabilities): {d1_12th_lord} — {_planet_summary(d1_12th_lord)}"
+        )
+
+        # --- Dasha ---
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        mahadasha_str = (
+            f"{current.get('mahadasha', 'N/A')}"
+            f" (ends: {current.get('mahadasha_end', 'N/A')})"
+        )
+        antardasha_str = (
+            f"{current.get('antardasha', 'N/A')}"
+            f" (ends: {current.get('antardasha_end', 'N/A')})"
+        )
+        antardashas = dasha_raw.get("data", {}).get("current_antardashas", [])
+        dasha_seq_lines = []
+        for a in antardashas:
+            marker = " (CURRENT)" if a.get("is_current") else ""
+            dasha_seq_lines.append(
+                f"  {a.get('planet')} Antardasha:"
+                f" {a.get('start_date')} → {a.get('end_date')}{marker}"
+            )
+        dasha_sequence_str = (
+            "\n".join(dasha_seq_lines) if dasha_seq_lines else "Not available"
+        )
+
+        return template.format(
+            user_prompt=user_prompt,
+            birth_time_note=birth_time_note,
+            d27_lagna=d27_lagna_str,
+            d27_house_lords=d27_house_lords_str,
+            d27_planets=d27_planets_str,
             d1_cross_ref=d1_cross_ref_str,
             mahadasha=mahadasha_str,
             antardasha=antardasha_str,

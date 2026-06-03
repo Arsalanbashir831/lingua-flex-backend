@@ -158,6 +158,7 @@ class AstrologyInsight(models.Model):
         ("d7_saptamsha", "D7 Saptamsha Chart Analysis"),
         ("d12_dwadashamsha", "D12 Dwadashamsha Chart Analysis"),
         ("d60_shashtiamsha", "D60 Shashtiamsha Chart Analysis"),
+        ("d27_saptavimshamsha", "D27 Saptavimshamsha Chart Analysis"),
     )
 
     birth_profile = models.ForeignKey(
