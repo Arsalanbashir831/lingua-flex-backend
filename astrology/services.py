@@ -182,6 +182,7 @@ class GeminiAIService:
         CHALLENGES_PROMPT,
         DAILY_TARA_PROMPT,
         FOREIGN_TRAVEL_PROMPT,
+        D2_HORA_PROMPT,
     )
 
     PROMPTS = {
@@ -203,6 +204,7 @@ class GeminiAIService:
         "challenges": CHALLENGES_PROMPT,
         "daily_tara": DAILY_TARA_PROMPT,
         "foreign_travel": FOREIGN_TRAVEL_PROMPT,
+        "d2_hora": D2_HORA_PROMPT,
     }
 
     @classmethod
@@ -295,6 +297,10 @@ class GeminiAIService:
             )
         elif category == "foreign_travel":
             prompt = cls._build_foreign_travel_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
+        elif category == "d2_hora":
+            prompt = cls._build_d2_hora_prompt(
                 prompt_template, structured_data, user_prompt=user_prompt_text
             )
         else:
@@ -1468,6 +1474,203 @@ STRICT RULES:
             dasha=dasha_str,
             dasha_sequence=dasha_sequence_str,
             transits=transits_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: D2 Hora Chart Analysis
+    # Placeholders: birth_time_note, hora_method_note, d2_lagna, d2_house_lords,
+    #   d2_planets, hora_balance, d1_cross_ref, mahadasha, antardasha,
+    #   dasha_sequence, user_prompt
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_d2_hora_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
+        _sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter",
+        }
+
+        # Hora type: Parashari D2 uses only Leo (Sun Hora) and Cancer (Moon Hora)
+        def hora_type(sign: str) -> str:
+            if sign == "Leo":
+                return "Sun Hora"
+            elif sign in ("Can", "Cancer"):
+                return "Moon Hora"
+            else:
+                return f"Extended ({sign})"
+
+        birth_time_note = (
+            "Birth time provided by user. D2 divisional charts require accurate birth "
+            "time — if birth time is approximate or unknown, D2 positions may shift."
+        )
+        hora_method_note = (
+            "Parashari Hora (traditional): planets fall in Leo (Sun Hora) for "
+            "self-earned wealth / authority, or Cancer (Moon Hora) for family support / "
+            "liquidity / public income. If your software uses an extended Hora method "
+            "(Jagannatha etc.), planet signs will differ."
+        )
+
+        # --- Extract D2 positions ---
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d2_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D2":
+                d2_positions = chart.get("positions", [])
+                break
+
+        # D2 Lagna
+        d2_asc = next(
+            (p for p in d2_positions if p.get("planet") == "Ascendant"), {}
+        )
+        d2_lagna_sign = d2_asc.get("sign", "N/A")
+        d2_lagna_lord = _sign_lords.get(d2_lagna_sign, "N/A")
+        d2_lagna_str = (
+            f"{d2_lagna_sign} (Lord: {d2_lagna_lord})"
+            f" | {hora_type(d2_lagna_sign)}"
+        )
+
+        # D2 house lords (all 12) — derived from D2 ascendant
+        d2_planet_map = {p.get("planet"): p for p in d2_positions}
+        d2_house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(d2_lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = d2_planet_map.get(lord_name, {})
+            lord_sign = lord_data.get("sign", "N/A")
+            try:
+                d2_lagna_idx = cls._SIGN_ORDER.index(d2_lagna_sign)
+                lord_sign_idx = cls._SIGN_ORDER.index(lord_sign)
+                lord_d2_house = ((lord_sign_idx - d2_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                lord_d2_house = "N/A"
+            d2_house_lord_lines.append(
+                f"  House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | In D2 House {lord_d2_house} ({lord_sign})"
+                f" | {hora_type(lord_sign)}"
+            )
+        d2_house_lords_str = "\n".join(d2_house_lord_lines)
+
+        # D2 planetary placements with hora type
+        sun_hora_count = 0
+        moon_hora_count = 0
+        other_hora_count = 0
+        d2_planet_lines = []
+        for p in d2_positions:
+            pname = p.get("planet", "")
+            if pname == "Ascendant":
+                continue
+            p_sign = p.get("sign", "N/A")
+            p_hora = hora_type(p_sign)
+            # house in D2
+            try:
+                d2_lagna_idx = cls._SIGN_ORDER.index(d2_lagna_sign)
+                p_sign_idx = cls._SIGN_ORDER.index(p_sign)
+                d2_house_num = ((p_sign_idx - d2_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                d2_house_num = "N/A"
+            d2_planet_lines.append(
+                f"  {pname} → D2 House: {d2_house_num}"
+                f" | Sign: {p_sign}"
+                f" | Degree: {p.get('degree', 'N/A')}°"
+                f" | Hora: {p_hora}"
+            )
+            if p_hora == "Sun Hora":
+                sun_hora_count += 1
+            elif p_hora == "Moon Hora":
+                moon_hora_count += 1
+            else:
+                other_hora_count += 1
+
+        d2_planets_str = "\n".join(d2_planet_lines) if d2_planet_lines else "Not available"
+
+        # Hora balance summary
+        hora_balance_str = (
+            f"  Sun Hora planets: {sun_hora_count} (self-earned wealth, authority, independence)\n"
+            f"  Moon Hora planets: {moon_hora_count} (family support, liquidity, public income)\n"
+        )
+        if other_hora_count:
+            hora_balance_str += (
+                f"  Extended Hora (non-Leo/Cancer): {other_hora_count} planets "
+                f"(Jagannatha or alternate D2 method in use)\n"
+            )
+        if sun_hora_count > moon_hora_count:
+            hora_balance_str += "  Dominant theme: Self-driven / authority-based wealth"
+        elif moon_hora_count > sun_hora_count:
+            hora_balance_str += "  Dominant theme: Family-supported / liquid / public-facing wealth"
+        else:
+            hora_balance_str += "  Balance: Mixed self-earned and family/public wealth"
+
+        # --- D1 cross-reference ---
+        birth_planets = cls._get_birth_planets(structured_data)
+        planet_map = cls._get_d1_planet_map(structured_data)
+        d1_asc = planet_map.get("Ascendant", {})
+        d1_lagna_sign = d1_asc.get("sign", "N/A")
+        d1_lagna_lord = d1_asc.get("lord", "N/A")
+
+        bp_map = {p.get("planet"): p for p in birth_planets}
+
+        def _d1_lord_of_house(h: int) -> str:
+            h_sign = cls._sign_of_house(d1_lagna_sign, h)
+            return _sign_lords.get(h_sign, "N/A")
+
+        d1_2nd_lord = _d1_lord_of_house(2)
+        d1_11th_lord = _d1_lord_of_house(11)
+
+        def _planet_summary(planet_name: str) -> str:
+            p = bp_map.get(planet_name, {})
+            return (
+                f"House {p.get('house', 'N/A')}"
+                f" | Sign: {p.get('sign', 'N/A')}"
+                f" | Dignity: {p.get('dignity', 'N/A')}"
+            )
+
+        d1_cross_ref_str = (
+            f"  D1 Lagna: {d1_lagna_sign} (Lord: {d1_lagna_lord})\n"
+            f"  D1 2nd Lord: {d1_2nd_lord} — {_planet_summary(d1_2nd_lord)}\n"
+            f"  D1 11th Lord: {d1_11th_lord} — {_planet_summary(d1_11th_lord)}\n"
+            f"  D1 Jupiter — {_planet_summary('Jupiter')}\n"
+            f"  D1 Venus  — {_planet_summary('Venus')}\n"
+            f"  D1 Mercury — {_planet_summary('Mercury')}"
+        )
+
+        # --- Dasha ---
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        mahadasha_str = (
+            f"{current.get('mahadasha', 'N/A')}"
+            f" (ends: {current.get('mahadasha_end', 'N/A')})"
+        )
+        antardasha_str = (
+            f"{current.get('antardasha', 'N/A')}"
+            f" (ends: {current.get('antardasha_end', 'N/A')})"
+        )
+        antardashas = dasha_raw.get("data", {}).get("current_antardashas", [])
+        dasha_seq_lines = []
+        for a in antardashas:
+            marker = " (CURRENT)" if a.get("is_current") else ""
+            dasha_seq_lines.append(
+                f"  {a.get('planet')} Antardasha:"
+                f" {a.get('start_date')} → {a.get('end_date')}{marker}"
+            )
+        dasha_sequence_str = (
+            "\n".join(dasha_seq_lines) if dasha_seq_lines else "Not available"
+        )
+
+        return template.format(
+            user_prompt=user_prompt,
+            birth_time_note=birth_time_note,
+            hora_method_note=hora_method_note,
+            d2_lagna=d2_lagna_str,
+            d2_house_lords=d2_house_lords_str,
+            d2_planets=d2_planets_str,
+            hora_balance=hora_balance_str,
+            d1_cross_ref=d1_cross_ref_str,
+            mahadasha=mahadasha_str,
+            antardasha=antardasha_str,
+            dasha_sequence=dasha_sequence_str,
         )
 
     @classmethod

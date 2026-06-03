@@ -152,6 +152,7 @@ class AstrologyInsight(models.Model):
         ("divisional-charts", "Divisional Charts Context"),
         ("dasha", "Vimshottari Dasha Context"),
         ("foreign_travel", "Foreign Travel & Settlement"),
+        ("d2_hora", "D2 Hora Chart Analysis"),
     )
 
     birth_profile = models.ForeignKey(
