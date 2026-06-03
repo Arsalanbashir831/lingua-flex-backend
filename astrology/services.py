@@ -186,6 +186,7 @@ class GeminiAIService:
         D4_CHATURTHAMSHA_PROMPT,
         D10_DASHAMSHA_PROMPT,
         D7_SAPTAMSHA_PROMPT,
+        D12_DWADASHAMSHA_PROMPT,
     )
 
     PROMPTS = {
@@ -211,6 +212,7 @@ class GeminiAIService:
         "d4_chaturthamsha": D4_CHATURTHAMSHA_PROMPT,
         "d10_dashamsha": D10_DASHAMSHA_PROMPT,
         "d7_saptamsha": D7_SAPTAMSHA_PROMPT,
+        "d12_dwadashamsha": D12_DWADASHAMSHA_PROMPT,
     }
 
     @classmethod
@@ -319,6 +321,10 @@ class GeminiAIService:
             )
         elif category == "d7_saptamsha":
             prompt = cls._build_d7_saptamsha_prompt(
+                prompt_template, structured_data, user_prompt=user_prompt_text
+            )
+        elif category == "d12_dwadashamsha":
+            prompt = cls._build_d12_dwadashamsha_prompt(
                 prompt_template, structured_data, user_prompt=user_prompt_text
             )
         else:
@@ -2252,6 +2258,157 @@ STRICT RULES:
             d7_planets=d7_planets_str,
             d1_cross_ref=d1_cross_ref_str,
             putrakaraka=putrakaraka_str,
+            mahadasha=mahadasha_str,
+            antardasha=antardasha_str,
+            dasha_sequence=dasha_sequence_str,
+        )
+
+    # -------------------------------------------------------------------------
+    # Builder: D12 Dwadashamsha Chart Analysis
+    # Placeholders: birth_time_note, d12_lagna, d12_house_lords, d12_planets,
+    #   d1_cross_ref, mahadasha, antardasha, dasha_sequence, user_prompt
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _build_d12_dwadashamsha_prompt(
+        cls, template: str, structured_data: dict, user_prompt: str = ""
+    ) -> str:
+        _sign_lords = {
+            "Ari": "Mars", "Tau": "Venus", "Gem": "Mercury", "Can": "Moon",
+            "Leo": "Sun", "Vir": "Mercury", "Lib": "Venus", "Sco": "Mars",
+            "Sag": "Jupiter", "Cap": "Saturn", "Aqu": "Saturn", "Pis": "Jupiter",
+        }
+
+        birth_time_note = (
+            "Birth time provided by user. D12 divisional charts require accurate birth "
+            "time — if birth time is approximate or unknown, D12 positions may shift."
+        )
+
+        # --- Extract D12 positions ---
+        divisional_raw = structured_data.get("divisional_data", {})
+        all_charts = divisional_raw.get("data", {}).get("charts", [])
+        d12_positions = []
+        for chart in all_charts:
+            if chart.get("chart") == "D12":
+                d12_positions = chart.get("positions", [])
+                break
+
+        planet_map = cls._get_d1_planet_map(structured_data)
+
+        # D12 Lagna
+        d12_asc = next(
+            (p for p in d12_positions if p.get("planet") == "Ascendant"), {}
+        )
+        d12_lagna_sign = d12_asc.get("sign", "N/A")
+        d12_lagna_lord = _sign_lords.get(d12_lagna_sign, "N/A")
+        d12_lagna_str = f"{d12_lagna_sign} (Lord: {d12_lagna_lord})"
+
+        # D12 house lords
+        d12_planet_map = {p.get("planet"): p for p in d12_positions}
+        d12_house_lord_lines = []
+        for h in range(1, 13):
+            h_sign = cls._sign_of_house(d12_lagna_sign, h)
+            lord_name = _sign_lords.get(h_sign, "N/A")
+            lord_data = d12_planet_map.get(lord_name, {})
+            lord_sign = lord_data.get("sign", "N/A")
+            try:
+                d12_lagna_idx = cls._SIGN_ORDER.index(d12_lagna_sign)
+                lord_sign_idx = cls._SIGN_ORDER.index(lord_sign)
+                lord_d12_house = ((lord_sign_idx - d12_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                lord_d12_house = "N/A"
+            
+            d12_house_lord_lines.append(
+                f"  House {h} ({h_sign}) → Lord: {lord_name}"
+                f" | In D12 House {lord_d12_house} ({lord_sign})"
+            )
+        d12_house_lords_str = "\n".join(d12_house_lord_lines)
+
+        # D12 planetary placements
+        d12_planet_lines = []
+        for p in d12_positions:
+            pname = p.get("planet", "")
+            if pname == "Ascendant":
+                continue
+            p_sign = p.get("sign", "N/A")
+            try:
+                d12_lagna_idx = cls._SIGN_ORDER.index(d12_lagna_sign)
+                p_sign_idx = cls._SIGN_ORDER.index(p_sign)
+                d12_house_num = ((p_sign_idx - d12_lagna_idx) % 12) + 1
+            except (ValueError, AttributeError):
+                d12_house_num = "N/A"
+            
+            p_dignity = p.get("dignity", "N/A")
+            p_aspects = p.get("aspects", [])
+            
+            d12_planet_lines.append(
+                f"  {pname} → D12 House: {d12_house_num}"
+                f" | Sign: {p_sign}"
+                f" | D12 Degree: {p.get('degree', 'N/A')}°"
+                f" | Dignity: {p_dignity}"
+                f" | Aspects: {p_aspects}"
+            )
+        d12_planets_str = "\n".join(d12_planet_lines) if d12_planet_lines else "Not available"
+
+        # --- D1 cross-reference ---
+        birth_planets = cls._get_birth_planets(structured_data)
+        d1_asc = planet_map.get("Ascendant", {})
+        d1_lagna_sign = d1_asc.get("sign", "N/A")
+        d1_lagna_lord = d1_asc.get("lord", "N/A")
+        bp_map = {p.get("planet"): p for p in birth_planets}
+
+        def _d1_lord_of_house(h: int) -> str:
+            h_sign = cls._sign_of_house(d1_lagna_sign, h)
+            return _sign_lords.get(h_sign, "N/A")
+
+        d1_4th_lord = _d1_lord_of_house(4)
+        d1_9th_lord = _d1_lord_of_house(9)
+
+        def _planet_summary(planet_name: str) -> str:
+            p = bp_map.get(planet_name, {})
+            return (
+                f"House {p.get('house', 'N/A')}"
+                f" | Sign: {p.get('sign', 'N/A')}"
+                f" | Dignity: {p.get('dignity', 'N/A')}"
+            )
+
+        d1_cross_ref_str = (
+            f"  D1 Lagna: {d1_lagna_sign} (Lord: {d1_lagna_lord})\n"
+            f"  D1 4th House Lord (Mother): {d1_4th_lord} — {_planet_summary(d1_4th_lord)}\n"
+            f"  D1 9th House Lord (Father): {d1_9th_lord} — {_planet_summary(d1_9th_lord)}\n"
+            f"  D1 Sun (Father Significator) — {_planet_summary('Sun')}\n"
+            f"  D1 Moon (Mother Significator) — {_planet_summary('Moon')}"
+        )
+
+        # --- Dasha ---
+        dasha_raw = structured_data.get("dasha", {})
+        current = dasha_raw.get("data", {}).get("current_period", {})
+        mahadasha_str = (
+            f"{current.get('mahadasha', 'N/A')}"
+            f" (ends: {current.get('mahadasha_end', 'N/A')})"
+        )
+        antardasha_str = (
+            f"{current.get('antardasha', 'N/A')}"
+            f" (ends: {current.get('antardasha_end', 'N/A')})"
+        )
+        antardashas = dasha_raw.get("data", {}).get("current_antardashas", [])
+        dasha_seq_lines = []
+        for a in antardashas:
+            marker = " (CURRENT)" if a.get("is_current") else ""
+            dasha_seq_lines.append(
+                f"  {a.get('planet')} Antardasha:"
+                f" {a.get('start_date')} → {a.get('end_date')}{marker}"
+            )
+        dasha_sequence_str = (
+            "\n".join(dasha_seq_lines) if dasha_seq_lines else "Not available"
+        )
+
+        return template.format(
+            user_prompt=user_prompt,
+            birth_time_note=birth_time_note,
+            d12_lagna=d12_lagna_str,
+            d12_house_lords=d12_house_lords_str,
+            d12_planets=d12_planets_str,
+            d1_cross_ref=d1_cross_ref_str,
             mahadasha=mahadasha_str,
             antardasha=antardasha_str,
             dasha_sequence=dasha_sequence_str,
