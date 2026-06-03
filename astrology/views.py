@@ -31,12 +31,14 @@ from .models import (
     AstrologyInsight,
     AstrologyDashboardAccess,
     AstrologyChat,
+    FestivalCalendarCache,
 )
 from .serializers import (
     BirthProfileSerializer,
     AstrologyAccessSerializer,
     StudentDashboardSummarySerializer,
     AstrologyChatSerializer,
+    FestivalCalendarRequestSerializer,
 )
 from .services import AstrologyAPIClient, AstrologyAPIError, GeminiAIService
 
@@ -1401,3 +1403,66 @@ class GuestProfileDetailView(APIView):
 
         profile.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class FestivalCalendarView(APIView):
+    """
+    POST — Returns the Hindu festival calendar for a given year.
+    Supports optional filters: festival_type, language, region.
+    Caches the results in the database (FestivalCalendarCache) to prevent repeated external API requests.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = FestivalCalendarRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        year = serializer.validated_data["year"]
+        festival_type = serializer.validated_data.get("festival_type") or ""
+        language = serializer.validated_data.get("language") or "en"
+        region = serializer.validated_data.get("region") or ""
+
+        # 1. Check database cache first
+        cache_entry = FestivalCalendarCache.objects.filter(
+            year=year,
+            festival_type=festival_type,
+            language=language,
+            region=region
+        ).first()
+
+        if cache_entry:
+            logger.info(f"Festival calendar retrieved from DATABASE cache for year {year} (type: {festival_type}, lang: {language}, region: {region})")
+            return Response(cache_entry.calendar_data)
+
+        # 2. Call external API
+        client = AstrologyAPIClient()
+        try:
+            raw_response = client.get_festival_calendar(
+                year=year,
+                festival_type=festival_type or None,
+                language=language or None,
+                region=region or None
+            )
+        except AstrologyAPIError as e:
+            return Response(
+                {"detail": f"Astrology API error: {str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        festival_data = raw_response.get("data", {})
+
+        # 3. Store in database cache
+        FestivalCalendarCache.objects.update_or_create(
+            year=year,
+            festival_type=festival_type,
+            language=language,
+            region=region,
+            defaults={
+                "calendar_data": festival_data
+            }
+        )
+
+        return Response(festival_data)
+
+

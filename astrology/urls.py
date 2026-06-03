@@ -3,7 +3,7 @@ from .views import (
     BirthProfileView, NatalChartView, TransitView, DashaView, NakshatraPredictionView,
     AstrologyInsightView, AstrologyInsightChatView,
     AstrologyAccessView, AstrologyAccessRevokeView, TeacherStudentDashboardsView,
-    GuestProfileListView, GuestProfileDetailView
+    GuestProfileListView, GuestProfileDetailView, FestivalCalendarView
 )
 
 urlpatterns = [
@@ -23,4 +23,8 @@ urlpatterns = [
     path('access/', AstrologyAccessView.as_view(), name='astrology-access-manage'),
     path('access/<str:teacher_id>/', AstrologyAccessRevokeView.as_view(), name='astrology-access-revoke'),
     path('teacher/students/', TeacherStudentDashboardsView.as_view(), name='astrology-teacher-student-list'),
+
+    # Festival calendar
+    path('festival-calendar/', FestivalCalendarView.as_view(), name='astrology-festival-calendar'),
 ]
+

@@ -155,6 +155,24 @@ class AstrologyAPIClient:
         }
         return self._post("ashtakvarga", payload)
 
+    def get_festival_calendar(
+        self, year: int, festival_type: str = None, language: str = None, region: str = None
+    ) -> dict:
+        """
+        Calls POST /vedic/festival-calendar.
+        Returns the festival calendar for the given year and optional filters.
+        """
+        payload = {
+            "year": year,
+        }
+        if festival_type:
+            payload["festival_type"] = festival_type
+        if language:
+            payload["language"] = language
+        if region:
+            payload["region"] = region
+        return self._post("festival-calendar", payload)
+
 
 class GeminiAIError(Exception):
     """Raised when GenAI generation fails."""

@@ -278,3 +278,26 @@ class AstrologyChat(models.Model):
             f"[{self.role.upper()}] {self.birth_profile.display_name} / "
             f"{self.category}: {self.content[:60]}"
         )
+
+
+class FestivalCalendarCache(models.Model):
+    """
+    Caches the Hindu festival calendar responses by year and optional filters.
+    Since the calendar for a year is static, caching it in the database saves API credits.
+    """
+    year = models.IntegerField()
+    festival_type = models.CharField(max_length=50, default="")
+    language = models.CharField(max_length=10, default="en")
+    region = models.CharField(max_length=100, default="")
+    calendar_data = models.JSONField()
+    cached_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("year", "festival_type", "language", "region")
+        verbose_name = "Festival Calendar Cache"
+        verbose_name_plural = "Festival Calendar Caches"
+
+    def __str__(self):
+        filters = f"type: {self.festival_type or 'all'}, lang: {self.language}, region: {self.region or 'all'}"
+        return f"Festival Calendar Cache for {self.year} ({filters})"
+

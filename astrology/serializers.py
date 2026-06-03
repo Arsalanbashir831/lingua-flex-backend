@@ -75,3 +75,34 @@ class AstrologyChatSerializer(serializers.ModelSerializer):
         model = AstrologyChat
         fields = ['id', 'category', 'role', 'content', 'created_at']
         read_only_fields = ['id', 'category', 'role', 'content', 'created_at']
+
+
+class FestivalCalendarRequestSerializer(serializers.Serializer):
+    year = serializers.IntegerField(
+        required=True,
+        min_value=1900,
+        max_value=2100,
+        help_text="Calendar year for which to calculate festival dates"
+    )
+    festival_type = serializers.ChoiceField(
+        choices=["major", "regional", "religious", "fasting", "auspicious"],
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    language = serializers.ChoiceField(
+        choices=[
+            "en", "hi", "ta", "te", "ru", "kn", "ml", "bn", "gu", "mr",
+            "es", "de", "fr", "it", "pt", "tr", "uk", "ar", "zh",
+            "pt-BR", "es-ES", "fr-FR"
+        ],
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    region = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+
