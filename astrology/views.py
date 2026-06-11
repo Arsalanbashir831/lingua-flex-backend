@@ -1205,13 +1205,13 @@ class StudentDashboardPagination(PageNumberPagination):
 class TeacherStudentDashboardsView(APIView):
     """
     GET — Teacher lists all students who have granted them dashboard access.
-    Only accessible by users with role=TEACHER.
+    Only accessible by users with role=TEACHER or BOTH.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.role != "TEACHER":
+        if request.user.role not in [User.Role.TEACHER, User.Role.BOTH]:
             return Response(
                 {"detail": "Only teachers can access this endpoint."},
                 status=status.HTTP_403_FORBIDDEN,
