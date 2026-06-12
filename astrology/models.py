@@ -301,3 +301,135 @@ class FestivalCalendarCache(models.Model):
         filters = f"type: {self.festival_type or 'all'}, lang: {self.language}, region: {self.region or 'all'}"
         return f"Festival Calendar Cache for {self.year} ({filters})"
 
+
+class AstrologyReport(models.Model):
+    """
+    Represents a purchased astrology report for a birth profile.
+
+    Lifecycle:
+      PENDING    — payment not yet completed
+      GENERATING — payment confirmed, PDF being built
+      READY      — PDF stored in Supabase Storage, available for download
+      FAILED     — PDF generation failed (payment still recorded as completed)
+
+    Storage strategy:
+      - preview_content: first ~30% of the report text, stored in DB,
+        returned freely without payment check.
+      - report_url: permanent Supabase Storage URL to the full PDF,
+        only served after ReportPayment.status == COMPLETED.
+    """
+
+    class ReportType(models.TextChoices):
+        FULL = "full", "Full Vedic Astrology Report"
+        # Extensible: add MARRIAGE, CAREER, etc. here later
+
+    class Status(models.TextChoices):
+        PENDING    = "pending",    "Pending Payment"
+        GENERATING = "generating", "Generating"
+        READY      = "ready",      "Ready for Download"
+        FAILED     = "failed",     "Generation Failed"
+
+    birth_profile  = models.ForeignKey(
+        BirthProfile,
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+    report_type    = models.CharField(
+        max_length=30,
+        choices=ReportType.choices,
+        default=ReportType.FULL,
+    )
+    status         = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    # Permanent Supabase Storage URL — populated once the PDF is uploaded.
+    # e.g. https://<ref>.supabase.co/storage/v1/object/public/astro-reports/<uuid>.pdf
+    report_url      = models.URLField(max_length=2000, blank=True)
+
+    # URL to the 1-2 page preview PDF, public read.
+    preview_url     = models.URLField(max_length=2000, blank=True)
+
+    # Free preview — first ~30% of report content stored as plain text.
+    # Returned in API responses regardless of payment status.
+    preview_content = models.TextField(blank=True)
+
+    generated_at    = models.DateTimeField(null=True, blank=True)
+    created_at      = models.DateTimeField(auto_now_add=True)
+    updated_at      = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("birth_profile", "report_type")
+        verbose_name = "Astrology Report"
+        verbose_name_plural = "Astrology Reports"
+
+    @property
+    def is_paid(self):
+        """True only when the linked ReportPayment is COMPLETED."""
+        try:
+            return self.payment.status == ReportPayment.Status.COMPLETED
+        except ReportPayment.DoesNotExist:
+            return False
+
+    def __str__(self):
+        return (
+            f"Report ({self.get_report_type_display()}) — "
+            f"{self.birth_profile.display_name} [{self.status}]"
+        )
+
+
+class ReportPayment(models.Model):
+    """
+    One-time Stripe payment for an AstrologyReport.
+
+    Intentionally separate from the session-booking Payment model:
+      - No refunds (reports are non-refundable by design)
+      - No booking / gig relationship
+      - Simple three-state lifecycle: PENDING → COMPLETED | FAILED
+
+    The webhook handler updates this automatically via
+    payment_intent metadata["payment_type"] == "report".
+    """
+
+    class Status(models.TextChoices):
+        PENDING   = "PENDING",   "Pending"
+        COMPLETED = "COMPLETED", "Completed"
+        FAILED    = "FAILED",    "Failed"
+
+    report    = models.OneToOneField(
+        AstrologyReport,
+        on_delete=models.CASCADE,
+        related_name="payment",
+    )
+    user      = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="report_payments",
+    )
+
+    stripe_payment_intent_id = models.CharField(max_length=255, unique=True)
+    stripe_customer_id       = models.CharField(max_length=255, blank=True)
+    amount_cents = models.IntegerField(help_text="Amount in cents (USD)")
+    currency     = models.CharField(max_length=3, default="USD")
+    status       = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    paid_at    = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Report Payment"
+        verbose_name_plural = "Report Payments"
+
+    def __str__(self):
+        return (
+            f"ReportPayment #{self.id} — {self.user.email} "
+            f"(${self.amount_cents / 100:.2f} {self.status})"
+        )
+

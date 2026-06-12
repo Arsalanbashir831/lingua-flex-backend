@@ -51,6 +51,11 @@ SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "")  # sb_secret_...
 SUPABASE_BLOG_IMAGE_BUCKET = os.getenv("SUPABASE_BLOG_IMAGE_BUCKET", "blog-images")
 SUPABASE_USER_UPLOADS_BUCKET = os.getenv("SUPABASE_USER_UPLOADS_BUCKET", "user-uploads")
 
+# ─── Astrology Reports ─────────────────────────────────────────────────────────
+SUPABASE_ASTRO_REPORTS_BUCKET = os.getenv("SUPABASE_ASTRO_REPORTS_BUCKET", "astro-reports")
+# Price in cents. $9.99 dummy value — update via env var before launch.
+ASTROLOGY_REPORT_PRICE_CENTS = int(os.getenv("ASTROLOGY_REPORT_PRICE_CENTS", "999"))
+
 # ─── Chat File Uploads ─────────────────────────────────────────────────────────
 CHAT_UPLOADS_BUCKET = os.getenv("CHAT_UPLOADS_BUCKET", "chat-uploads")
 CHAT_MAX_FILES_PER_MESSAGE = int(os.getenv("CHAT_MAX_FILES_PER_MESSAGE", "10"))

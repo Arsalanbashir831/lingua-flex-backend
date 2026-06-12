@@ -12,7 +12,9 @@ Views:
 """
 
 from datetime import datetime
+from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 
 import logging
 import pytz
@@ -32,6 +34,8 @@ from .models import (
     AstrologyDashboardAccess,
     AstrologyChat,
     FestivalCalendarCache,
+    AstrologyReport,
+    ReportPayment,
 )
 from .serializers import (
     BirthProfileSerializer,
@@ -1466,3 +1470,457 @@ class FestivalCalendarView(APIView):
         return Response(festival_data)
 
 
+# ===========================================================================
+# Astrology Report Views
+# ===========================================================================
+
+def _resolve_birth_profile_for_report(request, birth_profile_id=None):
+    """
+    Helper: resolve the BirthProfile the caller wants a report for.
+
+    - If birth_profile_id is None → use the requesting user's own profile.
+    - If birth_profile_id is provided → must be a guest profile created by
+      the requesting user (teacher use-case).
+
+    Returns (birth_profile, error_response).  Exactly one of them is None.
+    """
+    if birth_profile_id is None:
+        # Own profile
+        try:
+            return BirthProfile.objects.get(user=request.user), None
+        except BirthProfile.DoesNotExist:
+            return None, Response(
+                {"detail": "No birth profile found. Please create one first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    # Guest profile — teacher must be the creator
+    try:
+        profile = BirthProfile.objects.get(
+            id=birth_profile_id,
+            user__isnull=True,
+            created_by=request.user,
+        )
+        return profile, None
+    except BirthProfile.DoesNotExist:
+        return None, Response(
+            {"detail": "Guest profile not found or you are not its owner."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+def _ensure_report_preview(report):
+    """
+    Eagerly generates and uploads the preview PDF and text if missing.
+    """
+    if report.preview_url:
+        return
+
+    from .report_generator import generate_preview, upload_report_to_supabase
+    try:
+        pdf_bytes, preview_text = generate_preview(report.birth_profile)
+        preview_url = upload_report_to_supabase(
+            pdf_bytes,
+            birth_profile_id=report.birth_profile_id,
+            report_type=report.report_type,
+            is_preview=True,
+        )
+        report.preview_url = preview_url
+        report.preview_content = preview_text
+        report.save(update_fields=["preview_url", "preview_content", "updated_at"])
+    except Exception as e:
+        logger.error(f"Failed to generate preview for report #{report.id}: {e}")
+
+
+class ReportStatusView(APIView):
+    """
+    GET /api/astrology/reports/
+
+    Returns all AstrologyReport records for the requesting user's own birth
+    profile (or a guest profile if ?birth_profile_id=<id> is supplied by a
+    teacher).
+
+    The preview_content field is always included regardless of payment status.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        birth_profile_id = request.query_params.get("birth_profile_id")
+        profile, err = _resolve_birth_profile_for_report(request, birth_profile_id)
+        if err:
+            return err
+
+        # Ensure a default 'full' report record exists so that the preview is available eagerly
+        report, created = AstrologyReport.objects.get_or_create(
+            birth_profile=profile,
+            report_type=AstrologyReport.ReportType.FULL,
+        )
+        _ensure_report_preview(report)
+
+        reports = AstrologyReport.objects.filter(birth_profile=profile).select_related(
+            "payment"
+        )
+
+        data = []
+        for report in reports:
+            payment = getattr(report, "payment", None)
+            data.append(
+                {
+                    "id": report.id,
+                    "report_type": report.report_type,
+                    "report_type_display": report.get_report_type_display(),
+                    "status": report.status,
+                    "is_paid": report.is_paid,
+                    "preview_content": report.preview_content,
+                    "preview_url": report.preview_url or None,
+                    "amount_cents": payment.amount_cents if payment else None,
+                    "paid_at": payment.paid_at.isoformat() if payment and payment.paid_at else None,
+                    "generated_at": report.generated_at.isoformat() if report.generated_at else None,
+                    "download_url": f"/api/astrology/reports/{report.report_type}/download/"
+                    if report.is_paid and report.status == AstrologyReport.Status.READY
+                    else None,
+                }
+            )
+
+        return Response(data)
+
+
+class InitiateReportPaymentView(APIView):
+    """
+    POST /api/astrology/reports/purchase/
+
+    Creates (or returns existing) AstrologyReport + Stripe PaymentIntent.
+    Idempotent: calling twice returns the same report_id and client_secret.
+
+    Request body:
+      report_type       string  optional  defaults to "full"
+      birth_profile_id  int     optional  teacher can specify a guest profile
+      payment_method_id string  optional  attach a Stripe card upfront
+
+    Response 201:
+      report_id, report_type, status, amount_cents, currency,
+      client_secret, already_purchased, preview_content
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from stripe_payments.services import StripePaymentService
+        import stripe as stripe_lib
+        from django.conf import settings as dj_settings
+
+        report_type = request.data.get("report_type", AstrologyReport.ReportType.FULL)
+        if report_type not in AstrologyReport.ReportType.values:
+            return Response(
+                {"detail": f"Invalid report_type. Choices: {AstrologyReport.ReportType.values}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        birth_profile_id = request.data.get("birth_profile_id")
+        profile, err = _resolve_birth_profile_for_report(request, birth_profile_id)
+        if err:
+            return err
+
+        with transaction.atomic():
+            report, created = AstrologyReport.objects.get_or_create(
+                birth_profile=profile,
+                report_type=report_type,
+            )
+            _ensure_report_preview(report)
+
+            # Already fully paid + report ready → short-circuit
+            if report.is_paid and report.status == AstrologyReport.Status.READY:
+                return Response(
+                    {
+                        "report_id": report.id,
+                        "report_type": report.report_type,
+                        "status": report.status,
+                        "already_purchased": True,
+                        "preview_content": report.preview_content,
+                        "preview_url": report.preview_url or None,
+                        "download_url": f"/api/astrology/reports/{report.report_type}/download/",
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            # Existing PENDING payment intent? Return its client_secret
+            existing_payment = getattr(report, "payment", None)
+            if (
+                existing_payment
+                and existing_payment.status == ReportPayment.Status.PENDING
+                and existing_payment.stripe_payment_intent_id
+            ):
+                try:
+                    intent = stripe_lib.PaymentIntent.retrieve(
+                        existing_payment.stripe_payment_intent_id
+                    )
+                    if intent.status not in ("canceled", "succeeded"):
+                        return Response(
+                            {
+                                "report_id": report.id,
+                                "report_type": report.report_type,
+                                "status": report.status,
+                                "amount_cents": existing_payment.amount_cents,
+                                "currency": existing_payment.currency,
+                                "client_secret": intent.client_secret,
+                                "already_purchased": False,
+                                "preview_content": report.preview_content,
+                                "preview_url": report.preview_url or None,
+                            },
+                            status=status.HTTP_200_OK,
+                        )
+                except Exception:
+                    pass  # Fall through to create a new intent
+
+            # Create a fresh PaymentIntent
+            try:
+                result = StripePaymentService.create_report_payment_intent(
+                    user=request.user,
+                    report=report,
+                )
+            except Exception as e:
+                logger.error(f"Failed to create report PaymentIntent: {e}")
+                return Response(
+                    {"detail": "Payment system error. Please try again."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        price_cents = getattr(dj_settings, "ASTROLOGY_REPORT_PRICE_CENTS", 999)
+        return Response(
+            {
+                "report_id": report.id,
+                "report_type": report.report_type,
+                "status": report.status,
+                "amount_cents": price_cents,
+                "currency": "USD",
+                "client_secret": result["client_secret"],
+                "already_purchased": False,
+                "preview_content": report.preview_content,
+                "preview_url": report.preview_url or None,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ConfirmReportPaymentView(APIView):
+    """
+    POST /api/astrology/reports/confirm-payment/
+
+    Called by the frontend AFTER Stripe.js has confirmed the card payment.
+    Verifies the PaymentIntent, marks the payment as COMPLETED, generates
+    the PDF, uploads it to Supabase Storage, and returns the report status.
+
+    Request body:
+      payment_intent_id  string  required
+
+    Response 200:
+      report_id, status ("ready" | "generating" | "failed"), preview_content, message
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import stripe as stripe_lib
+        from django.utils import timezone as dj_timezone
+        from .report_generator import generate_report, upload_report_to_supabase
+
+        intent_id = request.data.get("payment_intent_id", "").strip()
+        if not intent_id:
+            return Response(
+                {"detail": "payment_intent_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 1. Look up the ReportPayment
+        try:
+            report_payment = ReportPayment.objects.select_related(
+                "report", "report__birth_profile"
+            ).get(
+                stripe_payment_intent_id=intent_id,
+                user=request.user,
+            )
+        except ReportPayment.DoesNotExist:
+            return Response(
+                {"detail": "Payment record not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        report = report_payment.report
+
+        # 2. If already COMPLETED + READY, return immediately
+        if report_payment.status == ReportPayment.Status.COMPLETED and report.status == AstrologyReport.Status.READY:
+            return Response(
+                {
+                    "report_id": report.id,
+                    "status": report.status,
+                    "preview_content": report.preview_content,
+                    "preview_url": report.preview_url or None,
+                    "message": "Your report is ready to download.",
+                }
+            )
+
+        # 3. Verify with Stripe that the payment actually succeeded
+        try:
+            intent = stripe_lib.PaymentIntent.retrieve(intent_id)
+        except Exception as e:
+            logger.error(f"Stripe retrieve failed for {intent_id}: {e}")
+            return Response(
+                {"detail": "Could not verify payment with Stripe."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if intent.status != "succeeded":
+            return Response(
+                {
+                    "detail": f"Payment not yet confirmed (status: {intent.status}). "
+                              "Complete the payment on the frontend first."
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        # 4. Mark payment as COMPLETED
+        with transaction.atomic():
+            report_payment.status = ReportPayment.Status.COMPLETED
+            report_payment.paid_at = dj_timezone.now()
+            report_payment.save(update_fields=["status", "paid_at", "updated_at"])
+
+            report.status = AstrologyReport.Status.GENERATING
+            report.save(update_fields=["status", "updated_at"])
+
+        # 5. Generate PDF + upload to Supabase Storage
+        try:
+            pdf_bytes, preview_text = generate_report(report.birth_profile)
+            public_url = upload_report_to_supabase(
+                pdf_bytes,
+                birth_profile_id=report.birth_profile_id,
+                report_type=report.report_type,
+            )
+
+            report.report_url = public_url
+            report.preview_content = preview_text
+            report.status = AstrologyReport.Status.READY
+            report.generated_at = dj_timezone.now()
+            report.save(update_fields=["report_url", "preview_content", "status", "generated_at", "updated_at"])
+
+            logger.info(f"AstrologyReport #{report.id} generated and stored at {public_url}")
+
+            return Response(
+                {
+                    "report_id": report.id,
+                    "status": report.status,
+                    "preview_content": report.preview_content,
+                    "preview_url": report.preview_url or None,
+                    "message": "Your report is ready to download.",
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Report generation failed for report #{report.id}: {e}")
+            report.status = AstrologyReport.Status.FAILED
+            report.save(update_fields=["status", "updated_at"])
+            return Response(
+                {
+                    "report_id": report.id,
+                    "status": AstrologyReport.Status.FAILED,
+                    "detail": "Report generation failed. Your payment is recorded — please contact support.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DownloadReportView(APIView):
+    """
+    GET /api/astrology/reports/<report_type>/download/
+
+    Payment gate: streams the PDF only if the user has a COMPLETED ReportPayment
+    and the report status is READY.
+
+    Query params:
+      birth_profile_id  int  optional — teacher can access a guest profile's report
+
+    Response codes:
+      200  PDF bytes  (application/pdf)
+      202  Generating — report is being built, poll again shortly
+      402  Payment required
+      404  No report found for this profile + type
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, report_type):
+        import requests as http_requests
+
+        if report_type not in AstrologyReport.ReportType.values:
+            return Response(
+                {"detail": f"Invalid report_type. Choices: {AstrologyReport.ReportType.values}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        birth_profile_id = request.query_params.get("birth_profile_id")
+        profile, err = _resolve_birth_profile_for_report(request, birth_profile_id)
+        if err:
+            return err
+
+        try:
+            report = AstrologyReport.objects.select_related("payment").get(
+                birth_profile=profile,
+                report_type=report_type,
+            )
+        except AstrologyReport.DoesNotExist:
+            return Response(
+                {"detail": "No report found for this profile. Purchase a report first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Not paid
+        if not report.is_paid:
+            return Response(
+                {
+                    "detail": "Payment required to download this report.",
+                    "report_id": report.id,
+                    "status": report.status,
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        # Paid but still generating
+        if report.status == AstrologyReport.Status.GENERATING:
+            return Response(
+                {
+                    "detail": "Your report is being generated. Please check back in a moment.",
+                    "status": report.status,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        # Failed
+        if report.status == AstrologyReport.Status.FAILED:
+            return Response(
+                {
+                    "detail": "Report generation failed. Your payment is recorded — please contact support.",
+                    "status": report.status,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Fetch PDF from Supabase Storage and stream to client
+        try:
+            resp = http_requests.get(report.report_url, timeout=30)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed to fetch report PDF from Supabase for report #{report.id}: {e}")
+            return Response(
+                {"detail": "Could not retrieve your report file. Please try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        display_name = profile.display_name.replace(" ", "_")[:40]
+        filename = f"vedic-astrology-report-{display_name}.pdf"
+
+        http_response = HttpResponse(
+            resp.content,
+            content_type="application/pdf",
+        )
+        http_response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return http_response

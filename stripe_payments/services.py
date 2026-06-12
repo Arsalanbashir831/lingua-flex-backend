@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 import logging
 
 from .models import Payment, StripeCustomer, SavedPaymentMethod, RefundRequest
+# ReportPayment is imported lazily inside methods to avoid circular imports
 
 logger = logging.getLogger(__name__)
 
@@ -343,6 +344,58 @@ class StripePaymentService:
             logger.error(f"Error deleting payment method: {e}")
             return False
 
+    @staticmethod
+    def create_report_payment_intent(user, report) -> Dict[str, Any]:
+        """
+        Create a one-time Stripe PaymentIntent for a report purchase.
+
+        Reuses create_or_get_customer() — no new Stripe customer logic needed.
+        Amount comes from settings.ASTROLOGY_REPORT_PRICE_CENTS (default 999 = $9.99).
+        A metadata tag {payment_type: "report"} lets the webhook handler route
+        this payment separately from session-booking payments.
+        """
+        from astrology.models import ReportPayment
+
+        price_cents = getattr(settings, "ASTROLOGY_REPORT_PRICE_CENTS", 999)
+        customer = StripePaymentService.create_or_get_customer(user)
+
+        payment_intent = stripe.PaymentIntent.create(
+            amount=price_cents,
+            currency="usd",
+            customer=customer.stripe_customer_id,
+            automatic_payment_methods={
+                "enabled": True,
+                "allow_redirects": "never",
+            },
+            metadata={
+                "payment_type":     "report",
+                "report_id":        str(report.id),
+                "birth_profile_id": str(report.birth_profile_id),
+                "user_id":          str(user.id),
+                "platform":         "ParlezHub",
+            },
+        )
+
+        report_payment = ReportPayment.objects.create(
+            report=report,
+            user=user,
+            stripe_payment_intent_id=payment_intent.id,
+            stripe_customer_id=customer.stripe_customer_id,
+            amount_cents=price_cents,
+            status=ReportPayment.Status.PENDING,
+        )
+
+        logger.info(
+            f"Created report PaymentIntent {payment_intent.id} "
+            f"for report #{report.id} / user {user.id}"
+        )
+
+        return {
+            "payment_intent": payment_intent,
+            "report_payment": report_payment,
+            "client_secret":  payment_intent.client_secret,
+        }
+
 
 class StripeWebhookService:
     """
@@ -352,10 +405,20 @@ class StripeWebhookService:
     @staticmethod
     def handle_payment_intent_succeeded(event_data: Dict[str, Any]):
         """
-        Handle successful payment intent
+        Handle successful payment intent.
+
+        Routes by metadata["payment_type"]:
+          - "report"  → mark ReportPayment as COMPLETED and trigger report generation
+          - (default) → existing session-booking logic
         """
         payment_intent = event_data["object"]
+        payment_type = payment_intent.get("metadata", {}).get("payment_type", "")
 
+        if payment_type == "report":
+            StripeWebhookService._handle_report_payment_succeeded(payment_intent)
+            return
+
+        # ── Session-booking payment (existing logic) ──────────────────────
         try:
             payment = Payment.objects.get(stripe_payment_intent_id=payment_intent["id"])
 
@@ -374,6 +437,43 @@ class StripeWebhookService:
 
         except Payment.DoesNotExist:
             logger.error(f"Payment not found for PaymentIntent {payment_intent['id']}")
+
+    @staticmethod
+    def _handle_report_payment_succeeded(payment_intent: Dict[str, Any]):
+        """
+        Safety-net webhook handler for report payments.
+
+        Called when Stripe confirms payment_intent.succeeded with
+        metadata[payment_type] == 'report'.  Marks the ReportPayment as
+        COMPLETED so the report becomes downloadable even if the user closed
+        the tab before our /confirm-payment/ endpoint was called.
+
+        Report generation itself is intentionally NOT triggered here —
+        the full PDF build (which includes Supabase upload) requires a
+        synchronous response context that webhooks don't provide cleanly.
+        Generation is triggered by ConfirmReportPaymentView.  If payment is
+        confirmed via webhook before /confirm-payment/ is called, the view
+        will detect the COMPLETED status and generate the PDF at that point.
+        """
+        from astrology.models import ReportPayment
+
+        intent_id = payment_intent["id"]
+        try:
+            report_payment = ReportPayment.objects.get(
+                stripe_payment_intent_id=intent_id
+            )
+            if report_payment.status != ReportPayment.Status.COMPLETED:
+                report_payment.status = ReportPayment.Status.COMPLETED
+                report_payment.paid_at = timezone.now()
+                report_payment.save(update_fields=["status", "paid_at", "updated_at"])
+                logger.info(
+                    f"ReportPayment #{report_payment.id} marked COMPLETED via webhook "
+                    f"(PaymentIntent {intent_id})"
+                )
+        except ReportPayment.DoesNotExist:
+            logger.warning(
+                f"Webhook: no ReportPayment found for PaymentIntent {intent_id}"
+            )
 
     @staticmethod
     def handle_payment_intent_payment_failed(event_data: Dict[str, Any]):

@@ -3,7 +3,8 @@ from .views import (
     BirthProfileView, NatalChartView, TransitView, DashaView, NakshatraPredictionView,
     AstrologyInsightView, AstrologyInsightChatView,
     AstrologyAccessView, AstrologyAccessRevokeView, TeacherStudentDashboardsView,
-    GuestProfileListView, GuestProfileDetailView, FestivalCalendarView
+    GuestProfileListView, GuestProfileDetailView, FestivalCalendarView,
+    ReportStatusView, InitiateReportPaymentView, ConfirmReportPaymentView, DownloadReportView,
 )
 
 urlpatterns = [
@@ -26,5 +27,14 @@ urlpatterns = [
 
     # Festival calendar
     path('festival-calendar/', FestivalCalendarView.as_view(), name='astrology-festival-calendar'),
+
+    # ── Astrology Reports ────────────────────────────────────────────────────
+    # Note: purchase/ and confirm-payment/ MUST be registered before
+    # <report_type>/download/ to avoid the wildcard matching them.
+    path('reports/', ReportStatusView.as_view(), name='astrology-reports'),
+    path('reports/purchase/', InitiateReportPaymentView.as_view(), name='astrology-report-purchase'),
+    path('reports/confirm-payment/', ConfirmReportPaymentView.as_view(), name='astrology-report-confirm'),
+    path('reports/<str:report_type>/download/', DownloadReportView.as_view(), name='astrology-report-download'),
 ]
+
 
